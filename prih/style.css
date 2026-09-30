@@ -76,31 +76,36 @@ textarea{background:var(--bg);border:1px solid var(--line);color:var(--text);bor
 #toast.show{opacity:1}
 ::-webkit-scrollbar{width:9px}::-webkit-scrollbar-thumb{background:var(--line);border-radius:6px}
 
-/* ===== МОБИЛЬНАЯ ВЕРСИЯ (как у squig.link): график сверху, панели снизу ===== */
+/* ===== МОБИЛА: страница скроллится целиком, график сверху, ниже «шторка» как у squig ===== */
 @media (max-width:900px){
+  html,body{height:auto;min-height:100%}
   header{flex-wrap:nowrap;overflow-x:auto;padding:6px 10px;gap:8px}
   .logo{font-size:16px;white-space:nowrap;flex:none}
   .logo span{display:none}
   .topbtns{flex:none;display:flex;gap:6px}
-  .topbtns button{padding:4px 9px;font-size:11px;white-space:nowrap}
-  main{flex-direction:column}
+  .topbtns button{padding:5px 10px;font-size:11px;white-space:nowrap}
+  main{flex:none;flex-direction:column}
   #center{order:1;flex:none}
-  #left{order:2;width:100%;flex:1;border-right:none;border-top:1px solid var(--line)}
-  #graphWrap{flex:none;height:44vh;min-height:230px}
+  #left{order:2;width:100%;flex:none;border-right:none;border-radius:16px 16px 0 0;margin-top:-12px;padding-top:12px;position:relative;z-index:4}
+  #left::before{content:"";display:block;width:44px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 6px}
+  #graphWrap{flex:none;height:46vh;min-height:240px}
   #toolbar{flex-wrap:nowrap;overflow-x:auto;gap:12px;padding:6px 10px}
   .tb{flex:none}
   .tb input{width:48px}
   #bands{display:none}
   #targetsRow,#adjRow{flex-wrap:nowrap;overflow-x:auto;padding:6px 10px;gap:6px}
   #targetsRow .chips{flex-wrap:nowrap}
-  .tchip.tgt{padding:4px 10px;font-size:11px;white-space:nowrap}
+  .tchip.tgt{padding:5px 12px;font-size:11px;white-space:nowrap}
   #adjRow label{flex:none;white-space:nowrap}
   #adjRow input{width:56px}
   #legend{padding:6px 10px;gap:5px}
-  .litem{padding:2px 7px;font-size:11px}
-  .pane{max-height:40vh}
-  .tabs button{font-size:11px;padding:6px 2px}
-  #search{margin:6px}
-  .frow{grid-template-columns:18px 44px 1fr 1fr 1fr 20px}
-  .grid2{grid-template-columns:1fr 1fr}
+  .litem{padding:3px 8px;font-size:11px}
+  .pane{max-height:none;overflow:visible;padding:0 8px 16px}
+  .tabs button{font-size:12px;padding:8px 4px}
+  #search{margin:6px 8px}
+  .frow{grid-template-columns:22px 54px 1fr 1fr 1fr 24px}
+  .frow input[type=number]{padding:6px 4px;font-size:12px}
+  #eqPane .row button{padding:7px 12px}
+  #eqPane .grid2 label input{padding:6px}
+  #modal .box{max-height:86vh;overflow-y:auto}
 }

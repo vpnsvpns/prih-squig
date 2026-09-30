@@ -1,0 +1,80 @@
+name: Sync 711 Measurements
+
+on:
+  schedule:
+    - cron: '0 3 * * *' # Каждый день в 03:00 UTC
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run Fetch & Index Script
+        run: |
+          python3 - << 'EOF'
+          import json, os, urllib.request
+
+          SOURCES = [
+              {"name": "boizoff", "url": "https://boizoff.squig.link"},
+              {"name": "pw", "url": "https://pw.squig.link"},
+              {"name": "gudkov", "url": "https://gudkov.squig.link"}
+          ]
+
+          os.makedirs("data/measurements", exist_ok=True)
+          merged_phones = {}
+
+          for src in SOURCES:
+              book_url = f"{src['url']}/data/phone_book.json"
+              try:
+                  req = urllib.request.Request(book_url, headers={'User-Agent': 'Mozilla/5.0'})
+                  with urllib.request.urlopen(req, timeout=15) as resp:
+                      data = json.loads(resp.read().decode())
+              except Exception as e:
+                  print(f"Skipping {src['name']} due to error: {e}")
+                  continue
+
+              for phone_name, details in data.items():
+                  # Отбираем замеры исключительно IEC 711
+                  rig = str(details.get("rig", "")).lower()
+                  suffix = str(details.get("suffix", "")).lower()
+                  
+                  is_711 = ("711" in rig) or ("711" in suffix) or (not rig and "5128" not in suffix and "kb006x" not in suffix)
+                  if not is_711:
+                      continue
+
+                  # Название в поиске: "Модель [автор]"
+                  display_name = f"{phone_name} [{src['name']}]"
+                  file_key = f"{phone_name}_{src['name']}".replace("/", "_").replace(" ", "_")
+
+                  merged_phones[display_name] = {
+                      "source": src["name"],
+                      "original_name": phone_name,
+                      "file": f"measurements/{file_key}.txt",
+                      "remote_file": f"{src['url']}/data/{details.get('file', phone_name + '.txt')}"
+                  }
+
+          with open("data/phone_book.json", "w", encoding="utf-8") as f:
+              json.dump(merged_phones, f, ensure_ascii=False, indent=2)
+
+          print(f"Index built with {len(merged_phones)} measurements.")
+          EOF
+
+      - name: Commit and Push Updated Database
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/
+          if git diff --cached --quiet; then
+            echo "No changes found."
+          else
+            git commit -m "Auto-sync: update 711 measurements index"
+            git push
+          fi

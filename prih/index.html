@@ -7,75 +7,87 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header>
+<header id="top">
   <div class="logo">Prih<span>EQ Playground · 711</span></div>
   <div class="topbtns">
-    <button id="btnAvg">Average All</button>
-    <button id="btnShot">Screenshot</button>
+    <button id="btnAdd" class="accent">+ Add measurement</button>
     <button id="btnUrl">Copy URL</button>
-    <button id="btnTheme" title="Переключить тему">☀</button>
+    <button id="btnShot">Screenshot</button>
+    <button id="btnAvg">Average All</button>
+    <button id="btnTheme" title="Тема">☀</button>
   </div>
 </header>
 <main>
   <aside id="left">
-    <input id="search" type="search" placeholder="Поиск наушников…">
-    <div id="hplist"></div>
+    <div class="tabs">
+      <button id="tabBrands" data-tab="brands">Brands</button>
+      <button id="tabModels" data-tab="models" class="on">Models (<span id="modelCount">0</span>)</button>
+      <button id="tabEq" data-tab="eq">Equalizer</button>
+    </div>
+    <input id="search" type="search" placeholder="SEARCH">
+    <div id="brandList" class="pane" hidden></div>
+    <div id="modelList" class="pane"></div>
+    <div id="eqPane" class="pane" hidden>
+      <h3>Auto EQ</h3>
+      <div class="grid2">
+        <label>Фильтров<input type="number" id="aeCount" value="8" min="1" max="30"></label>
+        <label>F min, Гц<input type="number" id="aeFmin" value="20"></label>
+        <label>F max, Гц<input type="number" id="aeFmax" value="8000"></label>
+        <label>Gain min, дБ<input type="number" id="aeGmin" value="-10"></label>
+        <label>Gain max, дБ<input type="number" id="aeGmax" value="6"></label>
+        <label>Q min<input type="number" id="aeQmin" value="0.1" step="0.1"></label>
+        <label>Q max<input type="number" id="aeQmax" value="1.5" step="0.1"></label>
+      </div>
+      <label class="chk"><input type="checkbox" id="eqShowChk" checked> Показывать результат EQ</label>
+      <div class="row"><button id="btnEq">Применить</button><button id="btnCopyEq" disabled>Копировать</button></div>
+      <table id="eqTable"></table>
+    </div>
   </aside>
 
   <section id="center">
-    <canvas id="graph"></canvas>
+    <div id="toolbar">
+      <label class="tb">Y-AXIS SCALE:<input id="ySpan" type="number" value="30" min="10" max="120" step="5"><span>dB</span></label>
+      <label class="tb">NORMALIZE:
+        <button id="normOn" class="tchip on">dB</button>
+        <input id="normDb" type="number" value="60">
+        <span>@</span>
+        <input id="normHz" type="number" value="500"><span>Hz</span>
+      </label>
+      <label class="tb">SMOOTH:<span>1/</span><input id="smoothN" type="number" value="5" min="0" max="48"><span>окт</span></label>
+    </div>
+    <div id="graphWrap"><canvas id="graph"></canvas></div>
+    <div id="bands"><span>Sub bass</span><span>Bass</span><span>Lower Mids</span><span>Midrange</span><span>Upper Mids</span><span>Presence</span><span>Treble</span></div>
+    <div id="targetsRow">
+      <span class="lbl">Reference targets:</span><span id="refChips" class="chips"></span>
+      <span class="lbl">Preference targets:</span><span id="prefChips" class="chips"></span>
+    </div>
+    <div id="adjRow">
+      <span class="lbl">Preference adjustments:</span>
+      <label>Bass (dB)<input id="adjBass" type="number" step="0.5" value="0"></label>
+      <label>Bass Q<input id="adjBassQ" type="number" step="0.001" value="0.707"></label>
+      <label>Bass F (Hz)<input id="adjBassF" type="number" value="105"></label>
+      <label>Treble (dB)<input id="adjTreble" type="number" step="0.5" value="0"></label>
+      <label>Tilt (dB/Oct)<input id="adjTilt" type="number" step="0.05" value="0"></label>
+      <label>Ear Gain (dB)<input id="adjEar" type="number" step="0.5" value="0"></label>
+      <button id="adjReset">Remove Adjustments</button>
+      <span id="adjNote" class="muted"></span>
+    </div>
     <div id="legend"></div>
   </section>
-
-  <aside id="right">
-    <h3>Таргет</h3>
-    <select id="targetSel"></select>
-
-    <h3>Preference adjustments</h3>
-    <div id="prefsPanel">
-      <label>Bass shelf (105 Гц)
-        <span class="row"><input type="range" id="bassR" min="-10" max="10" step="0.5" value="0"><output id="bassO">0.0 дБ</output></span>
-      </label>
-      <label>Tilt (дБ/окт)
-        <span class="row"><input type="range" id="tiltR" min="-1" max="1" step="0.05" value="0"><output id="tiltO">0.00</output></span>
-      </label>
-      <label>Treble shelf (10 кГц)
-        <span class="row"><input type="range" id="trebR" min="-10" max="10" step="0.5" value="0"><output id="trebO">0.0 дБ</output></span>
-      </label>
-      <button id="prefsReset">Сброс</button>
-      <div id="prefsNote" class="muted"></div>
-    </div>
-
-    <h3>График</h3>
-    <label class="chk"><input type="checkbox" id="normChk" checked> Нормализация (500–2000 Гц)</label>
-    <label>Сглаживание
-      <select id="smoothSel">
-        <option value="off">выкл</option>
-        <option value="1/12">1/12 окт</option>
-        <option value="1/6">1/6 окт</option>
-        <option value="1/3" selected>1/3 окт</option>
-        <option value="1">1 окт</option>
-      </select>
-    </label>
-
-    <h3>Auto EQ</h3>
-    <div class="grid2">
-      <label>Фильтров<input type="number" id="aeCount" value="8" min="1" max="30"></label>
-      <label>F min, Гц<input type="number" id="aeFmin" value="20"></label>
-      <label>F max, Гц<input type="number" id="aeFmax" value="8000"></label>
-      <label>Gain min, дБ<input type="number" id="aeGmin" value="-10"></label>
-      <label>Gain max, дБ<input type="number" id="aeGmax" value="6"></label>
-      <label>Q min<input type="number" id="aeQmin" value="0.1" step="0.1"></label>
-      <label>Q max<input type="number" id="aeQmax" value="1.5" step="0.1"></label>
-    </div>
-    <label class="chk"><input type="checkbox" id="eqShowChk" checked> Показывать результат EQ</label>
-    <div class="row">
-      <button id="btnEq">Применить</button>
-      <button id="btnCopyEq" disabled>Копировать</button>
-    </div>
-    <table id="eqTable"></table>
-  </aside>
 </main>
+
+<div id="modal" hidden>
+  <div class="box">
+    <h3>Добавить замер (только 711)</h3>
+    <label>Название<input id="mName" placeholder="Имя наушников"></label>
+    <label>Подпись источника<input id="mSource" placeholder="pw / boizoff / gudkov / своё"></label>
+    <label>URL CSV-файла с сайта<input id="mUrl" placeholder="https://pw.squig.link/.../file.csv"></label>
+    <div class="muted">— или —</div>
+    <label>Файл CSV (freq,L,R или freq,dB)<input id="mFile" type="file" accept=".csv,.txt"></label>
+    <div class="row"><button id="mOk" class="accent">Добавить</button><button id="mCancel">Отмена</button></div>
+    <div id="mErr" class="muted err"></div>
+  </div>
+</div>
 <div id="toast"></div>
 <script src="config.js"></script>
 <script src="prih.js"></script>

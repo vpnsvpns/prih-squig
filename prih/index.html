@@ -40,7 +40,9 @@
       </div>
       <label class="chk"><input type="checkbox" id="eqShowChk" checked> Показывать результат EQ</label>
       <div class="row"><button id="btnEq">Применить</button><button id="btnCopyEq" disabled>Копировать</button></div>
+      <div class="row"><button id="btnAddF">+ Фильтр</button><button id="btnApo">⬇ APO</button><button id="btnWavelet">⬇ Wavelet</button></div>
       <table id="eqTable"></table>
+      <div class="muted">Фильтры в таблице можно править вручную и удалять; кривая пересчитывается сразу.</div>
     </div>
   </aside>
 
@@ -95,6 +97,7 @@
     <div class="muted">3) — или — вставь текст замеров:</div>
     <textarea id="mPaste" rows="4" placeholder="20 82.981&#10;20.36 82.974&#10;... (или freq L R)"></textarea>
 
+    <div id="mPrev" class="muted prev"></div>
     <div class="row"><button id="mOk" class="accent">Добавить</button><button id="mCancel">Отмена</button></div>
     <div id="mErr" class="muted err"></div>
   </div>

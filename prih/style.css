@@ -38,12 +38,26 @@ textarea{background:var(--bg);border:1px solid var(--line);color:var(--text);bor
 .row button{padding:4px 9px}
 .preamp{font-weight:700;font-size:12px}
 #eqRows{display:flex;flex-direction:column;gap:4px}
+
+/* ===== строки фильтров и всё, что после .frow ===== */
 .frow{display:grid;grid-template-columns:20px 50px 1fr 1fr 1fr 22px;gap:4px;align-items:center}
 .frow.head span{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
 .frow input[type=number]{padding:3px 4px;font-size:11px}
 .frow select{background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:4px;font-size:11px;padding:3px 2px}
 .frow .fx{padding:0 4px;border:none;background:none;color:var(--muted)}
 .frow .fx:hover{color:#ff8a8a}
+.inwrap{position:relative;display:block}
+.inwrap i{position:absolute;right:6px;top:50%;transform:translateY(-50%);font-style:normal;font-size:9px;color:var(--muted);pointer-events:none}
+.inwrap input{padding-right:24px}
+#toolbar:empty{display:none}
+details.gdet,details.adjdet{background:var(--panel);border-top:1px solid var(--line)}
+details.gdet>summary,details.adjdet>summary{cursor:pointer;padding:7px 12px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);list-style:none}
+details.gdet>summary::-webkit-details-marker{display:none}
+details.adjdet>summary::-webkit-details-marker{display:none}
+details.gdet[open]>summary{border-bottom:1px solid var(--line)}
+details.gdet .gwrap{display:flex;flex-wrap:wrap;gap:14px;padding:8px 12px}
+details.adjdet #adjRow{border-top:none;padding:8px 12px}
+
 #center{flex:1;display:flex;flex-direction:column;min-width:0}
 #toolbar{display:flex;flex-wrap:wrap;gap:14px;align-items:center;padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
 .tb{flex-direction:row;align-items:center;gap:5px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
@@ -86,16 +100,14 @@ textarea{background:var(--bg);border:1px solid var(--line);color:var(--text);bor
   .topbtns button{padding:5px 10px;font-size:11px;white-space:nowrap}
   main{flex:none;flex-direction:column}
   #center{order:1;flex:none}
-  #left{order:2;width:100%;flex:none;border-right:none;border-radius:16px 16px 0 0;margin-top:-12px;padding-top:12px;position:relative;z-index:4}
+  #left{order:2;width:100%;flex:none;border-right:none;border-radius:16px 16px 0 0;margin-top:-12px;padding-top:10px;position:relative;z-index:4}
   #left::before{content:"";display:block;width:44px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 6px}
-  #graphWrap{flex:none;height:46vh;min-height:240px}
-  #toolbar{flex-wrap:nowrap;overflow-x:auto;gap:12px;padding:6px 10px}
-  .tb{flex:none}
-  .tb input{width:48px}
+  #graphWrap{flex:none;height:44vh;min-height:230px}
   #bands{display:none}
-  #targetsRow,#adjRow{flex-wrap:nowrap;overflow-x:auto;padding:6px 10px;gap:6px}
+  #targetsRow{flex-wrap:nowrap;overflow-x:auto;padding:6px 10px;gap:6px}
   #targetsRow .chips{flex-wrap:nowrap}
   .tchip.tgt{padding:5px 12px;font-size:11px;white-space:nowrap}
+  #adjRow{flex-wrap:nowrap;overflow-x:auto;gap:6px}
   #adjRow label{flex:none;white-space:nowrap}
   #adjRow input{width:56px}
   #legend{padding:6px 10px;gap:5px}
@@ -103,9 +115,10 @@ textarea{background:var(--bg);border:1px solid var(--line);color:var(--text);bor
   .pane{max-height:none;overflow:visible;padding:0 8px 16px}
   .tabs button{font-size:12px;padding:8px 4px}
   #search{margin:6px 8px}
-  .frow{grid-template-columns:22px 54px 1fr 1fr 1fr 24px}
+  .frow{grid-template-columns:22px 52px 1fr 1fr 1fr}
+  .frow .fx,.frow.head span:last-child{display:none}
   .frow input[type=number]{padding:6px 4px;font-size:12px}
+  .inwrap input{padding-right:22px;font-size:12px}
   #eqPane .row button{padding:7px 12px}
-  #eqPane .grid2 label input{padding:6px}
   #modal .box{max-height:86vh;overflow-y:auto}
 }

@@ -10,23 +10,24 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",
 const css=v=>getComputedStyle(document.body).getPropertyValue(v).trim();
 const $=id=>document.getElementById(id);
 const num=(el,fb)=>{const v=parseFloat(el.value);return Number.isFinite(v)?v:fb;};
+const isAbs=u=>/^https?:\/\//i.test(u);
 
-/* сеть: прямой запрос → прокси (если CORS/404) */
-const PROXIES=[u=>u,u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,u=>`https://corsproxy.io/?url=${encodeURIComponent(u)}`];
-async function fetchSmart(u){
-  let lastErr=null;
-  for(const p of PROXIES){
+function fetchWithTimeout(u,ms){const c=new AbortController();const t=setTimeout(()=>c.abort(),ms);return fetch(u,{signal:c.signal}).finally(()=>clearTimeout(t));}
+async function fetchLocal(u){const r=await fetchWithTimeout(u,8000);if(!r.ok)throw new Error("HTTP "+r.status);return r.text();}
+async function fetchRemote(u){
+  const urls=[u,`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,`https://corsproxy.io/?url=${encodeURIComponent(u)}`];
+  let err=null;
+  for(const uu of urls){
     try{
-      const r=await fetch(p(u));
+      const r=await fetchWithTimeout(uu,7000);
       if(!r.ok)continue;
       const t=await r.text();
       if(t&&t.trim())return t;
-    }catch(e){lastErr=e;}
+    }catch(e){err=e;}
   }
-  throw lastErr||new Error("fetch failed");
+  throw err||new Error("fetch failed");
 }
-const looksHtml=t=>/^\s*(<|<!DOCTYPE)/i.test(t);
-function absUrl(base,rel){try{return new URL(rel,base).href;}catch(e){return rel;}}
+const fetchAny=u=>isAbs(u)?fetchRemote(u):fetchLocal(u);
 
 function parseTable(text){
   const rows=[];
@@ -94,14 +95,14 @@ const state={
 const targets=new Map(),hpCache=new Map();
 
 async function loadTargets(){
-  for(const t of CFG.targets){
-    try{
-      const pts=parseTable(await fetchSmart(t.file));
-      if(pts.length>10)targets.set(t.name,{def:t,raw:resample(pts)});
-    }catch(e){}
+  await Promise.allSettled(CFG.targets.map(async t=>{
+    const pts=parseTable(await fetchAny(t.file));
+    if(pts.length>10)targets.set(t.name,{def:t,raw:resample(pts)});
+  }));
+  if(!state.target||!targets.has(state.target)){
+    const d=CFG.targets.find(t=>t.default&&targets.has(t.name));
+    state.target=d?d.name:[...targets.keys()][0]||null;
   }
-  const d=CFG.targets.find(t=>t.default&&targets.has(t.name));
-  state.target=d?d.name:[...targets.keys()][0]||null;
 }
 function adjCurve(){
   const a=state.adj,out=new Float64Array(GRID.length);
@@ -144,7 +145,7 @@ function loadHp(def){
   return hpCache.get(def.name);
 }
 async function doLoadHp(def){
-  const one=async u=>resample(parseTable(await fetchSmart(u)));
+  const one=async u=>resample(parseTable(await fetchAny(u)));
   if(def.raw)return def.raw;
   if(def.url)return one(def.url);
   if(def.urlL&&def.urlR){const[a,b]=await Promise.all([one(def.urlL),one(def.urlR)]);return averageCurves([a,b]);}
@@ -163,17 +164,21 @@ async function toggleHp(def){
   renderEqCurveSelect();recomputeEq();renderModels();updateLegend();draw();
 }
 
-/* ---------- график ---------- */
+/* ---------- график (адаптивный: на телефоне меньше подписей, компактнее оси) ---------- */
 const XTICKS=[20,30,40,50,60,80,100,150,200,250,300,400,500,600,800,1000,1500,2000,3000,4000,5000,6000,8000,10000,15000,20000];
+const XTICKS_S=[20,50,100,200,500,1000,2000,5000,10000,20000];
 const XMAJ=new Set([20,60,250,500,600,2000,6000,20000]);
 function xlab(f){if(f===20)return"20Hz";if(f===20000)return"20kHz";return f>=1000?(f/1000)+"k":""+f;}
+function xlabS(f){return f>=1000?(f/1000)+"k":""+f;}
 function draw(){
   const cv=$("graph"),dpr=devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;
   if(!W||!H)return;
   cv.width=W*dpr;cv.height=H*dpr;
   const ctx=cv.getContext("2d");ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.fillStyle=css("--bg");ctx.fillRect(0,0,W,H);
-  const m={l:46,r:16,t:26,b:26},S=series();
+  const narrow=W<640;
+  const m={l:narrow?34:46,r:narrow?8:16,t:narrow?18:26,b:narrow?20:26};
+  const S=series();
   const span=clamp(state.ySpan,10,120);
   let lo,hi;
   if(state.normOn){lo=state.normDb-span/2;hi=state.normDb+span/2;}
@@ -186,20 +191,21 @@ function draw(){
   const step=span<=24?2:span<=48?5:10;
   const X=f=>m.l+(Math.log2(f/FMIN)/Math.log2(FMAX/FMIN))*(W-m.l-m.r);
   const Y=v=>m.t+(hi-v)/(hi-lo)*(H-m.t-m.b);
-  for(const f of XTICKS){
-    const x=X(f),maj=XMAJ.has(f);
+  const ticks=narrow?XTICKS_S:XTICKS;
+  for(const f of ticks){
+    const x=X(f),maj=narrow?true:XMAJ.has(f);
     ctx.strokeStyle=css("--grid");ctx.lineWidth=1;ctx.globalAlpha=maj?0.9:0.35;
     ctx.beginPath();ctx.moveTo(x,m.t);ctx.lineTo(x,H-m.b);ctx.stroke();ctx.globalAlpha=1;
     ctx.fillStyle=maj?css("--text"):css("--muted");
-    ctx.font=(maj?"700 11px":"10px")+" system-ui";ctx.textAlign="center";
-    ctx.fillText(xlab(f),x,H-m.b+15);
+    ctx.font=(narrow?"700 8px":(maj?"700 11px":"10px"))+" system-ui";ctx.textAlign="center";
+    ctx.fillText(narrow?xlabS(f):xlab(f),x,H-m.b+(narrow?12:15));
   }
   for(let v=Math.ceil(lo/step)*step;v<=hi;v+=step){
     const y=Y(v);
     ctx.strokeStyle=css("--grid");ctx.lineWidth=1;ctx.globalAlpha=0.7;
     ctx.beginPath();ctx.moveTo(m.l,y);ctx.lineTo(W-m.r,y);ctx.stroke();ctx.globalAlpha=1;
-    ctx.fillStyle=css("--muted");ctx.font="10px system-ui";ctx.textAlign="right";
-    ctx.fillText(Math.round(v),m.l-6,y+3);
+    ctx.fillStyle=css("--muted");ctx.font=(narrow?"8px":"10px")+" system-ui";ctx.textAlign="right";
+    ctx.fillText(Math.round(v),m.l-(narrow?4:6),y+3);
   }
   ctx.save();ctx.beginPath();ctx.rect(m.l,m.t,W-m.l-m.r,H-m.t-m.b);ctx.clip();
   for(const s of S){
@@ -209,19 +215,20 @@ function draw(){
     ctx.stroke();
   }
   ctx.restore();ctx.setLineDash([]);
-  ctx.fillStyle="rgba(255,255,255,0.06)";ctx.font="900 84px system-ui";ctx.textAlign="right";
-  ctx.fillText("PRIH",W-m.r-8,H-m.b-16);
+  ctx.fillStyle="rgba(255,255,255,0.06)";ctx.font=(narrow?"900 44px":"900 84px")+" system-ui";ctx.textAlign="right";
+  ctx.fillText("PRIH",W-m.r-8,H-m.b-(narrow?10:16));
   const leg=[];
   if(targetRaw())leg.push({c:css("--target"),t:state.target+" Target"});
   for(const[name,s]of state.selected)if(s.raw&&!state.hidden.has(name))leg.push({c:s.color,t:name});
   if(state.average&&!state.hidden.has("__avg"))leg.push({c:"#ffffff",t:"AVERAGE ("+state.avgN+")"});
   if(state.eq&&state.eqShow&&state.eq.curve&&!state.hidden.has("__eq"))leg.push({c:css("--eq"),t:"EQ result"});
-  ctx.font="700 13px system-ui";ctx.textAlign="left";
-  let ly=H-m.b-14-(leg.length-1)*18;
-  for(const L of leg){ctx.fillStyle=L.c;ctx.fillText(L.t,m.l+10,ly);ly+=18;}
-  ctx.fillStyle=css("--muted");ctx.font="10px system-ui";ctx.textAlign="right";
-  ctx.fillText("Measured on: IEC 60318-4 (711) · Prih",W-m.r-6,m.t-9);
-  ctx.save();ctx.translate(12,m.t+18);ctx.rotate(-Math.PI/2);ctx.textAlign="right";ctx.fillText("dB",0,0);ctx.restore();
+  const lstep=narrow?14:18;
+  ctx.font=(narrow?"700 11px":"700 13px")+" system-ui";ctx.textAlign="left";
+  let ly=H-m.b-(narrow?8:14)-(leg.length-1)*lstep;
+  for(const L of leg){ctx.fillStyle=L.c;ctx.fillText(L.t,m.l+(narrow?6:10),ly);ly+=lstep;}
+  ctx.fillStyle=css("--muted");ctx.font=(narrow?"8px":"10px")+" system-ui";ctx.textAlign="right";
+  ctx.fillText("Measured on: IEC 60318-4 (711) · Prih",W-m.r-4,m.t-(narrow?6:9));
+  if(!narrow){ctx.save();ctx.translate(12,m.t+18);ctx.rotate(-Math.PI/2);ctx.textAlign="right";ctx.fillText("dB",0,0);ctx.restore();}
 }
 
 /* ---------- списки ---------- */
@@ -273,17 +280,17 @@ function updateLegend(){
   for(const[name,s]of state.selected){
     const def=allHps().find(h=>h.name===name);
     item(s.color,name,def?def.source:"",[
-      [state.hidden.has(name)?"🚫":"👁",()=>{state.hidden.has(name)?state.hidden.delete(name):state.hidden.add(name);updateLegend();draw();}],
+      [state.hidden.has(name)?"🚫":"",()=>{state.hidden.has(name)?state.hidden.delete(name):state.hidden.add(name);updateLegend();draw();}],
       ["✕",()=>toggleHp(def)]
     ]);
   }
   if(state.average)item("#ffffff","AVERAGE ("+state.avgN+")","",[["✕",()=>{state.average=null;updateLegend();draw();}]]);
   if(state.target)item(css("--target"),"TARGET: "+state.target);
-  if(state.eq&&state.eq.curve)item(css("--eq"),"EQ result","",[[state.eqShow?"🚫":"👁",()=>{state.eqShow=!state.eqShow;$("eqShowChk").checked=state.eqShow;updateLegend();draw();}]]);
+  if(state.eq&&state.eq.curve)item(css("--eq"),"EQ result","",[[state.eqShow?"🚫":"",()=>{state.eqShow=!state.eqShow;$("eqShowChk").checked=state.eqShow;updateLegend();draw();}]]);
 }
 
-/* ---------- AutoEQ v2: демпфированный greedy + координатная доводка ---------- */
-function logspace(a,b,n){const o=[];for(let i=0;i<n;i++)o.push(a*Math.pow(b/a,i/(n-1)));return o;}
+/* ---------- AutoEQ v3 ---------- */
+function logspace(a,b,n){if(!(b>a))return[a];const o=[];for(let i=0;i<n;i++)o.push(a*Math.pow(b/a,i/(n-1)));return o;}
 function optGainDamped(e,f,f0,q,o,damp){
   let num=0,den=0;
   for(let i=0;i<f.length;i++){const m=shape(f[i],f0,q);num+=e[i]*m;den+=m*m;}
@@ -294,22 +301,29 @@ function optGainDamped(e,f,f0,q,o,damp){
 }
 function fitPeq(err,f,o){
   const n=f.length,e=Float64Array.from(err),fs=[];
-  const qs=[...new Set([o.qmin,clamp(0.7,o.qmin,o.qmax),clamp(1,o.qmin,o.qmax),clamp(1.4,o.qmin,o.qmax),o.qmax])];
+  const qs=[...new Set([o.qmin,clamp(0.7,o.qmin,o.qmax),clamp(1,o.qmin,o.qmax),o.qmax])];
   const res=()=>{let s=0;for(let i=0;i<n;i++)s+=e[i]*e[i];return s;};
   for(let k=0;k<o.count;k++){
     let bi=0;for(let i=1;i<n;i++)if(Math.abs(e[i])>Math.abs(e[bi]))bi=i;
-    if(Math.abs(e[bi])<0.25)break;
+    if(Math.abs(e[bi])<0.3)break;
     let best=null;
-    for(const q of qs)for(const ff of[f[bi]/1.1,f[bi],f[bi]*1.1]){
-      if(ff<o.fmin||ff>o.fmax)continue;
-      const c=optGainDamped(e,f,ff,q,o,0.85);
+    for(const q of qs)for(const ff of[f[bi]/1.25,f[bi],f[bi]*1.25]){
+      const c=optGainDamped(e,f,clamp(ff,o.fmin,o.fmax),q,o,0.9);
       if(c&&(!best||c.score<best.score))best=c;
     }
     if(!best)break;
     for(let i=0;i<n;i++)e[i]+=best.g*shape(f[i],best.f,best.q);
     fs.push({f:best.f,g:best.g,q:best.q});
   }
-  for(let pass=0;pass<3;pass++){
+  fs.sort((a,b)=>a.f-b.f);
+  for(let i=fs.length-2;i>=0;i--){
+    if(Math.log2(fs[i+1].f/fs[i].f)<1/6){
+      const drop=Math.abs(fs[i].g)<Math.abs(fs[i+1].g)?i:i+1;
+      for(let j=0;j<n;j++)e[j]-=fs[drop].g*shape(f[j],fs[drop].f,fs[drop].q);
+      fs.splice(drop,1);
+    }
+  }
+  for(let pass=0;pass<2;pass++){
     let improved=false;
     for(let k=0;k<fs.length;k++){
       const fl=fs[k];
@@ -317,12 +331,10 @@ function fitPeq(err,f,o){
       const before=res();
       let best={f:fl.f,g:fl.g,q:fl.q,score:before};
       {let s=0;for(let i=0;i<n;i++)s+=e[i]*e[i];if(s<best.score)best={f:fl.f,g:0,q:fl.q,score:s};}
-      for(const ff of logspace(fl.f/1.5,fl.f*1.5,11)){
-        if(ff<o.fmin*0.95||ff>o.fmax*1.05)continue;
-        for(const qq of[fl.q/1.5,fl.q,fl.q*1.5].map(q=>clamp(q,o.qmin,o.qmax))){
-          const c=optGainDamped(e,f,ff,qq,o,1);
-          if(c&&c.score<best.score-1e-9)best=c;
-        }
+      const lo=clamp(fl.f/1.6,o.fmin*0.9,o.fmax*1.1),hi=clamp(fl.f*1.6,o.fmin*0.9,o.fmax*1.1);
+      for(const ff of logspace(lo,hi,9))for(const qq of[fl.q/1.5,fl.q,fl.q*1.5].map(q=>clamp(q,o.qmin,o.qmax))){
+        const c=optGainDamped(e,f,ff,qq,o,1);
+        if(c&&c.score<best.score-1e-9)best=c;
       }
       fs[k]={f:best.f,g:best.g,q:best.q};
       for(let i=0;i<n;i++)e[i]+=fs[k].g*shape(f[i],fs[k].f,fs[k].q);
@@ -406,7 +418,7 @@ function download(name,text){
   setTimeout(()=>URL.revokeObjectURL(a.href),5000);
 }
 
-/* ---------- свои замеры + умный парс ---------- */
+/* ---------- свои замеры + парс ---------- */
 function saveUploaded(){try{localStorage.setItem("prih-uploaded",JSON.stringify(state.uploaded.map(u=>({name:u.name,source:u.source,pts:u.pts}))));}catch(e){toast("localStorage переполнен");}}
 function loadUploaded(){
   try{
@@ -418,20 +430,21 @@ function closeModal(){
   $("modal").hidden=true;$("mErr").textContent="";$("mPrev").textContent="";
   $("mName").value="";$("mUrl").value="";$("mUrlL").value="";$("mUrlR").value="";$("mFile").value="";$("mPaste").value="";
 }
+function absUrl(base,rel){try{return new URL(rel,base).href;}catch(e){return rel;}}
 async function fetchPtsFromUrl(u){
-  const t=await fetchSmart(u);
-  if(!looksHtml(t))return parseTable(t);
-  const links=[...t.matchAll(/href="([^"]+\.(?:csv|txt))"/gi)].map(m=>absUrl(u,m[1]));
+  const t=await fetchAny(u);
+  if(!/^\s*(<|<!DOCTYPE)/i.test(t))return parseTable(t);
+  const links=[...t.matchAll(/href="([^"]+\.(?:csv|txt))"/gi)].map(m=>absUrl(u,m[1])).slice(0,6);
   if(!links.length)throw new Error("на странице нет ссылок на CSV/TXT");
   const L=links.find(l=>/[._\- ]L([._\- \d]|\.csv|\.txt)/i.test(l))||links[0];
   const R=links.find(l=>/[._\- ]R([._\- \d]|\.csv|\.txt)/i.test(l)&&l!==L);
   if(R){
-    const[a,b]=await Promise.all([fetchSmart(L),fetchSmart(R)]);
+    const[a,b]=await Promise.all([fetchAny(L),fetchAny(R)]);
     const la=resample(parseTable(a)),lb=resample(parseTable(b));
     const pts=[];for(let i=0;i<GRID.length;i++)pts.push([GRID[i],(la[i]+lb[i])/2]);
     return pts;
   }
-  return parseTable(await fetchSmart(links[0]));
+  return parseTable(await fetchAny(links[0]));
 }
 async function grabPts(){
   if($("mFile").files[0])return parseTable(await $("mFile").files[0].text());
@@ -489,7 +502,7 @@ function screenshot(){
   $("graph").toBlob(b=>{const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="prih-playground.png";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);});
 }
 function hashFromState(){
-  return"#"+encodeURIComponent(JSON.stringify({v:4,sel:[...state.selected.keys()],tgt:state.target,adj:state.adj,nrm:state.normOn,ndb:state.normDb,nhz:state.normHz,sm:state.smoothN,ys:state.ySpan,aeq:state.aeq}));
+  return"#"+encodeURIComponent(JSON.stringify({v:6,sel:[...state.selected.keys()],tgt:state.target,adj:state.adj,nrm:state.normOn,ndb:state.normDb,nhz:state.normHz,sm:state.smoothN,ys:state.ySpan,aeq:state.aeq}));
 }
 async function copyUrl(){
   const u=location.origin+location.pathname+hashFromState();
@@ -534,7 +547,6 @@ function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show")
 async function init(){
   if(localStorage.getItem("prih-theme")==="light")document.body.classList.add("light");
   loadUploaded();
-  await loadTargets();
   for(const b of document.querySelectorAll(".tabs button"))b.onclick=()=>switchTab(b.dataset.tab);
   $("search").addEventListener("input",renderModels);
   $("ySpan").onchange=e=>{state.ySpan=clamp(num(e.target,30),10,120);draw();};
@@ -592,7 +604,8 @@ async function init(){
   $("mUrlR").addEventListener("input",queuePreview);
   $("modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal();});
   document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal();});
-  buildTargetChips();renderBrands();renderModels();renderEqCurveSelect();renderEqRows();syncInputs();updateLegend();draw();restore();
+  renderBrands();renderModels();renderEqCurveSelect();renderEqRows();syncInputs();updateLegend();draw();
+  loadTargets().then(()=>{buildTargetChips();syncAdj();updateLegend();draw();restore();});
   new ResizeObserver(draw).observe($("graphWrap"));
 }
 init();

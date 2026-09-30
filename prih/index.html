@@ -28,21 +28,33 @@
     <div id="brandList" class="pane" hidden></div>
     <div id="modelList" class="pane"></div>
     <div id="eqPane" class="pane" hidden>
-      <h3>Auto EQ</h3>
-      <div class="grid2">
-        <label>Фильтров<input type="number" id="aeCount" value="8" min="1" max="30"></label>
-        <label>F min, Гц<input type="number" id="aeFmin" value="20"></label>
-        <label>F max, Гц<input type="number" id="aeFmax" value="8000"></label>
-        <label>Gain min, дБ<input type="number" id="aeGmin" value="-10"></label>
-        <label>Gain max, дБ<input type="number" id="aeGmax" value="6"></label>
-        <label>Q min<input type="number" id="aeQmin" value="0.1" step="0.1"></label>
-        <label>Q max<input type="number" id="aeQmax" value="1.5" step="0.1"></label>
+      <h3>Parametric Equalizer</h3>
+      <select id="eqCurve"></select>
+      <div id="eqPreamp" class="preamp">Pre-amp: 0.0 dB</div>
+      <div id="eqRows"></div>
+      <div class="row">
+        <button id="btnAddF">+</button><button id="btnDelF">−</button>
+        <button id="btnSort">Sort</button><button id="btnDisable">Disable</button>
+        <button id="btnSaveEq">Save EQ</button>
       </div>
-      <label class="chk"><input type="checkbox" id="eqShowChk" checked> Показывать результат EQ</label>
-      <div class="row"><button id="btnEq">Применить</button><button id="btnCopyEq" disabled>Копировать</button></div>
-      <div class="row"><button id="btnAddF">+ Фильтр</button><button id="btnApo">⬇ APO</button><button id="btnWavelet">⬇ Wavelet</button></div>
-      <table id="eqTable"></table>
-      <div class="muted">Фильтры в таблице можно править вручную и удалять; кривая пересчитывается сразу.</div>
+      <div class="row">
+        <button id="btnApo">⬇ APO</button><button id="btnWavelet">⬇ Wavelet</button><button id="btnCopyEq">Копировать</button>
+      </div>
+      <h3>AutoEQ</h3>
+      <div class="grid2">
+        <label>Freq min<input id="aeFmin" type="number" value="20"></label>
+        <label>Freq max<input id="aeFmax" type="number" value="8000"></label>
+        <label>Gain min<input id="aeGmin" type="number" value="-10"></label>
+        <label>Gain max<input id="aeGmax" type="number" value="6"></label>
+        <label>Q min<input id="aeQmin" type="number" value="0.5" step="0.1"></label>
+        <label>Q max<input id="aeQmax" type="number" value="1.5" step="0.1"></label>
+        <label>Max filters<input id="aeCount" type="number" value="8" min="1" max="20"></label>
+      </div>
+      <div class="row">
+        <button id="btnEq" class="accent">AutoEQ</button>
+        <label class="chk"><input type="checkbox" id="eqShowChk" checked> Show EQ</label>
+      </div>
+      <div class="muted">Фильтры правятся вручную (тип, F, Gain, Q, галка); кривая и pre-amp пересчитываются сразу.</div>
     </div>
   </aside>
 
@@ -83,20 +95,16 @@
     <h3>Добавить замер (только 711)</h3>
     <label>Название<input id="mName" placeholder="Имя наушников"></label>
     <label>Подпись источника<input id="mSource" placeholder="pw / boizoff / gudkov / своё"></label>
-
-    <div class="muted">1) Со сквига (pw / boizoff / gudkov), CSV или TXT:</div>
-    <label>URL файла (avg/mono)<input id="mUrl" placeholder="https://pw.squig.link/.../file.csv"></label>
+    <div class="muted">1) Ссылка со сквига (CSV/TXT или страница модели — CSV найдём сами):</div>
+    <label>URL<input id="mUrl" placeholder="https://gudkov.squig.link/..."></label>
     <div class="row">
-      <label style="flex:1">URL L<input id="mUrlL" placeholder=".../L.csv или .txt"></label>
-      <label style="flex:1">URL R<input id="mUrlR" placeholder=".../R.csv или .txt"></label>
+      <label style="flex:1">URL L<input id="mUrlL" placeholder="...L.csv"></label>
+      <label style="flex:1">URL R<input id="mUrlR" placeholder="...R.csv"></label>
     </div>
-
     <div class="muted">2) — или — файл с компьютера (CSV / TXT):</div>
     <label><input id="mFile" type="file" accept=".csv,.txt,text/plain,text/csv"></label>
-
     <div class="muted">3) — или — вставь текст замеров:</div>
-    <textarea id="mPaste" rows="4" placeholder="20 82.981&#10;20.36 82.974&#10;... (или freq L R)"></textarea>
-
+    <textarea id="mPaste" rows="4" placeholder="20 82.981&#10;20.36 82.974&#10;..."></textarea>
     <div id="mPrev" class="muted prev"></div>
     <div class="row"><button id="mOk" class="accent">Добавить</button><button id="mCancel">Отмена</button></div>
     <div id="mErr" class="muted err"></div>

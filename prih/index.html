@@ -81,9 +81,20 @@
     <h3>Добавить замер (только 711)</h3>
     <label>Название<input id="mName" placeholder="Имя наушников"></label>
     <label>Подпись источника<input id="mSource" placeholder="pw / boizoff / gudkov / своё"></label>
-    <label>URL CSV-файла с сайта<input id="mUrl" placeholder="https://pw.squig.link/.../file.csv"></label>
-    <div class="muted">— или —</div>
-    <label>Файл CSV (freq,L,R или freq,dB)<input id="mFile" type="file" accept=".csv,.txt"></label>
+
+    <div class="muted">1) Со сквига (pw / boizoff / gudkov), CSV или TXT:</div>
+    <label>URL файла (avg/mono)<input id="mUrl" placeholder="https://pw.squig.link/.../file.csv"></label>
+    <div class="row">
+      <label style="flex:1">URL L<input id="mUrlL" placeholder=".../L.csv или .txt"></label>
+      <label style="flex:1">URL R<input id="mUrlR" placeholder=".../R.csv или .txt"></label>
+    </div>
+
+    <div class="muted">2) — или — файл с компьютера (CSV / TXT):</div>
+    <label><input id="mFile" type="file" accept=".csv,.txt,text/plain,text/csv"></label>
+
+    <div class="muted">3) — или — вставь текст замеров:</div>
+    <textarea id="mPaste" rows="4" placeholder="20 82.981&#10;20.36 82.974&#10;... (или freq L R)"></textarea>
+
     <div class="row"><button id="mOk" class="accent">Добавить</button><button id="mCancel">Отмена</button></div>
     <div id="mErr" class="muted err"></div>
   </div>

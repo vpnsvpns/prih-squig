@@ -164,7 +164,7 @@ async function toggleHp(def){
   renderEqCurveSelect();recomputeEq();renderModels();updateLegend();draw();
 }
 
-/* ---------- график (адаптивный: на телефоне меньше подписей, компактнее оси) ---------- */
+/* ---------- график ---------- */
 const XTICKS=[20,30,40,50,60,80,100,150,200,250,300,400,500,600,800,1000,1500,2000,3000,4000,5000,6000,8000,10000,15000,20000];
 const XTICKS_S=[20,50,100,200,500,1000,2000,5000,10000,20000];
 const XMAJ=new Set([20,60,250,500,600,2000,6000,20000]);
@@ -176,7 +176,7 @@ function draw(){
   cv.width=W*dpr;cv.height=H*dpr;
   const ctx=cv.getContext("2d");ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.fillStyle=css("--bg");ctx.fillRect(0,0,W,H);
-  const narrow=W<640;
+  const narrow=W<700;
   const m={l:narrow?34:46,r:narrow?8:16,t:narrow?18:26,b:narrow?20:26};
   const S=series();
   const span=clamp(state.ySpan,10,120);
@@ -289,7 +289,7 @@ function updateLegend(){
   if(state.eq&&state.eq.curve)item(css("--eq"),"EQ result","",[[state.eqShow?"🚫":"",()=>{state.eqShow=!state.eqShow;$("eqShowChk").checked=state.eqShow;updateLegend();draw();}]]);
 }
 
-/* ---------- AutoEQ v3 ---------- */
+/* ---------- AutoEQ ---------- */
 function logspace(a,b,n){if(!(b>a))return[a];const o=[];for(let i=0;i<n;i++)o.push(a*Math.pow(b/a,i/(n-1)));return o;}
 function optGainDamped(e,f,f0,q,o,damp){
   let num=0,den=0;
@@ -502,7 +502,7 @@ function screenshot(){
   $("graph").toBlob(b=>{const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="prih-playground.png";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);});
 }
 function hashFromState(){
-  return"#"+encodeURIComponent(JSON.stringify({v:6,sel:[...state.selected.keys()],tgt:state.target,adj:state.adj,nrm:state.normOn,ndb:state.normDb,nhz:state.normHz,sm:state.smoothN,ys:state.ySpan,aeq:state.aeq}));
+  return"#"+encodeURIComponent(JSON.stringify({v:7,sel:[...state.selected.keys()],tgt:state.target,adj:state.adj,nrm:state.normOn,ndb:state.normDb,nhz:state.normHz,sm:state.smoothN,ys:state.ySpan,aeq:state.aeq}));
 }
 async function copyUrl(){
   const u=location.origin+location.pathname+hashFromState();

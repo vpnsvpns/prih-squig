@@ -1,15 +1,16 @@
 "use strict";
-const CFG = window.CONFIG;
-const NR = CFG.normRange || [500, 2000];
-const PALETTE = ["#38c5f4","#ff8a65","#aed581","#ba68c8","#ffd54f","#4db6ac","#f06292","#7986cb","#a1887f","#e57373"];
-const FMIN = 20, FMAX = 20000, SPO = 96;
-const GRID = (() => { const n = Math.round(Math.log2(FMAX/FMIN)*SPO); const g = new Float64Array(n+1); for (let i=0;i<=n;i++) g[i]=FMIN*Math.pow(2,i/SPO); return g; })();
-
+const CFG=window.CONFIG;
+const NR=CFG.normRange||[500,2000];
+const PALETTE=["#38c5f4","#ff8a65","#aed581","#ba68c8","#ffd54f","#4db6ac","#f06292","#7986cb","#a1887f","#e57373"];
+const FMIN=20,FMAX=20000,SPO=96;
+const GRID=(()=>{const n=Math.round(Math.log2(FMAX/FMIN)*SPO),g=new Float64Array(n+1);for(let i=0;i<=n;i++)g[i]=FMIN*Math.pow(2,i/SPO);return g;})();
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const css=v=>getComputedStyle(document.body).getPropertyValue(v).trim();
 const $=id=>document.getElementById(id);
 const num=(el,fb)=>{const v=parseFloat(el.value);return Number.isFinite(v)?v:fb;};
+const r1=v=>Math.round(v*10)/10,r2=v=>Math.round(v*100)/100;
+const fmtF=f=>f>=100?Math.round(f):r1(f);
 const isAbs=u=>/^https?:\/\//i.test(u);
 
 function fetchWithTimeout(u,ms){const c=new AbortController();const t=setTimeout(()=>c.abort(),ms);return fetch(u,{signal:c.signal}).finally(()=>clearTimeout(t));}
@@ -17,14 +18,7 @@ async function fetchLocal(u){const r=await fetchWithTimeout(u,8000);if(!r.ok)thr
 async function fetchRemote(u){
   const urls=[u,`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,`https://corsproxy.io/?url=${encodeURIComponent(u)}`];
   let err=null;
-  for(const uu of urls){
-    try{
-      const r=await fetchWithTimeout(uu,7000);
-      if(!r.ok)continue;
-      const t=await r.text();
-      if(t&&t.trim())return t;
-    }catch(e){err=e;}
-  }
+  for(const uu of urls){try{const r=await fetchWithTimeout(uu,7000);if(!r.ok)continue;const t=await r.text();if(t&&t.trim())return t;}catch(e){err=e;}}
   throw err||new Error("fetch failed");
 }
 const fetchAny=u=>isAbs(u)?fetchRemote(u):fetchLocal(u);
@@ -65,23 +59,16 @@ function shift(y,d){const o=new Float64Array(y.length);for(let i=0;i<y.length;i+
 function averageCurves(list){const o=new Float64Array(GRID.length);for(const y of list)for(let i=0;i<GRID.length;i++)o[i]+=y[i];for(let i=0;i<GRID.length;i++)o[i]/=list.length;return o;}
 function shape(f,f0,q){const x=f/f0-f0/f;return 1/(1+(q*x)*(q*x));}
 function anchorVal(y,f){let s=0,n=0;const lo=f/1.06,hi=f*1.06;for(let i=0;i<GRID.length;i++)if(GRID[i]>=lo&&GRID[i]<=hi){s+=y[i];n++;}return n?s/n:y[0];}
-function addF(a,b){const o=new Float64Array(a.length);for(let i=0;i<a.length;i++)o[i]=a[i]+b[i];return o;}
 function biquadDb(type,f0,Q,gain,f){
-  const fs=48000,w0=2*Math.PI*clamp(f0,10,23000)/fs,w=2*Math.PI*clamp(f,10,23500)/fs;
+  const w0=2*Math.PI*clamp(f0,10,23000)/48000,w=2*Math.PI*clamp(f,10,23500)/48000;
   const A=Math.pow(10,(gain||0)/40),cw=Math.cos(w0),sw=Math.sin(w0),alpha=sw/(2*Math.max(Q,0.05));
   let b0,b1,b2,a0,a1,a2;
-  if(type==="ls"){
-    b0=A*((A+1)+(A-1)*cw+2*Math.sqrt(A)*alpha);b1=2*A*((A-1)+(A+1)*cw);b2=A*((A+1)+(A-1)*cw-2*Math.sqrt(A)*alpha);
-    a0=(A+1)+(A-1)*cw+2*Math.sqrt(A)*alpha;a1=-2*((A-1)+(A+1)*cw);a2=(A+1)+(A-1)*cw-2*Math.sqrt(A)*alpha;
-  }else if(type==="hs"){
-    b0=A*((A+1)+(A-1)*cw-2*Math.sqrt(A)*alpha);b1=-2*A*((A-1)+(A+1)*cw);b2=A*((A+1)+(A-1)*cw+2*Math.sqrt(A)*alpha);
-    a0=(A+1)+(A-1)*cw-2*Math.sqrt(A)*alpha;a1=2*((A-1)+(A+1)*cw);a2=(A+1)+(A-1)*cw+2*Math.sqrt(A)*alpha;
-  }else{
-    b0=1+alpha*A;b1=-2*cw;b2=1-alpha*A;a0=1+alpha/A;a1=-2*cw;a2=1-alpha/A;
-  }
-  const z1r=Math.cos(w),z1i=-Math.sin(w),z2r=Math.cos(2*w),z2i=-Math.sin(2*w);
-  const nr=b0+b1*z1r+b2*z2r,ni=b1*z1i+b2*z2i,dr=a0+a1*z1r+a2*z2r,di=a1*z1i+a2*z2i;
-  const den=dr*dr+di*di||1e-9,hr=(nr*dr+ni*di)/den,hi2=(ni*dr-nr*di)/den;
+  if(type==="ls"){b0=A*((A+1)+(A-1)*cw+2*Math.sqrt(A)*alpha);b1=2*A*((A-1)+(A+1)*cw);b2=A*((A+1)+(A-1)*cw-2*Math.sqrt(A)*alpha);a0=(A+1)+(A-1)*cw+2*Math.sqrt(A)*alpha;a1=-2*((A-1)+(A+1)*cw);a2=(A+1)+(A-1)*cw-2*Math.sqrt(A)*alpha);}
+  else if(type==="hs"){b0=A*((A+1)+(A-1)*cw-2*Math.sqrt(A)*alpha);b1=-2*A*((A-1)+(A+1)*cw);b2=A*((A+1)+(A-1)*cw+2*Math.sqrt(A)*alpha);a0=(A+1)+(A-1)*cw-2*Math.sqrt(A)*alpha;a1=2*((A-1)+(A+1)*cw);a2=(A+1)+(A-1)*cw-2*Math.sqrt(A)*alpha);}
+  else{b0=1+alpha*A;b1=-2*cw;b2=1-alpha*A;a0=1+alpha/A;a1=-2*cw;a2=1-alpha/A;}
+  const z1r=Math.cos(w),z1i=-Math.sin(w),nr=b0+b1*z1r+b2*Math.cos(2*w),ni=b1*z1i+b2*z1i*Math.cos(w)?0:0,dr=a0+a1*z1r+a2*Math.cos(2*w),di=a1*z1i+a2*(-Math.sin(2*w));
+  const NR2=b1*Math.sin(w)+b2*Math.sin(2*w),NB=b0+b1*z1r+b2*Math.cos(2*w),DR=a0+a1*z1r+a2*Math.cos(2*w),DI=a1*Math.sin(w)+a2*Math.sin(2*w);
+  const den=DR*DR+DI*DI||1e-9,hr=(NB*DR+NR2*DI)/den,hi2=(NR2*DR-NB*DI)/den;
   return 10*Math.log10(hr*hr+hi2*hi2+1e-12);
 }
 
@@ -89,14 +76,16 @@ const state={
   selected:new Map(),hidden:new Set(),average:null,avgN:0,target:null,brand:null,
   adj:{bass:0,bassQ:0.707,bassF:105,treble:0,tilt:0,ear:0},
   normOn:true,normDb:60,normHz:500,smoothN:5,ySpan:30,
-  aeq:Object.assign({count:8,fmin:20,fmax:8000,gmin:-10,gmax:6,qmin:0.5,qmax:1.5},CFG.autoEqDefaults||{}),
+  aeq:Object.assign({fmin:20,fmax:10000,gmin:-12,gmax:12,qmin:0.5,qmax:2},CFG.autoEqDefaults||{}),
   eq:{name:null,filters:[],preamp:0,curve:null},eqShow:true,uploaded:[]
 };
 const targets=new Map(),hpCache=new Map();
 
 async function loadTargets(){
   await Promise.allSettled(CFG.targets.map(async t=>{
-    const pts=parseTable(await fetchAny(t.file));
+    let pts=t.pts;
+    if(pts&&typeof pts[0]==="number"){const p=[];for(let i=0;i<pts.length;i+=2)p.push([pts[i],pts[i+1]]);pts=p;}
+    if(!pts)pts=parseTable(await fetchAny(t.file));
     if(pts.length>10)targets.set(t.name,{def:t,raw:resample(pts)});
   }));
   if(!state.target||!targets.has(state.target)){
@@ -118,6 +107,8 @@ function adjCurve(){
   return out;
 }
 function targetRaw(){const t=targets.get(state.target);if(!t)return null;return t.def.adjustable?addF(t.raw,adjCurve()):t.raw;}
+function addF(a,b){const o=new Float64Array(a.length);for(let i=0;i<a.length;i++)o[i]=a[i]+b[i];return o;}
+function normalizeOnly(y){if(!state.normOn)return y;return shift(y,state.normDb-anchorVal(y,state.normHz));}
 function process(raw){
   let y=state.smoothN>0?smoothCurve(raw,1/state.smoothN):raw;
   if(state.normOn)y=shift(y,state.normDb-anchorVal(y,state.normHz));
@@ -169,7 +160,6 @@ const XTICKS=[20,30,40,50,60,80,100,150,200,250,300,400,500,600,800,1000,1500,20
 const XTICKS_S=[20,50,100,200,500,1000,2000,5000,10000,20000];
 const XMAJ=new Set([20,60,250,500,600,2000,6000,20000]);
 function xlab(f){if(f===20)return"20Hz";if(f===20000)return"20kHz";return f>=1000?(f/1000)+"k":""+f;}
-function xlabS(f){return f>=1000?(f/1000)+"k":""+f;}
 function draw(){
   const cv=$("graph"),dpr=devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;
   if(!W||!H)return;
@@ -198,7 +188,7 @@ function draw(){
     ctx.beginPath();ctx.moveTo(x,m.t);ctx.lineTo(x,H-m.b);ctx.stroke();ctx.globalAlpha=1;
     ctx.fillStyle=maj?css("--text"):css("--muted");
     ctx.font=(narrow?"700 8px":(maj?"700 11px":"10px"))+" system-ui";ctx.textAlign="center";
-    ctx.fillText(narrow?xlabS(f):xlab(f),x,H-m.b+(narrow?12:15));
+    ctx.fillText(narrow?xlab(f):xlab(f),x,H-m.b+(narrow?12:15));
   }
   for(let v=Math.ceil(lo/step)*step;v<=hi;v+=step){
     const y=Y(v);
@@ -257,6 +247,7 @@ function renderModels(){
 function switchTab(t){
   for(const b of document.querySelectorAll(".tabs button"))b.classList.toggle("on",b.dataset.tab===t);
   $("brandList").hidden=t!=="brands";$("modelList").hidden=t!=="models";$("eqPane").hidden=t!=="eq";
+  $("search").hidden=t!=="models";
 }
 function buildTargetChips(){
   for(const gid of["refChips","prefChips"])$(gid).innerHTML="";
@@ -287,62 +278,6 @@ function updateLegend(){
   if(state.average)item("#ffffff","AVERAGE ("+state.avgN+")","",[["✕",()=>{state.average=null;updateLegend();draw();}]]);
   if(state.target)item(css("--target"),"TARGET: "+state.target);
   if(state.eq&&state.eq.curve)item(css("--eq"),"EQ result","",[[state.eqShow?"🚫":"",()=>{state.eqShow=!state.eqShow;$("eqShowChk").checked=state.eqShow;updateLegend();draw();}]]);
-}
-
-/* ---------- AutoEQ ---------- */
-function logspace(a,b,n){if(!(b>a))return[a];const o=[];for(let i=0;i<n;i++)o.push(a*Math.pow(b/a,i/(n-1)));return o;}
-function optGainDamped(e,f,f0,q,o,damp){
-  let num=0,den=0;
-  for(let i=0;i<f.length;i++){const m=shape(f[i],f0,q);num+=e[i]*m;den+=m*m;}
-  if(den<=0)return null;
-  let g=clamp(-num/den*damp,o.gmin,o.gmax);
-  let s=0;for(let i=0;i<f.length;i++){const d=e[i]+g*shape(f[i],f0,q);s+=d*d;}
-  return {f:f0,g,q,score:s};
-}
-function fitPeq(err,f,o){
-  const n=f.length,e=Float64Array.from(err),fs=[];
-  const qs=[...new Set([o.qmin,clamp(0.7,o.qmin,o.qmax),clamp(1,o.qmin,o.qmax),o.qmax])];
-  const res=()=>{let s=0;for(let i=0;i<n;i++)s+=e[i]*e[i];return s;};
-  for(let k=0;k<o.count;k++){
-    let bi=0;for(let i=1;i<n;i++)if(Math.abs(e[i])>Math.abs(e[bi]))bi=i;
-    if(Math.abs(e[bi])<0.3)break;
-    let best=null;
-    for(const q of qs)for(const ff of[f[bi]/1.25,f[bi],f[bi]*1.25]){
-      const c=optGainDamped(e,f,clamp(ff,o.fmin,o.fmax),q,o,0.9);
-      if(c&&(!best||c.score<best.score))best=c;
-    }
-    if(!best)break;
-    for(let i=0;i<n;i++)e[i]+=best.g*shape(f[i],best.f,best.q);
-    fs.push({f:best.f,g:best.g,q:best.q});
-  }
-  fs.sort((a,b)=>a.f-b.f);
-  for(let i=fs.length-2;i>=0;i--){
-    if(Math.log2(fs[i+1].f/fs[i].f)<1/6){
-      const drop=Math.abs(fs[i].g)<Math.abs(fs[i+1].g)?i:i+1;
-      for(let j=0;j<n;j++)e[j]-=fs[drop].g*shape(f[j],fs[drop].f,fs[drop].q);
-      fs.splice(drop,1);
-    }
-  }
-  for(let pass=0;pass<2;pass++){
-    let improved=false;
-    for(let k=0;k<fs.length;k++){
-      const fl=fs[k];
-      for(let i=0;i<n;i++)e[i]-=fl.g*shape(f[i],fl.f,fl.q);
-      const before=res();
-      let best={f:fl.f,g:fl.g,q:fl.q,score:before};
-      {let s=0;for(let i=0;i<n;i++)s+=e[i]*e[i];if(s<best.score)best={f:fl.f,g:0,q:fl.q,score:s};}
-      const lo=clamp(fl.f/1.6,o.fmin*0.9,o.fmax*1.1),hi=clamp(fl.f*1.6,o.fmin*0.9,o.fmax*1.1);
-      for(const ff of logspace(lo,hi,9))for(const qq of[fl.q/1.5,fl.q,fl.q*1.5].map(q=>clamp(q,o.qmin,o.qmax))){
-        const c=optGainDamped(e,f,ff,qq,o,1);
-        if(c&&c.score<best.score-1e-9)best=c;
-      }
-      fs[k]={f:best.f,g:best.g,q:best.q};
-      for(let i=0;i<n;i++)e[i]+=fs[k].g*shape(f[i],fs[k].f,fs[k].q);
-      if(res()<before-1e-9)improved=true;
-    }
-    if(!improved)break;
-  }
-  return fs.filter(x=>Math.abs(x.g)>=0.05).sort((a,b)=>a.f-b.f);
 }
 
 /* ---------- EQ панель ---------- */
@@ -378,9 +313,9 @@ function renderEqRows(){
     html+=`<div class="frow" data-i="${i}">
       <input type="checkbox" class="fon" ${fl.on?"checked":""}>
       <select class="ft">${["PK","LS","HS"].map(t=>`<option ${t===fl.t?"selected":""}>${t}</option>`).join("")}</select>
-      <input class="ff" type="number" step="0.1" value="${(+fl.f).toFixed(1)}">
-      <input class="fg" type="number" step="0.1" value="${(+fl.g).toFixed(2)}">
-      <input class="fq" type="number" step="0.01" value="${(+fl.q).toFixed(2)}">
+      <span class="inwrap"><input class="ff" type="number" step="0.1" value="${fmtF(fl.f)}"><i>Hz</i></span>
+      <span class="inwrap"><input class="fg" type="number" step="0.1" value="${r1(fl.g)}"><i>dB</i></span>
+      <input class="fq" type="number" step="0.01" value="${r2(fl.q)}">
       <button class="fx" title="Удалить">✕</button></div>`;
   });
   $("eqRows").innerHTML=html;
@@ -389,28 +324,26 @@ function renderEqRows(){
 function eqLines(){
   const L=[`Preamp: ${state.eq.preamp.toFixed(2)} dB`];
   state.eq.filters.filter(f=>f.on&&Math.abs(f.g)>=0.05).sort((a,b)=>a.f-b.f)
-    .forEach((fl,i)=>L.push(`Filter ${i+1}: ON ${fl.t} Fc ${fl.f>=100?fl.f.toFixed(1):fl.f.toFixed(2)} Hz Gain ${fl.g.toFixed(2)} dB Q ${fl.q.toFixed(2)}`));
+    .forEach((fl,i)=>L.push(`Filter ${i+1}: ON ${fl.t} Fc ${fl.f>=100?Math.round(fl.f):r1(fl.f)} Hz Gain ${r1(fl.g).toFixed(1)} dB Q ${r2(fl.q).toFixed(2)}`));
   return L;
 }
 function runAutoEq(){
   const base=eqBase();
   if(!base)return toast("Сначала выбери наушники");
   const tr=targetRaw();if(!tr)return toast("Таргет недоступен");
-  const a=state.aeq,hpP=process(base),tP=process(tr);
-  let off=0,n=0;
-  for(let i=0;i<GRID.length;i++)if(GRID[i]>=NR[0]&&GRID[i]<=NR[1]){off+=hpP[i]-tP[i];n++;}
-  off=n?off/n:0;
-  const idx=[];for(let i=0;i<GRID.length;i++)if(GRID[i]>=a.fmin&&GRID[i]<=a.fmax)idx.push(i);
-  if(idx.length<10)return toast("Слишком узкий диапазон");
-  const subF=new Float64Array(idx.length),subE=new Float64Array(idx.length);
-  idx.forEach((gi,k)=>{subF[k]=GRID[gi];subE[k]=hpP[gi]-(tP[gi]+off);});
-  const fits=fitPeq(subE,subF,a);
-  const filters=fits.map(x=>({on:true,t:"PK",f:x.f,g:x.g,q:x.q}));
-  while(filters.length<a.count)filters.push({on:true,t:"PK",f:1000,g:0,q:0.7});
+  const hpN=normalizeOnly(base),tN=normalizeOnly(tr);
+  const e=new Float64Array(GRID.length);
+  for(let i=0;i<GRID.length;i++)e[i]=hpN[i]-tN[i];
+  const count=clamp(state.eq.filters.length||8,1,20);
+  const a=state.aeq;
+  const fits=window.AutoEqFit.fit(e,GRID,{fmin:a.fmin,fmax:a.fmax,gmin:a.gmin,gmax:a.gmax,qmin:a.qmin,qmax:a.qmax,count});
+  const filters=fits.map(x=>({on:true,t:"PK",f:fmtF(x.f),g:r1(x.g),q:r2(x.q)}));
+  while(filters.length<count)filters.push({on:true,t:"PK",f:0,g:0,q:0});
   state.eq.filters=filters;
   renderEqRows();recomputeEq();
   state.eqShow=true;$("eqShowChk").checked=true;
   updateLegend();draw();
+  toast("AutoEQ: фильтров "+fits.length+", pre-amp "+state.eq.preamp.toFixed(1)+" dB");
 }
 function download(name,text){
   const b=new Blob([text],{type:"text/plain"});
@@ -418,7 +351,7 @@ function download(name,text){
   setTimeout(()=>URL.revokeObjectURL(a.href),5000);
 }
 
-/* ---------- свои замеры + парс ---------- */
+/* ---------- свои замеры ---------- */
 function saveUploaded(){try{localStorage.setItem("prih-uploaded",JSON.stringify(state.uploaded.map(u=>({name:u.name,source:u.source,pts:u.pts}))));}catch(e){toast("localStorage переполнен");}}
 function loadUploaded(){
   try{
@@ -502,7 +435,7 @@ function screenshot(){
   $("graph").toBlob(b=>{const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="prih-playground.png";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);});
 }
 function hashFromState(){
-  return"#"+encodeURIComponent(JSON.stringify({v:7,sel:[...state.selected.keys()],tgt:state.target,adj:state.adj,nrm:state.normOn,ndb:state.normDb,nhz:state.normHz,sm:state.smoothN,ys:state.ySpan,aeq:state.aeq}));
+  return"#"+encodeURIComponent(JSON.stringify({v:8,sel:[...state.selected.keys()],tgt:state.target,adj:state.adj,nrm:state.normOn,ndb:state.normDb,nhz:state.normHz,sm:state.smoothN,ys:state.ySpan,aeq:state.aeq}));
 }
 async function copyUrl(){
   const u=location.origin+location.pathname+hashFromState();
@@ -525,7 +458,7 @@ function restore(){
   draw();
 }
 
-/* ---------- sync ---------- */
+/* ---------- sync / mobile wrappers ---------- */
 function syncAdj(){
   const t=targets.get(state.target),adj=t&&t.def.adjustable;
   $("adjRow").classList.toggle("disabled",!adj);
@@ -536,9 +469,20 @@ function syncAdj(){
 function syncInputs(){
   $("ySpan").value=state.ySpan;$("normDb").value=state.normDb;$("normHz").value=state.normHz;
   $("normOn").classList.toggle("on",state.normOn);$("smoothN").value=state.smoothN;
-  $("aeCount").value=state.aeq.count;$("aeFmin").value=state.aeq.fmin;$("aeFmax").value=state.aeq.fmax;
+  $("aeFmin").value=state.aeq.fmin;$("aeFmax").value=state.aeq.fmax;
   $("aeGmin").value=state.aeq.gmin;$("aeGmax").value=state.aeq.gmax;$("aeQmin").value=state.aeq.qmin;$("aeQmax").value=state.aeq.qmax;
   syncAdj();
+}
+function wrapDetails(hostEl,summaryText,flex,extra){
+  const d=document.createElement("details");d.className=flex?"gdet":"adjdet";
+  const s=document.createElement("summary");s.textContent=summaryText;d.appendChild(s);
+  let inner=d;
+  if(flex){inner=document.createElement("div");inner.className="gwrap";d.appendChild(inner);}
+  hostEl.parentNode.insertBefore(d,hostEl);
+  while(hostEl.firstChild)inner.appendChild(hostEl.firstChild);
+  for(const el of(extra||[]))if(el)inner.appendChild(el);
+  hostEl.remove();
+  return d;
 }
 let toastTimer;
 function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove("show"),2500);}
@@ -559,8 +503,8 @@ async function init(){
     draw();
   };
   $("adjReset").onclick=()=>{state.adj={bass:0,bassQ:0.707,bassF:105,treble:0,tilt:0,ear:0};syncAdj();draw();};
-  for(const id of["aeCount","aeFmin","aeFmax","aeGmin","aeGmax","aeQmin","aeQmax"])$(id).onchange=()=>{
-    state.aeq={count:Math.round(clamp(num($("aeCount"),8),1,20)),fmin:clamp(num($("aeFmin"),20),10,10000),fmax:clamp(num($("aeFmax"),8000),100,20000),gmin:num($("aeGmin"),-10),gmax:num($("aeGmax"),6),qmin:clamp(num($("aeQmin"),0.5),0.05,10),qmax:clamp(num($("aeQmax"),1.5),0.05,10)};
+  for(const id of["aeFmin","aeFmax","aeGmin","aeGmax","aeQmin","aeQmax"])$(id).onchange=()=>{
+    state.aeq=Object.assign(state.aeq,{fmin:clamp(num($("aeFmin"),20),10,10000),fmax:clamp(num($("aeFmax"),10000),100,20000),gmin:num($("aeGmin"),-12),gmax:num($("aeGmax"),12),qmin:clamp(num($("aeQmin"),0.5),0.05,10),qmax:clamp(num($("aeQmax"),2),0.05,10)});
   };
   $("btnEq").onclick=runAutoEq;
   $("eqCurve").onchange=e=>{state.eq.name=e.target.value;recomputeEq();updateLegend();draw();};
@@ -570,9 +514,9 @@ async function init(){
     const c=e.target.classList;
     if(c.contains("fon"))fl.on=e.target.checked;
     else if(c.contains("ft"))fl.t=e.target.value;
-    else if(c.contains("ff"))fl.f=clamp(num(e.target,fl.f),10,20000);
+    else if(c.contains("ff"))fl.f=clamp(num(e.target,fl.f),0,20000);
     else if(c.contains("fg"))fl.g=clamp(num(e.target,fl.g),-30,30);
-    else if(c.contains("fq"))fl.q=clamp(num(e.target,fl.q),0.05,20);
+    else if(c.contains("fq"))fl.q=clamp(num(e.target,fl.q),0,20);
     else return;
     recomputeEq();draw();
   });
@@ -604,6 +548,12 @@ async function init(){
   $("mUrlR").addEventListener("input",queuePreview);
   $("modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal();});
   document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal();});
+  const ac=$("aeCount");if(ac){const lb=ac.closest("label");if(lb)lb.style.display="none";}
+  if(matchMedia("(max-width:900px)").matches){
+    wrapDetails($("toolbar"),"Graph settings",true);
+    $("adjRow").appendChild($("adjNote"));
+    wrapDetails($("adjRow"),"Preference adjustments",false,$("adjReset")?[$("adjReset").parentNode===$("adjRow")?null:null]:[]);
+  }
   renderBrands();renderModels();renderEqCurveSelect();renderEqRows();syncInputs();updateLegend();draw();
   loadTargets().then(()=>{buildTargetChips();syncAdj();updateLegend();draw();restore();});
   new ResizeObserver(draw).observe($("graphWrap"));

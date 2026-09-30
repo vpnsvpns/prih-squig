@@ -41,8 +41,8 @@ function shift(y,d){const o=new Float64Array(y.length);for(let i=0;i<y.length;i+
 function averageCurves(list){const o=new Float64Array(GRID.length);for(const y of list)for(let i=0;i<GRID.length;i++)o[i]+=y[i];for(let i=0;i<GRID.length;i++)o[i]/=list.length;return o;}
 function shape(f,f0,q){const x=f/f0-f0/f;return 1/(1+(q*x)*(q*x));}
 function anchorVal(y,f){let s=0,n=0;const lo=f/1.06,hi=f*1.06;for(let i=0;i<GRID.length;i++)if(GRID[i]>=lo&&GRID[i]<=hi){s+=y[i];n++;}return n?s/n:y[0];}
+function addF(a,b){const o=new Float64Array(a.length);for(let i=0;i<a.length;i++)o[i]=a[i]+b[i];return o;}
 
-/* RBJ biquad magnitude, dB */
 function biquadDb(type,f0,Q,gain,f){
   const fs=48000,w0=2*Math.PI*clamp(f0,10,23000)/fs,w=2*Math.PI*clamp(f,10,23500)/fs;
   const A=Math.pow(10,(gain||0)/40),cw=Math.cos(w0),sw=Math.sin(w0),alpha=sw/(2*Math.max(Q,0.05));
@@ -70,7 +70,6 @@ const state={
 };
 const targets=new Map(),hpCache=new Map();
 
-/* ---------- targets ---------- */
 async function loadTargets(){
   for(const t of CFG.targets){
     try{
@@ -94,8 +93,7 @@ function adjCurve(){
   }
   return out;
 }
-function targetRaw(){const t=targets.get(state.target);if(!t)return null;return t.def.adjustable?shift(t.raw,0).map?shift(addF(t.raw,adjCurve()),0):addF(t.raw,adjCurve()):t.raw;}
-function addF(a,b){const o=new Float64Array(a.length);for(let i=0;i<a.length;i++)o[i]=a[i]+b[i];return o;}
+function targetRaw(){const t=targets.get(state.target);if(!t)return null;return t.def.adjustable?addF(t.raw,adjCurve()):t.raw;}
 function process(raw){
   let y=state.smoothN>0?smoothCurve(raw,1/state.smoothN):raw;
   if(state.normOn)y=shift(y,state.normDb-anchorVal(y,state.normHz));
@@ -111,7 +109,6 @@ function series(){
   return S;
 }
 
-/* ---------- measurements ---------- */
 const allHps=()=>CFG.hps.concat(state.uploaded);
 function loadHp(def){
   if(def.raw)return Promise.resolve(def.raw);
@@ -119,10 +116,14 @@ function loadHp(def){
   return hpCache.get(def.name);
 }
 async function doLoadHp(def){
-  if(def.file){const rows=parseTable(await fetchText(def.file));return resample(rows.map(r=>[r[0],r.length>2?(r[1]+r[2])/2:r[1]]));}
-  const[lt,rt]=await Promise.all([fetchText(def.L),fetchText(def.R)]);
-  const l=resample(parseTable(lt).map(r=>[r[0],r[1]])),r=resample(parseTable(rt).map(r=>[r[0],r[1]]));
-  return averageCurves([l,r]);
+  const pick=r=>[r[0],r.length>2?(r[1]+r[2])/2:r[1]];
+  const one=async u=>resample(parseTable(await fetchText(u)).map(r=>[r[0],r[1]]));
+  if(def.raw)return def.raw;
+  if(def.url){const rows=parseTable(await fetchText(def.url));return resample(rows.map(pick));}
+  if(def.urlL&&def.urlR){const[a,b]=await Promise.all([one(def.urlL),one(def.urlR)]);return averageCurves([a,b]);}
+  if(def.file){const rows=parseTable(await fetchText(def.file));return resample(rows.map(pick));}
+  if(def.L&&def.R){const[a,b]=await Promise.all([one(def.L),one(def.R)]);return averageCurves([a,b]);}
+  throw new Error("нет источника");
 }
 async function toggleHp(def){
   if(state.selected.has(def.name))state.selected.delete(def.name);
@@ -135,7 +136,6 @@ async function toggleHp(def){
   invalidateEq();renderModels();updateLegend();draw();
 }
 
-/* ---------- draw ---------- */
 const XTICKS=[20,30,40,50,60,80,100,200,300,400,500,600,800,1000,2000,3000,4000,5000,6000,8000,10000,20000];
 const XLBL={20:"20Hz",50:"50",100:"100",200:"200",500:"500",1000:"1k",2000:"2k",5000:"5k",10000:"10k",20000:"20kHz"};
 function draw(){
@@ -179,7 +179,6 @@ function draw(){
   ctx.fillText("Measured on: IEC 60318-4 (711) · Prih",W-m.r-6,m.t-9);
 }
 
-/* ---------- lists ---------- */
 function renderBrands(){
   const set=new Map();
   for(const hp of allHps())set.set(hp.source||"?",(set.get(hp.source||"?")||0)+1);
@@ -228,16 +227,15 @@ function updateLegend(){
   for(const[name,s]of state.selected){
     const def=allHps().find(h=>h.name===name);
     item(s.color,name,def?def.source:"",[
-      [state.hidden.has(name)?"🚫":"👁",()=>{state.hidden.has(name)?state.hidden.delete(name):state.hidden.add(name);updateLegend();draw();}],
+      [state.hidden.has(name)?"🚫":"",()=>{state.hidden.has(name)?state.hidden.delete(name):state.hidden.add(name);updateLegend();draw();}],
       ["✕",()=>toggleHp(def)]
     ]);
   }
   if(state.average)item("#ffffff","AVERAGE ("+state.avgN+")","",[["✕",()=>{state.average=null;updateLegend();draw();}]]);
   if(state.target)item(css("--target"),"TARGET: "+state.target);
-  if(state.eq)item(css("--eq"),"EQ result","",[[state.eqShow?"🚫":"👁",()=>{state.eqShow=!state.eqShow;$("eqShowChk").checked=state.eqShow;updateLegend();draw();}]]);
+  if(state.eq)item(css("--eq"),"EQ result","",[[state.eqShow?"🚫":"",()=>{state.eqShow=!state.eqShow;$("eqShowChk").checked=state.eqShow;updateLegend();draw();}]]);
 }
 
-/* ---------- Auto EQ ---------- */
 function optGain(e,f,f0,q,o){let num=0,den=0;for(let i=0;i<f.length;i++){const m=shape(f[i],f0,q);num+=e[i]*m;den+=m*m;}let g=den>0?-num/den:0;g=clamp(g,o.gmin,o.gmax);let s=0;for(let i=0;i<f.length;i++){const d=e[i]+g*shape(f[i],f0,q);s+=d*d;}return{f:f0,g,q,score:s};}
 function logspace(a,b,n){const o=[];for(let i=0;i<n;i++)o.push(a*Math.pow(b/a,i/(n-1)));return o;}
 function fitPeq(err,f,o){
@@ -307,7 +305,6 @@ function renderEqTable(){
 }
 function invalidateEq(){state.eq=null;renderEqTable();}
 
-/* ---------- add measurement ---------- */
 function saveUploaded(){try{localStorage.setItem("prih-uploaded",JSON.stringify(state.uploaded.map(u=>({name:u.name,source:u.source,pts:u.pts}))));}catch(e){toast("localStorage переполнен");}}
 function loadUploaded(){
   try{
@@ -315,25 +312,37 @@ function loadUploaded(){
     state.uploaded=a.map(u=>({name:u.name,source:u.source||"uploaded",pts:u.pts,raw:resample(u.pts)}));
   }catch(e){state.uploaded=[];}
 }
+function closeModal(){
+  $("modal").hidden=true;$("mErr").textContent="";
+  $("mName").value="";$("mUrl").value="";$("mUrlL").value="";$("mUrlR").value="";$("mFile").value="";$("mPaste").value="";
+}
 async function addMeasurement(){
   const err=$("mErr");err.textContent="";
   const name=$("mName").value.trim()||"Uploaded";
   const source=$("mSource").value.trim()||"uploaded";
+  const pick=r=>[r[0],r.length>2?(r[1]+r[2])/2:r[1]];
+  const one=async u=>resample(parseTable(await fetchText(u)).map(r=>[r[0],r[1]]));
   try{
     let pts=null;
-    if($("mFile").files[0])pts=parseTable(await $("mFile").files[0].text());
-    else if($("mUrl").value.trim())pts=parseTable(await fetchText($("mUrl").value.trim()));
-    else return err.textContent="Укажи URL или файл";
-    pts=pts.map(r=>[r[0],r.length>2?(r[1]+r[2])/2:r[1]]);
-    if(pts.length<20)return err.textContent="Файл не похож на замер (мало точек)";
+    if($("mFile").files[0])pts=parseTable(await $("mFile").files[0].text()).map(pick);
+    else if($("mPaste").value.trim())pts=parseTable($("mPaste").value).map(pick);
+    else if($("mUrlL").value.trim()&&$("mUrlR").value.trim()){
+      const[a,b]=await Promise.all([one($("mUrlL").value.trim()),one($("mUrlR").value.trim())]);
+      pts=[];for(let i=0;i<GRID.length;i++)pts.push([GRID[i],(a[i]+b[i])/2]);
+    }
+    else if($("mUrl").value.trim())pts=parseTable(await fetchText($("mUrl").value.trim())).map(pick);
+    else return err.textContent="Укажи URL, файл или вставь текст";
+    if(pts.length<20)return err.textContent="Не похоже на замер: мало точек ("+pts.length+")";
+    pts.sort((a,b)=>a[0]-b[0]);
     state.uploaded.push({name,source,pts,raw:resample(pts)});
-    saveUploaded();renderBrands();renderModels();
-    $("modal").hidden=true;$("mUrl").value="";$("mFile").value="";$("mName").value="";
-    toast("Замер добавлен: "+name);
-  }catch(e){err.textContent="Ошибка загрузки: "+e.message+" (возможно, CORS — скачай CSV и загрузи файлом)";}
+    saveUploaded();
+    const def=state.uploaded[state.uploaded.length-1];
+    state.selected.set(def.name,{color:PALETTE[state.selected.size%PALETTE.length],raw:def.raw});
+    invalidateEq();renderBrands();renderModels();updateLegend();draw();closeModal();
+    toast("Замер добавлен: "+name+" ("+pts.length+" точек)");
+  }catch(e){err.textContent="Ошибка: "+e.message+". Если CORS — скачай файл и загрузь с компьютера или вставь текстом.";}
 }
 
-/* ---------- top buttons ---------- */
 async function averageAll(){
   if(!allHps().length)return toast("Список замеров пуст");
   const btn=$("btnAvg");btn.disabled=true;
@@ -373,7 +382,6 @@ function restore(){
   draw();
 }
 
-/* ---------- sync ---------- */
 function syncAdj(){
   const t=targets.get(state.target),adj=t&&t.def.adjustable;
   $("adjRow").classList.toggle("disabled",!adj);
@@ -392,7 +400,6 @@ let toastTimer;
 function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove("show"),2500);}
 const num=(el,fb)=>{const v=parseFloat(el.value);return Number.isFinite(v)?v:fb;};
 
-/* ---------- init ---------- */
 async function init(){
   if(localStorage.getItem("prih-theme")==="light")document.body.classList.add("light");
   loadUploaded();
@@ -418,8 +425,10 @@ async function init(){
   $("btnAvg").onclick=averageAll;$("btnShot").onclick=screenshot;$("btnUrl").onclick=copyUrl;
   $("btnTheme").onclick=()=>{document.body.classList.toggle("light");localStorage.setItem("prih-theme",document.body.classList.contains("light")?"light":"dark");draw();};
   $("btnAdd").onclick=()=>{$("modal").hidden=false;};
-  $("mCancel").onclick=()=>{$("modal").hidden=true;};
+  $("mCancel").onclick=closeModal;
   $("mOk").onclick=addMeasurement;
+  $("modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal();});
+  document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal();});
   buildTargetChips();renderBrands();renderModels();syncInputs();renderEqTable();draw();restore();
   new ResizeObserver(draw).observe($("graphWrap"));
 }

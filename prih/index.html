@@ -4,115 +4,38 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Prih — EQ Playground</title>
-<link rel="stylesheet" href="style.css">
-</head>
-<body>
-<div id="errbar"></div>
-<header id="top">
-  <div class="logo">Prih<span>EQ Playground · 711</span></div>
-  <div class="topbtns">
-    <button id="btnAdd" class="accent">+ Add measurement</button>
-    <button id="btnUrl">Copy URL</button>
-    <button id="btnShot">Screenshot</button>
-    <button id="btnAvg">Average All</button>
-    <button id="btnTheme" title="Тема">☀</button>
-  </div>
-</header>
-<main>
-  <aside id="left">
-    <div class="tabs">
-      <button id="tabBrands" data-tab="brands">Brands</button>
-      <button id="tabModels" data-tab="models" class="on">Models (<span id="modelCount">0</span>)</button>
-      <button id="tabEq" data-tab="eq">Equalizer</button>
-    </div>
-    <input id="search" type="search" placeholder="SEARCH">
-    <div id="brandList" class="pane" hidden></div>
-    <div id="modelList" class="pane"></div>
-    <div id="eqPane" class="pane" hidden>
-      <h3>Parametric Equalizer</h3>
-      <select id="eqCurve"></select>
-      <div id="eqPreamp" class="preamp">Pre-amp: 0.0 dB</div>
-      <div id="eqRows"></div>
-      <div class="row">
-        <button id="btnAddF">+</button><button id="btnDelF">−</button>
-        <button id="btnSort">Sort</button><button id="btnDisable">Disable</button>
-        <button id="btnSaveEq">Save EQ</button>
-      </div>
-      <div class="row">
-        <button id="btnApo">⬇ APO</button><button id="btnWavelet">⬇ Wavelet</button><button id="btnCopyEq">Копировать</button>
-      </div>
-      <h3>AutoEQ</h3>
-      <div class="grid2">
-        <label>Freq min<input id="aeFmin" type="number" value="20"></label>
-        <label>Freq max<input id="aeFmax" type="number" value="8000"></label>
-        <label>Gain min<input id="aeGmin" type="number" value="-12"></label>
-        <label>Gain max<input id="aeGmax" type="number" value="12"></label>
-        <label>Q min<input id="aeQmin" type="number" value="0.5" step="0.1"></label>
-        <label>Q max<input id="aeQmax" type="number" value="2" step="0.1"></label>
-      </div>
-      <div class="row">
-        <button id="btnEq" class="accent">AutoEQ</button>
-        <label class="chk"><input type="checkbox" id="eqShowChk" checked> Show EQ</label>
-      </div>
-      <div class="muted">Фильтры правятся вручную (тип, F, Gain, Q, галка); кривая и pre-amp пересчитываются сразу.</div>
-    </div>
-  </aside>
-
-  <section id="center">
-    <div id="toolbar">
-      <label class="tb">Y-AXIS SCALE:<input id="ySpan" type="number" value="30" min="10" max="120" step="5"><span>dB</span></label>
-      <label class="tb">NORMALIZE:
-        <button id="normOn" class="tchip on">dB</button>
-        <input id="normDb" type="number" value="60">
-        <span>@</span>
-        <input id="normHz" type="number" value="500"><span>Hz</span>
-      </label>
-      <label class="tb">SMOOTH:<span>1/</span><input id="smoothN" type="number" value="5" min="0" max="48"><span>окт</span></label>
-    </div>
-    <div id="graphWrap"><canvas id="graph"></canvas></div>
-    <div id="bands"><span>Sub bass</span><span>Bass</span><span>Lower Mids</span><span>Midrange</span><span>Upper Mids</span><span>Presence</span><span>Treble</span></div>
-    <div id="targetsRow">
-      <span class="lbl">Reference targets:</span><span id="refChips" class="chips"></span>
-      <span class="lbl">Preference targets:</span><span id="prefChips" class="chips"></span>
-    </div>
-    <div id="adjRow">
-      <span class="lbl">Preference adjustments:</span>
-      <label>Bass (dB)<input id="adjBass" type="number" step="0.5" value="0"></label>
-      <label>Bass Q<input id="adjBassQ" type="number" step="0.001" value="0.707"></label>
-      <label>Bass F (Hz)<input id="adjBassF" type="number" value="105"></label>
-      <label>Treble (dB)<input id="adjTreble" type="number" step="0.5" value="0"></label>
-      <label>Tilt (dB/Oct)<input id="adjTilt" type="number" step="0.05" value="0"></label>
-      <label>Ear Gain (dB)<input id="adjEar" type="number" step="0.5" value="0"></label>
-      <button id="adjReset">Remove Adjustments</button>
-      <span id="adjNote" class="muted"></span>
-    </div>
-    <div id="legend"></div>
-  </section>
-</main>
-
-<div id="modal" hidden>
-  <div class="box">
-    <h3>Добавить замер (только 711)</h3>
-    <label>Название<input id="mName" placeholder="Имя наушников"></label>
-    <label>Подпись источника<input id="mSource" placeholder="pw / boizoff / gudkov / своё"></label>
-    <div class="muted">1) Ссылка со сквига (CSV/TXT или страница модели — CSV найдём сами):</div>
-    <label>URL<input id="mUrl" placeholder="https://gudkov.squig.link/..."></label>
-    <div class="row">
-      <label style="flex:1">URL L<input id="mUrlL" placeholder="...L.csv"></label>
-      <label style="flex:1">URL R<input id="mUrlR" placeholder="...R.csv"></label>
-    </div>
-    <div class="muted">2) — или — файл с компьютера (CSV / TXT):</div>
-    <label><input id="mFile" type="file" accept=".csv,.txt,text/plain,text/csv"></label>
-    <div class="muted">3) — или — вставь текст замеров:</div>
-    <textarea id="mPaste" rows="4" placeholder="20 82.981&#10;20.36 82.974&#10;..."></textarea>
-    <div id="mPrev" class="muted prev"></div>
-    <div class="row"><button id="mOk" class="accent">Добавить</button><button id="mCancel">Отмена</button></div>
-    <div id="mErr" class="muted err"></div>
-  </div>
-</div>
-<div id="toast"></div>
-<script src="autoeq.js"></script>
-<script src="config.js"></script>
-<script src="prih.js"></script>
-</body>
-</html>
+<style>
+:root{--bg:#1b1a20;--panel:#211f27;--panel2:#2a2831;--line:#3a3742;--text:#e8e6ea;--muted:#9b97a4;--target:#c9c2b4;--eq:#d9c223;--grid:#2e2c35}
+body.light{--bg:#f1f0f4;--panel:#e7e6ec;--panel2:#dfdfe6;--line:#c9c8d4;--text:#1c1b22;--muted:#66646f;--grid:#d4d3dc}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;display:flex;flex-direction:column;background:var(--bg);color:var(--text);font:13px/1.45 system-ui,"Segoe UI",Roboto,sans-serif}
+#errbar{display:none;background:#8a1f1f;color:#fff;padding:8px 14px;font:12px/1.4 ui-monospace,Menlo,monospace;white-space:pre-wrap}
+#boot{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--muted);font:14px system-ui;z-index:50;letter-spacing:.05em}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 14px;background:var(--panel);border-bottom:1px solid var(--line)}
+.logo{font-size:20px;font-weight:800;font-style:italic}
+.logo span{margin-left:10px;font-size:11px;font-weight:400;font-style:normal;color:var(--muted)}
+button{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px}
+button:hover{border-color:var(--muted)}
+button.accent{background:#fff;color:#111;border-color:#fff;font-weight:600}
+button:disabled{opacity:.4;cursor:default}
+main{flex:1;display:flex;min-height:0}
+aside{width:310px;flex:none;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.tabs{display:flex;gap:4px;padding:8px 8px 0}
+.tabs button{flex:1;padding:6px 4px;font-size:12px}
+.tabs button.on{background:#fff;color:#111;border-color:#fff;font-weight:600}
+#search{margin:8px;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:7px 10px;font-size:12px}
+.pane{flex:1;overflow-y:auto;padding:0 8px 8px;display:flex;flex-direction:column;gap:6px}
+.brand,.mrow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 9px;border-radius:6px;cursor:pointer;font-size:12.5px}
+.brand:hover,.mrow:hover{background:var(--panel2)}
+.brand.sel{background:#fff;color:#111}
+.mrow.sel{background:rgba(255,255,255,.12);outline:1px solid var(--muted)}
+.mrow .src,.brand .cnt{color:var(--muted);font-size:10.5px;flex:none}
+.brand.sel .cnt{color:#333}
+.mrow .add{padding:1px 8px;border-radius:5px}
+#eqPane h3{margin:6px 0 0;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--muted)}
+label.chk{flex-direction:row;align-items:center;gap:7px;color:var(--text);font-size:12px}
+input[type=number],input[type=search],input[type=text],select{background:var(--bg);border:1px solid var(--line);color:var(--text);

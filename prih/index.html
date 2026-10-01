@@ -9,7 +9,7 @@ window.__prihBootTimer=setTimeout(function(){
   var b=document.getElementById("errbar");
   if(b&&document.getElementById("boot")){
     b.style.display="block";
-    b.textContent="СКРИПТ НЕ СТАРТОВАЛ ЗА 15 c: файл обрезан или кэш. Ctrl+F5.";
+    b.textContent="СКРИПТ НЕ СТАРТОВАЛ ЗА 15 c: файл обрезан при копировании или кэш. Ctrl+F5.";
   }
 },15000);
 window.addEventListener("error",function(e){
@@ -19,8 +19,14 @@ window.addEventListener("error",function(e){
 },true);
 </script>
 <style>
-:root{--bg:#1b1a20;--panel:#211f27;--panel2:#2a2831;--line:#3a3742;
---text:#e8e6ea;--muted:#9b97a4;--target:#c9c2b4;--eq:#d9c223;--grid:#2e2c35}
+:root{--bg:#1b1a20;--plot:#26242c;--panel:#211f27;--panel2:#2a2831;
+--line:#3a3742;--text:#e8e6ea;--muted:#9b97a4;--target:#c9c2b4;
+--eq:#d9c223;--grid:#383542}
+body.light{--bg:#f1f0f4;--plot:#ffffff;--panel:#e7e6ec;--panel2:#dfdfe6;
+--line:#c9c8d4;--text:#1c1b22;--muted:#66646f;--grid:#d4d3dc}
+body.contrast{--bg:#000;--plot:#0a0a0a;--panel:#0b0b0b;--panel2:#161616;
+--line:#4a4a4a;--text:#fff;--muted:#c9c9c9;--target:#fff;--eq:#ffe14a;
+--grid:#333}
 [hidden]{display:none!important}
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -186,7 +192,7 @@ z-index:30}
  #adjRow label{flex:none;white-space:nowrap}
  #adjRow input{width:56px}
  #legendRows{padding:6px 8px;gap:3px}
- .crow{grid-template-columns:14px 1fr 44px 24px 24px 22px}
+ .crow{grid-template-columns:14px 1fr 40px 24px 24px 24px 22px}
  .crow .spark,.crow .ccomp,.crow .csn,.crow .csm,.crow .cpin{display:none}
  .pane{max-height:none;overflow:visible;padding:0 8px 16px}
  .tabs button{font-size:12px;padding:8px 4px}
@@ -204,7 +210,7 @@ z-index:30}
 <div id="errbar"></div>
 <div id="boot">Prih · загрузка…</div>
 <header id="top">
-  <div class="logo">Prih<span>EQ Playground · 711 · v25</span></div>
+  <div class="logo">Prih<span>EQ Playground · 711 · v26</span></div>
   <div class="topbtns">
     <button id="btnShot">Screenshot</button>
     <button id="btnAvg">Average All</button>
@@ -340,16 +346,9 @@ z-index:30}
 <div id="toast"></div>
 <script>
 "use strict";
-/* AutoEQ v25: суть как у squig.link —
-   старты greedy + log-spaced, блочный координатный спуск
-   с непрерывным Nelder-Mead по (log f, log Q) и LS-гейном,
-   приём только по улучшению ПОЛНОЙ взвешенной SSE,
-   близкие центры разрешены, маска обнуляет всё выше Freq max,
-   детерминированно, бюджет ~12 c. */
+/* AutoEQ v25-core (детерминированный, маска до Freq max) — не менялся */
 window.AutoEqFit=(function(){
-var clamp=function(v,a,b){
-  return v<a?a:v>b?b:v;
-};
+var clamp=function(v,a,b){return v<a?a:v>b?b:v;};
 var shape=function(f,f0,q){
   var x=f/f0-f0/f;
   return 1/(1+q*q*x*x);
@@ -411,24 +410,125 @@ function lsGain(e,w,f,fc,q,ga,gb,W){
   }
   return d>1e-9?clamp(-n/d,ga,gb):0;
 }
-function nmFit(e,w,f,o,W,fc0,q0,iters){
-  function score(x){
-    var fc=clamp(Math.pow(2,x[0]),o.fmin,o.fmax);
-    var q=clamp(Math.pow(2,x[1]),o.qmin,o.qmax);
-    var g=lsGain(e,w,f,fc,q,o.gmin,o.gmax,W);
-    var s=0,k,i,d;
-    for(k=0;k<w.length;k++){
-      i=w[k];
-      d=e[i]+g*shape(f[i],fc,q);
-      s+=W[i]*d*d;
-    }
-    return s;
+function qSet(o,n){
+  var out=[],i;
+  for(i=0;i<n;i++){
+    out.push(clamp(o.qmin*Math.pow(o.qmax/o.qmin,i/(n-1)),
+      o.qmin,o.qmax));
   }
-  var l0=Math.log2(clamp(fc0,o.fmin,o.fmax));
-  var q1=Math.log2(clamp(q0,o.qmin,o.qmax));
-  var S=[{x:[l0,q1]},{x:[l0+0.2,q1]},{x:[l0,q1+0.2]}];
-  var i,j;
-  for(i=0;i<3;i++)S[i].f=score(S[i].x);
+  return out;
+}
+function bestAround(e,f,fc0,o,span,Q,np,W){
+  var lo=clamp(fc0/span,o.fmin,o.fmax);
+  var hi=clamp(fc0*span,o.fmin,o.fmax);
+  var best=null,t,i,c;
+  for(t=0;t<np;t++){
+    var ff=lo*Math.pow(hi/lo,t/(np-1));
+    for(i=0;i<Q.length;i++){
+      c=evalCand(e,f,ff,Q[i],o,W);
+      if(!best||c.s<best.s-1e-9)best=c;
+    }
+  }
+  return best;
+}
+function evalCand(e,f,fc,q,o,W){
+  var w=winOf(f,fc,1.55);
+  var g=lsGain(e,w,f,fc,q,o.gmin,o.gmax,W);
+  var s=0,k,i,d;
+  for(k=0;k<w.length;k++){
+    i=w[k];
+    d=e[i]+g*shape(f[i],fc,q);
+    s+=W[i]*d*d;
+  }
+  return{f:fc,q:q,g:g,s:s};
+}
+function tooClose(fs,fc,minD){
+  var i;
+  for(i=0;i<fs.length;i++){
+    if(Math.abs(Math.log2(fc/fs[i].f))<minD)return true;
+  }
+  return false;
+}
+function clampF(fl,o){
+  fl.f=clamp(fl.f,o.fmin,o.fmax);
+  fl.q=clamp(fl.q,o.qmin,o.qmax);
+  return fl;
+}
+function greedy(e0,f,o,Q,W){
+  var e=e0.slice(),fs=[],banned=[],k,guard,i;
+  for(k=0;k<o.count;k++){
+    var placed=false;
+    for(guard=0;guard<12&&!placed;guard++){
+      var bi=-1,bv=0;
+      for(i=0;i<e.length;i++){
+        if(banned.indexOf(i)>=0)continue;
+        var av=W[i]*Math.abs(e[i]);
+        if(av>bv){bv=av;bi=i;}
+      }
+      if(bi<0||bv<0.15)break;
+      var best=bestAround(e,f,f[bi],o,1.6,Q,31,W);
+      if(best)best=bestAround(e,f,best.f,o,1.25,Q,31,W);
+      if(!best){banned.push(bi);continue;}
+      var cand=clampF({f:best.f,q:best.q,g:best.g},o);
+      if(tooClose(fs,cand.f,0.125)){banned.push(bi);continue;}
+      var before=fullSSE(e0,f,fs,W);
+      var after=fullSSE(e0,f,fs.concat([cand]),W);
+      if(after>=before-1e-9){banned.push(bi);continue;}
+      fs.push(cand);
+      respInto(e,f,cand,1);
+      placed=true;
+    }
+    if(!placed)break;
+  }
+  return fs;
+}
+function respInto(e,f,fl,sgn){
+  var i;
+  for(i=0;i<e.length;i++){
+    e[i]+=sgn*fl.g*shape(f[i],fl.f,fl.q);
+  }
+}
+function tick(){
+  return new Promise(function(r){setTimeout(r,0);});
+}
+async function anneal(e0,f,fs,o,W,tEnd,rStart){
+  var radii=[1.5,1.3,1.15,1.06,1.02];
+  var ri=rStart||0;
+  fs.forEach(function(fl){clampF(fl,o);});
+  while(ri<radii.length){
+    var changed=false,k;
+    for(k=0;k<fs.length;k++){
+      var ew=residWithout(e0,f,fs,k);
+      var base=fullSSE(e0,f,fs,W);
+      var fl=fs[k];
+      var Q2=[
+        clamp(fl.q/1.6,o.qmin,o.qmax),
+        clamp(fl.q/1.25,o.qmin,o.qmax),
+        fl.q,
+        clamp(fl.q*1.25,o.qmin,o.qmax),
+        clamp(fl.q*1.6,o.qmin,o.qmax)
+      ];
+      var best=bestAround(ew,f,fl.f,o,radii[ri],Q2,41,W);
+      if(best){
+        var cand=clampF({f:best.f,q:best.q,g:best.g},o);
+        var others=fs.filter(function(_,j){return j!==k;});
+        if(!tooClose(others,cand.f,0.1)){
+          var after=fullSSE(e0,f,others.concat([cand]),W);
+          if(after<base-1e-9){fs[k]=cand;changed=true;}
+        }
+      }
+    }
+    if(!changed)ri++;
+    if(performance.now()>tEnd)break;
+    await tick();
+  }
+  return fs;
+}
+function nm2(F,x0,iters){
+  var S=[{x:[x0[0],x0[1]]},
+         {x:[x0[0]+0.25,x0[1]]},
+         {x:[x0[0],x0[1]+0.25]}],i,j;
+  for(i=0;i<3;i++)S[i].f=F(S[i].x);
   for(i=0;i<iters;i++){
     S.sort(function(a,b){return a.f-b.f;});
     if(Math.abs(S[2].x[0]-S[0].x[0])<1e-4&&
@@ -436,17 +536,17 @@ function nmFit(e,w,f,o,W,fc0,q0,iters){
     var cx=(S[0].x[0]+S[1].x[0])/2;
     var cy=(S[0].x[1]+S[1].x[1])/2;
     var rx=2*cx-S[2].x[0],ry=2*cy-S[2].x[1];
-    var fr=score([rx,ry]);
+    var fr=F([rx,ry]);
     if(fr<S[0].f){
       var ex=cx+2*(cx-S[2].x[0]);
       var ey=cy+2*(cy-S[2].x[1]);
-      var fe=score([ex,ey]);
+      var fe=F([ex,ey]);
       S[2]=fe<fr?{x:[ex,ey],f:fe}:{x:[rx,ry],f:fr};
     }else if(fr<S[1].f){
       S[2]={x:[rx,ry],f:fr};
     }else{
       var kx=(cx+S[2].x[0])/2,ky=(cy+S[2].x[1])/2;
-      var fk=score([kx,ky]);
+      var fk=F([kx,ky]);
       if(fk<S[2].f){
         S[2]={x:[kx,ky],f:fk};
       }else{
@@ -454,95 +554,101 @@ function nmFit(e,w,f,o,W,fc0,q0,iters){
           S[j].x=[
             S[0].x[0]+0.5*(S[j].x[0]-S[0].x[0]),
             S[0].x[1]+0.5*(S[j].x[1]-S[0].x[1])];
-          S[j].f=score(S[j].x);
+          S[j].f=F(S[j].x);
         }
       }
     }
   }
   S.sort(function(a,b){return a.f-b.f;});
-  var fc=clamp(Math.pow(2,S[0].x[0]),o.fmin,o.fmax);
-  var q=clamp(Math.pow(2,S[0].x[1]),o.qmin,o.qmax);
-  var g=lsGain(e,w,f,fc,q,o.gmin,o.gmax,W);
-  return{f:fc,q:q,g:g};
+  return S[0].x;
 }
-function refineFilter(e0,f,fs,k,o,W,span,iters){
-  var ew=residWithout(e0,f,fs,k);
-  var w=winOf(f,fs[k].f,span);
-  var c=nmFit(ew,w,f,o,W,fs[k].f,fs[k].q,iters);
-  var trial=fs.slice();
-  trial[k]={f:c.f,q:c.q,g:c.g};
-  if(fullSSE(e0,f,trial,W)<fullSSE(e0,f,fs,W)-1e-9){
-    fs[k]=trial[k];
-    return true;
+async function nmPolish(e0,f,fs,o,W,tEnd){
+  var k;
+  fs.forEach(function(fl){clampF(fl,o);});
+  for(k=0;k<fs.length;k++){
+    var ew=residualWithout(e0,f,fs,k);
+    var fl=fs[k];
+    var F=(function(ew){
+      return function(x){
+        var fc=clamp(Math.pow(2,x[0]),o.fmin,o.fmax);
+        var q=clamp(Math.pow(2,x[1]),o.qmin,o.qmax);
+        var w=winOf(f,fc,1.8);
+        var g=lsGain(ew,w,f,fc,q,o.gmin,o.gmax,W);
+        var s=0,i2,d;
+        for(i2=0;i2<ew.length;i2++){
+          d=ew[i2]+g*shape(f[i2],fc,q);
+          s+=W[i2]*d*d;
+        }
+        return s;
+      };
+    })(ew);
+    var x0=[Math.log2(clamp(fl.f,o.fmin,o.fmax)),
+      Math.log2(fl.q)];
+    var x=nm2(F,x0,90);
+    var fc=clamp(Math.pow(2,x[0]),o.fmin,o.fmax);
+    var q=clamp(Math.pow(2,x[1]),o.qmin,o.qmax);
+    var w2=winOf(f,fc,1.8);
+    var g2=lsGain(ew,w2,f,fc,q,o.gmin,o.gmax,W);
+    var cand={f:fc,q:q,g:g2};
+    var others=fs.filter(function(_,j){return j!==k;});
+    if(!tooClose(others,cand.f,0.1)&&
+       fullSSE(e0,f,others.concat([cand]),W)<
+       fullSSE(e0,f,fs,W)-1e-9){
+      fs[k]=cand;
+    }
+    if(performance.now()>tEnd)break;
+    await tick();
   }
-  return false;
+  return fs;
 }
-function greedyInit(e0,f,o,W,count){
-  var e=e0.slice(),fs=[],k,i;
-  for(k=0;k<count;k++){
+function addRemove(e0,f,fs,o,W){
+  var k,i;
+  for(k=fs.length-1;k>=0;k--){
+    var rest=fs.filter(function(_,j){return j!==k;});
+    if(fullSSE(e0,f,rest,W)<=fullSSE(e0,f,fs,W)+1e-7){
+      fs=rest;
+    }
+  }
+  var e=residFull(e0,f,fs);
+  while(fs.length<o.count){
     var bi=-1,bv=0;
     for(i=0;i<e.length;i++){
       var av=W[i]*Math.abs(e[i]);
       if(av>bv){bv=av;bi=i;}
     }
     if(bi<0||bv<0.15)break;
-    var w=winOf(f,f[bi],1.6);
-    var c=nmFit(e,w,f,o,W,f[bi],
-      clamp(1,o.qmin,o.qmax),60);
-    var before=0,after=0;
-    for(i=0;i<e.length;i++){
-      before+=W[i]*e[i]*e[i];
-      var d=e[i]+c.g*shape(f[i],c.f,c.q);
-      after+=W[i]*d*d;
-    }
-    if(after>=before-1e-9)break;
-    fs.push({f:c.f,q:c.q,g:c.g});
-    for(i=0;i<e.length;i++){
-      e[i]+=c.g*shape(f[i],c.f,c.q);
-    }
+    var best=bestAround(e,f,f[bi],o,1.6,qSet(o,5),31,W);
+    if(!best)break;
+    var cand=clampF({f:best.f,q:best.q,g:best.g},o);
+    if(tooClose(fs,cand.f,0.125))break;
+    if(fullSSE(e0,f,fs.concat([cand]),W)>=
+       fullSSE(e0,f,fs,W)-1e-9)break;
+    fs.push(cand);
+    e=residFull(e0,f,fs);
   }
   return fs;
 }
-function logSpacedInit(o,count){
-  var fs=[],i;
-  for(i=0;i<count;i++){
-    var t=count>1?i/(count-1):0;
-    fs.push({
-      f:o.fmin*Math.pow(o.fmax/o.fmin,t),
-      q:clamp(1,o.qmin,o.qmax),
-      g:0});
-  }
-  return fs;
+var JIT=[1.06,0.94,1.12,0.88,1.03,0.97,1.09,0.91,1.05,0.95];
+function perturb(fs,o){
+  return fs.map(function(fl,i){
+    return clampF({
+      f:fl.f*JIT[i%JIT.length],q:fl.q,g:fl.g},o);
+  });
 }
-function clampF(fl,o){
-  fl.f=clamp(fl.f,o.fmin,o.fmax);
-  fl.q=clamp(fl.q,o.qmin,o.qmax);
-  return fl;
-}
-function tick(){
-  return new Promise(function(r){setTimeout(r,0);});
-}
-async function optimize(e0,f,fs,o,W,tEnd){
-  var k,i;
-  for(k=0;k<fs.length;k++){
-    var ew=residWithout(e0,f,fs,k);
-    var w=winOf(f,fs[k].f,1.6);
-    fs[k].g=lsGain(ew,w,f,fs[k].f,fs[k].q,
-      o.gmin,o.gmax,W);
-  }
-  var rounds=0;
-  while(performance.now()<tEnd&&rounds<10){
-    var changed=false;
-    for(k=0;k<fs.length;k++){
-      if(refineFilter(e0,f,fs,k,o,W,1.6,70))changed=true;
-      if(refineFilter(e0,f,fs,k,o,W,1.15,50))changed=true;
+function mergeClose(fs,minD){
+  fs.sort(function(a,b){return a.f-b.f;});
+  var out=[],i;
+  for(i=0;i<fs.length;i++){
+    if(out.length&&Math.abs(
+       Math.log2(fs[i].f/out[out.length-1].f))<minD){
+      if(Math.abs(fs[i].g)>Math.abs(out[out.length-1].g)){
+        out[out.length-1]=fs[i];
+      }
+    }else{
+      out.push(fs[i]);
     }
-    rounds++;
-    await tick();
-    if(!changed)break;
   }
-  for(i=0;i<fs.length;i++)clampF(fs[i],o);
-  return fs;
+  return out;
 }
 async function fitAsync(eFull,fFull,o,onProg){
   var idx=[],i;
@@ -556,66 +662,37 @@ async function fitAsync(eFull,fFull,o,onProg){
   var t0=performance.now();
   var BUDGET=o.budget||12000;
   var tEnd=t0+BUDGET;
-  var starts=[
-    greedyInit(e0,f,o,W,o.count),
-    logSpacedInit(o,o.count)
-  ];
-  var best=null,si;
-  for(si=0;si<starts.length;si++){
-    var fs=await optimize(e0,f,starts[si],o,W,tEnd);
-    fs=fs.filter(function(x){return Math.abs(x.g)>=0.05;});
+  var best=null,attempt=0;
+  while(attempt<6&&performance.now()-t0<BUDGET*0.85){
+    var fs;
+    if(attempt===0)fs=greedy(e0,f,o,qSet(o,5),W);
+    else if(attempt===1)fs=greedy(e0,f,o,qSet(o,9),W);
+    else fs=perturb(best?best.fs.slice():fs,o);
+    fs=await anneal(e0,f,fs,o,W,tEnd,0);
+    fs=await nmPolish(e0,f,fs,o,W,tEnd);
+    fs=addRemove(e0,f,fs,o,W);
+    fs=await anneal(e0,f,fs,o,W,tEnd,3);
+    fs=await nmPolish(e0,f,fs,o,W,tEnd);
+    fs.forEach(function(fl){clampF(fl,o);});
     var sc=fullSSE(e0,f,fs,W);
     if(!best||sc<best.sc-1e-9)best={fs:fs,sc:sc};
-    if(onProg)onProg(si+1,
-      Math.round((performance.now()-t0)/100)/10);
-    await tick();
-    if(performance.now()>tEnd)break;
-  }
-  var out=best?best.fs:[];
-  while(out.length<o.count&&performance.now()<tEnd){
-    var ew=residFull(e0,f,out);
-    var bi=-1,bv=0;
-    for(i=0;i<ew.length;i++){
-      var av=W[i]*Math.abs(ew[i]);
-      if(av>bv){bv=av;bi=i;}
+    attempt++;
+    if(onProg){
+      onProg(attempt,
+        Math.round((performance.now()-t0)/100)/10);
     }
-    if(bi<0||bv<0.15)break;
-    var w=winOf(f,f[bi],1.6);
-    var c=nmFit(ew,w,f,o,W,f[bi],
-      clamp(1,o.qmin,o.qmax),60);
-    var before=fullSSE(e0,f,out,W);
-    var after=fullSSE(e0,f,out.concat([c]),W);
-    if(after>=before-1e-9)break;
-    out.push(c);
-    out=await optimize(e0,f,out,o,W,tEnd);
-    out=out.filter(function(x){
-      return Math.abs(x.g)>=0.05;
-    });
-    if(onProg)onProg(2+out.length,
-      Math.round((performance.now()-t0)/100)/10);
     await tick();
   }
-  out.forEach(function(fl){clampF(fl,o);});
-  out.sort(function(a,b){return a.f-b.f;});
-  var merged=[],m;
-  for(m=0;m<out.length;m++){
-    if(merged.length&&Math.abs(
-       Math.log2(out[m].f/merged[merged.length-1].f))<0.05){
-      if(Math.abs(out[m].g)>
-         Math.abs(merged[merged.length-1].g)){
-        merged[merged.length-1]=out[m];
-      }
-    }else{
-      merged.push(out[m]);
-    }
-  }
-  return merged.filter(function(x){
+  if(!best)return[];
+  best.fs.forEach(function(fl){clampF(fl,o);});
+  best.fs=mergeClose(best.fs,0.05);
+  return best.fs.filter(function(x){
     return Math.abs(x.g)>=0.1;
   });
 }
 function fit(e,f,o){
   var W=f.map(function(ff){return maskW(ff,o.fmax);});
-  var fs=greedyInit(e,f,o,W,o.count||8);
+  var fs=greedy(e,f,o,qSet(o,3),W);
   fs.forEach(function(fl){clampF(fl,o);});
   return fs.filter(function(x){
     return Math.abs(x.g)>=0.1;
@@ -623,11 +700,11 @@ function fit(e,f,o){
 }
 return{fit:fit,fitAsync:fitAsync,mask:maskW};
 })();
-/*EOF-AUTOEQ v25*/
+/*EOF-AUTOEQ v26*/
 </script>
 <script>
 "use strict";
-var BUILD="v25";
+var BUILD="v26";
 var RE_SPLIT=/[\s,;]+/;
 var RE_ABS=/^https?:\/\//i;
 var RE_ESC=/[&<>"]/g;
@@ -864,7 +941,7 @@ var state={
   normOn:true,normDb:60,normHz:500,smoothN:5,ySpan:30,
   aeq:{fmin:20,fmax:8000,gmin:-10,gmax:6,qmin:0.5,qmax:1.5},
   eq:{name:null,filters:[],preamp:0,curve:null},
-  eqShow:true,eqRunning:false,
+  eqShow:true,eqRunning:false,devMode:false,
   uploaded:[],remote:[],impTargets:[],
   zoom:null,inspect:false,palShift:0,mouse:null,
   dbUpdated:null
@@ -999,6 +1076,17 @@ function processCurve(raw,cfg,forceRaw){
   if(cfg&&cfg.off)y=shift(y,cfg.off);
   return y;
 }
+/* отображаемая кривая: в devMode — отклонение от таргета */
+function displayedY(raw,cfg,forceRaw){
+  var y=processCurve(raw,cfg,forceRaw);
+  if(state.devMode){
+    var tr=targetRaw();
+    if(tr){
+      y=minusF(y,processCurve(tr,curveCfg("__target"),1));
+    }
+  }
+  return y;
+}
 function process(raw){return processCurve(raw,null,0);}
 function filterResp(fl,f){
   if(!fl.on||!fl.g)return 0;
@@ -1011,25 +1099,30 @@ function series(){
     if(!s.raw||state.hidden.has(name))return;
     var cfg=curveCfg(name);
     S.push({name:name,color:s.color,pin:cfg.pin,
-      y:processCurve(s.raw,cfg,0)});
+      y:displayedY(s.raw,cfg,0)});
   });
   if(state.average&&!state.hidden.has("__avg")){
     S.push({name:"AVERAGE",color:"#ffffff",
       dash:[5,4],w:2,pin:curveCfg("__avg").pin,
-      y:processCurve(state.average,curveCfg("__avg"),0)});
+      y:displayedY(state.average,curveCfg("__avg"),0)});
   }
   var tr=targetRaw();
   if(tr&&!state.hidden.has("__target")){
     var ct=curveCfg("__target");
+    var ty;
+    if(state.devMode){
+      ty=new Float64Array(GRID.length);
+    }else{
+      ty=processCurve(tr,ct,1);
+    }
     S.push({name:state.target,color:css("--target"),
-      dash:[8,5],w:2,pin:ct.pin,
-      y:processCurve(tr,ct,1)});
+      dash:[6,4],w:2,pin:ct.pin,y:ty});
   }
   if(state.eq&&state.eqShow&&state.eq.curve&&
      !state.hidden.has("__eq")){
     S.push({name:"EQ result",color:css("--eq"),w:2,
       pin:curveCfg("__eq").pin,
-      y:processCurve(state.eq.curve,curveCfg("__eq"),0)});
+      y:displayedY(state.eq.curve,curveCfg("__eq"),0)});
   }
   S.sort(function(a,b){return(a.pin?1:0)-(b.pin?1:0);});
   return S;
@@ -1110,7 +1203,7 @@ function draw(){
   cv.height=H*dpr;
   var ctx=cv.getContext("2d");
   ctx.setTransform(dpr,0,0,dpr,0,0);
-  ctx.fillStyle=css("--bg");
+  ctx.fillStyle=css("--plot");
   ctx.fillRect(0,0,W,H);
   var narrow=W<700;
   var m={l:narrow?34:46,r:narrow?8:16,
@@ -1119,7 +1212,10 @@ function draw(){
   var XF0=xr[0],XF1=xr[1];
   var S=series();
   var span=clamp(state.ySpan,10,120),lo,hi;
-  if(state.normOn){
+  if(state.devMode){
+    lo=-span/2;
+    hi=span/2;
+  }else if(state.normOn){
     lo=state.normDb-span/2;
     hi=state.normDb+span/2;
   }else{
@@ -1149,7 +1245,7 @@ function draw(){
     var x=X(f),maj=narrow?true:!!XMAJ[f];
     ctx.strokeStyle=css("--grid");
     ctx.lineWidth=1;
-    ctx.globalAlpha=maj?0.9:0.35;
+    ctx.globalAlpha=maj?0.95:0.45;
     ctx.beginPath();
     ctx.moveTo(x,m.t);
     ctx.lineTo(x,H-m.b);
@@ -1166,7 +1262,7 @@ function draw(){
     var y=Y(vv2);
     ctx.strokeStyle=css("--grid");
     ctx.lineWidth=1;
-    ctx.globalAlpha=0.7;
+    ctx.globalAlpha=0.75;
     ctx.beginPath();
     ctx.moveTo(m.l,y);
     ctx.lineTo(W-m.r,y);
@@ -1177,6 +1273,10 @@ function draw(){
       " ui-monospace,Menlo,monospace";
     ctx.textAlign="right";
     ctx.fillText(Math.round(vv2),m.l-(narrow?4:6),y+3);
+  }
+  if(!narrow){
+    ctx.fillStyle="rgba(255,255,255,0.10)";
+    ctx.fillRect(m.l-9,(m.t+H-m.b)/2-32,4,64);
   }
   ctx.save();
   ctx.beginPath();
@@ -1202,10 +1302,10 @@ function draw(){
   if(state.inspect&&state.mouse){
     var mx=state.mouse.x;
     if(mx>m.l&&mx<W-m.r){
-      var fr=XF0*Math.pow(XF1/XF0,(mx-m.l)/(W-m.l-m.r));
+      var f=XF0*Math.pow(XF1/XF0,(mx-m.l)/(W-m.l-m.r));
       var gi=0,bd=1e9,i3;
       for(i3=0;i3<GRID.length;i3++){
-        var d3=Math.abs(Math.log2(GRID[i3]/fr));
+        var d3=Math.abs(Math.log2(GRID[i3]/f));
         if(d3<bd){bd=d3;gi=i3;}
       }
       ctx.strokeStyle=css("--muted");
@@ -1220,7 +1320,7 @@ function draw(){
         return{c:s.color,
           t:s.name+": "+s.y[gi].toFixed(1)+" dB"};
       });
-      lines.unshift({c:css("--muted"),t:Math.round(fr)+" Hz"});
+      lines.unshift({c:css("--muted"),t:Math.round(f)+" Hz"});
       var bw=150,bh=lines.length*14+8,bx=mx+10;
       if(bx+bw>W-m.r)bx=mx-10-bw;
       ctx.fillStyle="rgba(0,0,0,0.72)";
@@ -1235,7 +1335,7 @@ function draw(){
   }
   ctx.restore();
   ctx.setLineDash([]);
-  ctx.fillStyle="rgba(255,255,255,0.06)";
+  ctx.fillStyle="rgba(255,255,255,0.10)";
   ctx.font=(narrow?"italic 900 40px":"italic 900 84px")+" system-ui";
   ctx.textAlign="right";
   ctx.fillText("PRIH",W-m.r-8,H-m.b-(narrow?10:16));
@@ -1409,16 +1509,17 @@ function download(name,text){
 }
 function curveYByKey(key){
   if(key==="__target"){
+    if(state.devMode)return new Float64Array(GRID.length);
     return processCurve(targetRaw(),curveCfg(key),1);
   }
   if(key==="__eq"){
-    return processCurve(state.eq.curve,curveCfg(key),0);
+    return displayedY(state.eq.curve,curveCfg(key),0);
   }
   if(key==="__avg"){
-    return processCurve(state.average,curveCfg(key),0);
+    return displayedY(state.average,curveCfg(key),0);
   }
   var s=state.selected.get(key);
-  return s&&s.raw?processCurve(s.raw,curveCfg(key),0):null;
+  return s&&s.raw?displayedY(s.raw,curveCfg(key),0):null;
 }
 function downloadCurveByKey(key){
   var y=curveYByKey(key);
@@ -1436,7 +1537,7 @@ function updateLegend(){
   targets.forEach(function(v,k){
     compOpts+="<option value='"+esc(k)+"'>"+esc(k)+"</option>";
   });
-  function row(key,color,title,srcTxt,withComp){
+  function row(key,color,title,srcTxt,withComp,isTarget){
     var cfg=curveCfg(key);
     var d=document.createElement("div");
     d.className="crow";
@@ -1456,12 +1557,21 @@ function updateLegend(){
     }else{
       html+="<span></span>";
     }
-    html+="<button class='csm"+(cfg.smOn===false?"":" on")+
-      "' title='Smoothing on/off'>~</button>"+
-      "<input class='csn' type='number' min='0' max='48'"+
-      " title='Smooth 1/N oct' value='"+
-      (cfg.smN!=null?cfg.smN:state.smoothN)+"'>"+
-      "<button class='ceye' title='Hide/show'>"+
+    if(isTarget){
+      html+="<button class='cdev"+
+        (state.devMode?" on":"")+
+        "' title='Отклонение от таргета'>"+
+        (state.devMode?"—":"~")+"</button>"+
+        "<span></span>";
+    }else{
+      html+="<button class='csm"+
+        (cfg.smOn===false?"":" on")+
+        "' title='Smoothing on/off'>~</button>"+
+        "<input class='csn' type='number' min='0'"+
+        " max='48' title='Smooth 1/N oct' value='"+
+        (cfg.smN!=null?cfg.smN:state.smoothN)+"'>";
+    }
+    html+="<button class='ceye' title='Hide/show'>"+
       (state.hidden.has(key)?"🚫":"")+"</button>"+
       "<button class='cpin"+(cfg.pin?" on":"")+
       "' title='Pin'>📌</button>"+
@@ -1478,7 +1588,7 @@ function updateLegend(){
   }
   if(state.target){
     row("__target",css("--target"),
-      "Target: "+state.target,"",false);
+      "Target: "+state.target,"",false,true);
   }
   state.selected.forEach(function(s,name){
     if(!s.raw)return;
@@ -1486,14 +1596,14 @@ function updateLegend(){
     for(i=0;i<all.length;i++){
       if(all[i].name===name)def=all[i];
     }
-    row(name,s.color,name,def?def.source||"":"",true);
+    row(name,s.color,name,def?def.source||"":"",true,false);
   });
   if(state.eq&&state.eq.curve){
-    row("__eq",css("--eq"),"EQ result","",false);
+    row("__eq",css("--eq"),"EQ result","",false,false);
   }
   if(state.average){
     row("__avg","#ffffff",
-      "AVERAGE ("+state.avgN+")","",false);
+      "AVERAGE ("+state.avgN+")","",false,false);
   }
 }
 function eqBase(){
@@ -1978,6 +2088,7 @@ function restore(){
   if(isFinite(s.ys))state.ySpan=s.ys;
   if(s.aeq)state.aeq=Object.assign(state.aeq,s.aeq);
   if(s.zoom&&ZOOMS[s.zoom])state.zoom=s.zoom;
+  if(typeof s.dev==="boolean")state.devMode=s.dev;
   sanState();
   syncInputs();
   buildTargetChips();
@@ -2123,9 +2234,11 @@ function init(){
     if(e.target.classList.contains("coff")){
       cfg.off=num(e.target,0);
       draw();
+      updateLegend();
     }else if(e.target.classList.contains("csn")){
       cfg.smN=clamp(num(e.target,0),0,48);
       draw();
+      updateLegend();
     }
   });
   lg.addEventListener("change",function(e){
@@ -2143,7 +2256,11 @@ function init(){
     if(!row)return;
     var key=row.dataset.key,cfg=curveCfg(key);
     var c=e.target.classList;
-    if(c.contains("csm")){
+    if(c.contains("cdev")){
+      state.devMode=!state.devMode;
+      updateLegend();
+      draw();
+    }else if(c.contains("csm")){
       cfg.smOn=cfg.smOn===false;
       updateLegend();
       draw();
@@ -2380,7 +2497,7 @@ function init(){
   }
 }
 init();
-/*EOF v25*/
+/*EOF v26*/
 </script>
 </body>
 </html>

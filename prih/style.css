@@ -1,12 +1,13 @@
 :root{
-  --bg:#16151d;--panel:#1e1c26;--panel2:#262430;--line:#373443;
-  --text:#eceaf2;--muted:#8f8b9e;--target:#d8c79b;--eq:#d9c223;--grid:#2c2a37;
+  --bg:#1b1a20;--panel:#211f27;--panel2:#2a2831;--line:#3a3742;
+  --text:#e8e6ea;--muted:#9b97a4;--target:#c9c2b4;--eq:#d9c223;--grid:#2e2c35;
 }
 body.light{--bg:#f1f0f4;--panel:#e7e6ec;--panel2:#dfdfe6;--line:#c9c8d4;--text:#1c1b22;--muted:#66646f;--grid:#d4d3dc;}
 [hidden]{display:none!important}
 *{box-sizing:border-box}
 html,body{height:100%}
 body{margin:0;display:flex;flex-direction:column;background:var(--bg);color:var(--text);font:13px/1.45 system-ui,"Segoe UI",Roboto,sans-serif}
+#errbar{display:none;background:#8a1f1f;color:#fff;padding:8px 14px;font:12px/1.4 ui-monospace,Menlo,monospace;white-space:pre-wrap}
 header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 14px;background:var(--panel);border-bottom:1px solid var(--line)}
 .logo{font-size:20px;font-weight:800;font-style:italic}
 .logo span{margin-left:10px;font-size:11px;font-weight:400;font-style:normal;color:var(--muted)}
@@ -38,8 +39,6 @@ textarea{background:var(--bg);border:1px solid var(--line);color:var(--text);bor
 .row button{padding:4px 9px}
 .preamp{font-weight:700;font-size:12px}
 #eqRows{display:flex;flex-direction:column;gap:4px}
-
-/* ===== строки фильтров и всё, что после .frow ===== */
 .frow{display:grid;grid-template-columns:20px 50px 1fr 1fr 1fr 22px;gap:4px;align-items:center}
 .frow.head span{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
 .frow input[type=number]{padding:3px 4px;font-size:11px}
@@ -52,15 +51,13 @@ textarea{background:var(--bg);border:1px solid var(--line);color:var(--text);bor
 #toolbar:empty{display:none}
 details.gdet,details.adjdet{background:var(--panel);border-top:1px solid var(--line)}
 details.gdet>summary,details.adjdet>summary{cursor:pointer;padding:7px 12px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);list-style:none}
-details.gdet>summary::-webkit-details-marker{display:none}
-details.adjdet>summary::-webkit-details-marker{display:none}
+details.gdet>summary::-webkit-details-marker,details.adjdet>summary::-webkit-details-marker{display:none}
 details.gdet[open]>summary{border-bottom:1px solid var(--line)}
 details.gdet .gwrap{display:flex;flex-wrap:wrap;gap:14px;padding:8px 12px}
 details.adjdet #adjRow{border-top:none;padding:8px 12px}
-
 #center{flex:1;display:flex;flex-direction:column;min-width:0}
 #toolbar{display:flex;flex-wrap:wrap;gap:14px;align-items:center;padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
-.tb{flex-direction:row;align-items:center;gap:5px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.tb{flex-direction:row;align-items:center;gap:5px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-family:ui-monospace,Menlo,monospace}
 .tb input{width:56px}
 .tchip{padding:3px 10px;border-radius:5px}
 .tchip.on{background:#fff;color:#111;border-color:#fff;font-weight:700}
@@ -90,7 +87,7 @@ details.adjdet #adjRow{border-top:none;padding:8px 12px}
 #toast.show{opacity:1}
 ::-webkit-scrollbar{width:9px}::-webkit-scrollbar-thumb{background:var(--line);border-radius:6px}
 
-/* ===== МОБИЛА: страница скроллится целиком, график сверху, ниже «шторка» как у squig ===== */
+/* ===== МОБИЛА: как у squig.link — график сверху, шторка снизу ===== */
 @media (max-width:900px){
   html,body{height:auto;min-height:100%}
   header{flex-wrap:nowrap;overflow-x:auto;padding:6px 10px;gap:8px}

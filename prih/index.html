@@ -7,6 +7,7 @@
 <style>
 :root{--bg:#1b1a20;--panel:#211f27;--panel2:#2a2831;--line:#3a3742;--text:#e8e6ea;--muted:#9b97a4;--target:#c9c2b4;--eq:#d9c223;--grid:#2e2c35}
 body.light{--bg:#f1f0f4;--panel:#e7e6ec;--panel2:#dfdfe6;--line:#c9c8d4;--text:#1c1b22;--muted:#66646f;--grid:#d4d3dc}
+body.contrast{--bg:#000;--panel:#0b0b0b;--panel2:#161616;--line:#4a4a4a;--text:#fff;--muted:#c9c9c9;--target:#fff;--eq:#ffe14a;--grid:#3a3a3a}
 [hidden]{display:none!important}
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -21,7 +22,7 @@ button:hover{border-color:var(--muted)}
 button.accent{background:#fff;color:#111;border-color:#fff;font-weight:600}
 button:disabled{opacity:.4;cursor:default}
 main{flex:1;display:flex;min-height:0}
-aside{width:310px;flex:none;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+aside{width:320px;flex:none;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
 .tabs{display:flex;gap:4px;padding:8px 8px 0}
 .tabs button{flex:1;padding:6px 4px;font-size:12px}
 .tabs button.on{background:#fff;color:#111;border-color:#fff;font-weight:600}
@@ -40,6 +41,7 @@ label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--mute
 label.chk{flex-direction:row;align-items:center;gap:7px;color:var(--text);font-size:12px}
 input[type=number],input[type=search],input[type=text],select{background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:5px;padding:5px 7px;font-size:12px;width:100%}
 textarea{background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:5px;padding:6px 8px;font:11px/1.4 monospace;width:100%;resize:vertical}
+input[type=range]{accent-color:var(--eq)}
 .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .row button{padding:4px 9px}
 .preamp{font-weight:700;font-size:12px}
@@ -58,16 +60,17 @@ details.gdet,details.adjdet{background:var(--panel);border-top:1px solid var(--l
 details.gdet>summary,details.adjdet>summary{cursor:pointer;padding:7px 12px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);list-style:none}
 details.gdet>summary::-webkit-details-marker,details.adjdet>summary::-webkit-details-marker{display:none}
 details.gdet[open]>summary{border-bottom:1px solid var(--line)}
-details.gdet .gwrap{display:flex;flex-wrap:wrap;gap:14px;padding:8px 12px}
+details.gdet .gwrap{display:flex;flex-wrap:wrap;gap:10px;padding:8px 12px;align-items:center}
 details.adjdet #adjRow{border-top:none;padding:8px 12px}
 #center{flex:1;display:flex;flex-direction:column;min-width:0}
-#toolbar{display:flex;flex-wrap:wrap;gap:14px;align-items:center;padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
+#toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
 .tb{flex-direction:row;align-items:center;gap:5px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-family:ui-monospace,Menlo,monospace}
-.tb input{width:56px}
+.tb input{width:52px}
 .tchip{padding:3px 10px;border-radius:5px}
 .tchip.on{background:#fff;color:#111;border-color:#fff;font-weight:700}
 #graphWrap{flex:1;min-height:260px;position:relative}
 #graph{position:absolute;inset:0;width:100%;height:100%}
+#graph.inspect{cursor:crosshair}
 #bands{display:flex;justify-content:space-between;padding:4px 60px 6px;color:var(--muted);font-size:10.5px;border-top:1px solid var(--line);background:var(--panel)}
 #targetsRow,#adjRow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:7px 12px;border-top:1px solid var(--line);background:var(--panel)}
 .lbl{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);flex:none}
@@ -80,11 +83,12 @@ details.adjdet #adjRow{border-top:none;padding:8px 12px}
 .litem{display:flex;align-items:center;gap:7px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:3px 9px;font-size:12px}
 .litem .sw{width:11px;height:11px;border-radius:3px}
 .litem .src{color:var(--muted);font-size:10px}
+.litem input.off{width:52px;padding:2px 4px;font-size:11px}
 .litem button{padding:0 6px;border:none;background:none;font-size:12px;color:var(--muted)}
 .litem button:hover{color:var(--text)}
 .err{color:#ff8a8a}.prev{color:#8af0a0}
 #modal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:20}
-#modal .box{width:400px;max-width:92vw;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:10px}
+#modal .box{width:420px;max-width:92vw;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:10px}
 #modal h3{margin:0;font-size:14px;color:var(--text)}
 .muted{color:var(--muted);font-size:11px}
 #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#2c2a37;color:#fff;padding:9px 16px;border-radius:8px;font-size:12.5px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:30}
@@ -118,7 +122,7 @@ details.adjdet #adjRow{border-top:none;padding:8px 12px}
 <div id="errbar"></div>
 <div id="boot">Prih · загрузка…</div>
 <header id="top">
-  <div class="logo">Prih<span>EQ Playground · 711 · v12</span></div>
+  <div class="logo">Prih<span>EQ Playground · 711 · v14</span></div>
   <div class="topbtns">
     <button id="btnAdd" class="accent">+ Add measurement</button>
     <button id="btnUrl">Copy URL</button>
@@ -138,6 +142,10 @@ details.adjdet #adjRow{border-top:none;padding:8px 12px}
     <div id="brandList" class="pane" hidden></div>
     <div id="modelList" class="pane"></div>
     <div id="eqPane" class="pane" hidden>
+      <h3>Uploading</h3>
+      <div class="row"><button id="btnUpFR">Upload FR</button><button id="btnUpTgt">Upload Target</button><button id="btnUpSong">Upload Song</button></div>
+      <input id="songFile" type="file" accept="audio/*" hidden>
+      <div class="muted">Uploaded data will not be persistent</div>
       <h3>Parametric Equalizer</h3>
       <select id="eqCurve"></select>
       <div id="eqPreamp" class="preamp">Pre-amp: 0.0 dB</div>
@@ -154,15 +162,24 @@ details.adjdet #adjRow{border-top:none;padding:8px 12px}
       <div class="grid2">
         <label>Freq min<input id="aeFmin" type="number" value="20"></label>
         <label>Freq max<input id="aeFmax" type="number" value="8000"></label>
-        <label>Gain min<input id="aeGmin" type="number" value="-12"></label>
-        <label>Gain max<input id="aeGmax" type="number" value="12"></label>
+        <label>Gain min<input id="aeGmin" type="number" value="-10"></label>
+        <label>Gain max<input id="aeGmax" type="number" value="6"></label>
         <label>Q min<input id="aeQmin" type="number" value="0.5" step="0.1"></label>
-        <label>Q max<input id="aeQmax" type="number" value="2" step="0.1"></label>
+        <label>Q max<input id="aeQmax" type="number" value="1.5" step="0.1"></label>
       </div>
       <div class="row">
         <button id="btnEq" class="accent">AutoEQ</button>
         <label class="chk"><input type="checkbox" id="eqShowChk" checked> Show EQ</label>
       </div>
+      <h3>EQ Demo</h3>
+      <div class="row">
+        <select id="demoSrc" style="width:110px"><option value="pink">Pink Noise</option><option value="song">Song</option></select>
+        <span id="demoTime" class="muted">00:00</span>
+        <button id="btnDemo">▶ Play</button>
+      </div>
+      <h3>Miscellaneous</h3>
+      <label>Channel Balance (L ↔ R)<input id="balance" type="range" min="-50" max="50" value="0"></label>
+      <div class="row"><button id="btnImportEq">Import EQ</button><button id="btnExportEq">Export Parametric EQ</button></div>
       <div class="muted">Фильтры правятся вручную (тип, F, Gain, Q, галка); кривая и pre-amp пересчитываются сразу.</div>
     </div>
   </aside>
@@ -175,6 +192,13 @@ details.adjdet #adjRow{border-top:none;padding:8px 12px}
         <input id="normHz" type="number" value="500"><span>Hz</span>
       </label>
       <label class="tb">SMOOTH:<span>1/</span><input id="smoothN" type="number" value="5" min="0" max="48"><span>окт</span></label>
+      <span class="tb">ZOOM:
+        <button id="zBass" class="tchip">Bass</button><button id="zMids" class="tchip">Mids</button><button id="zTreble" class="tchip">Treble</button>
+      </span>
+      <button id="btnInspect" class="tchip">Inspect</button>
+      <button id="btnLabel" class="tchip on">Label</button>
+      <button id="btnRecolor" class="tchip">Recolor</button>
+      <button id="btnContrast" class="tchip">Contrast Mode</button>
     </div>
     <div id="graphWrap"><canvas id="graph"></canvas></div>
     <div id="bands"><span>Sub bass</span><span>Bass</span><span>Lower Mids</span><span>Midrange</span><span>Upper Mids</span><span>Presence</span><span>Treble</span></div>
@@ -196,6 +220,7 @@ details.adjdet #adjRow{border-top:none;padding:8px 12px}
     <div id="legend"></div>
   </section>
 </main>
+
 <div id="modal" hidden>
   <div class="box">
     <h3>Добавить замер (только 711)</h3>
@@ -216,36 +241,55 @@ details.adjdet #adjRow{border-top:none;padding:8px 12px}
     <div id="mErr" class="muted err"></div>
   </div>
 </div>
+
+<div id="modalT" hidden>
+  <div class="box">
+    <h3>Импорт таргета</h3>
+    <label>Название<input id="tName" placeholder="My Target"></label>
+    <label>URL (CSV/TXT)<input id="tUrl" placeholder="https://.../target.csv"></label>
+    <label>Файл<input id="tFile" type="file" accept=".csv,.txt,text/plain,text/csv"></label>
+    <label>Или вставь текст<textarea id="tPaste" rows="4" placeholder="20 7.63&#10;100 2.78&#10;..."></textarea></label>
+    <div class="row"><button id="tOk" class="accent">Импортировать</button><button id="tCancel">Отмена</button></div>
+    <div id="tErr" class="muted err"></div>
+  </div>
+</div>
+
+<div id="modalE" hidden>
+  <div class="box">
+    <h3>Импорт EQ (AutoEQ / Equalizer APO текст)</h3>
+    <label>Файл<input id="eFile" type="file" accept=".txt,.cfg,text/plain"></label>
+    <label>Или вставь текст<textarea id="ePaste" rows="6" placeholder="Preamp: -2.5 dB&#10;Filter 1: ON PK Fc 21 Hz Gain 2.2 dB Q 0.7&#10;..."></textarea></label>
+    <div class="row"><button id="eOk" class="accent">Импортировать</button><button id="eCancel">Отмена</button></div>
+    <div id="eErr" class="muted err"></div>
+  </div>
+</div>
 <div id="toast"></div>
 
 <script>
 "use strict";
-/* ==== AutoEQ v12: greedy по пику ошибки + аналитический LS-gain + сеточная доводка f/Q
-      + полировка по полному SSE с откатом. Монотонно сходится, не обрывается на 1 фильтре. ==== */
+/* AutoEQ v13-core: greedy по пику + LS-gain по узкому окну + выбор (f,Q) по полной SSE + дистанция 1/4 окт + полировка */
 window.AutoEqFit=(()=>{
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const shape=(f,f0,q)=>{const x=f/f0-f0/f;return 1/(1+q*q*x*x);};
 const sse=e=>{let s=0;for(let i=0;i<e.length;i++)s+=e[i]*e[i];return s;};
-function addResp(e,f,fl){const o=e.slice();for(let i=0;i<e.length;i++)o[i]+=fl.g*shape(f[i],fl.f,fl.q);return o;}
-function lsGain(e,w,f,f0,q,ga,gb){let n=0,d=0;for(let k=0;k<w.length;k++){const i=w[k],m=shape(f[i],f0,q);n+=e[i]*m;d+=m*m;}return d>1e-9?clamp(-n/d,ga,gb):0;}
-function winIdx(f,fc){const a=fc/2.38,b=fc*2.38,w=[];for(let i=0;i<f.length;i++)if(f[i]>=a&&f[i]<=b)w.push(i);return w;}
-function optAt(e,f,w,f0,q,ga,gb){
-  const g=lsGain(e,w,f,f0,q,ga,gb);
-  let s=0;for(let k=0;k<w.length;k++){const i=w[k],d=e[i]+g*shape(f[i],f0,q);s+=d*d;}
-  return{f:f0,q,g,s};
+function lsGainWin(e,w,f,f0,q,ga,gb){let n=0,d=0;for(let k=0;k<w.length;k++){const i=w[k],m=shape(f[i],f0,q);n+=e[i]*m;d+=m*m;}return d>1e-9?clamp(-n/d,ga,gb):0;}
+function winIdx(f,fc,span){const a=fc/span,b=fc*span,w=[];for(let i=0;i<f.length;i++)if(f[i]>=a&&f[i]<=b)w.push(i);return w;}
+function evalCand(e,f,fc,q,o){
+  const w=winIdx(f,fc,1.55);
+  const g=lsGainWin(e,w,f,fc,q,o.gmin,o.gmax);
+  let s=0;for(let i=0;i<f.length;i++){const d=e[i]+g*shape(f[i],fc,q);s+=d*d;}
+  return{f:fc,q,g,s};
 }
-function qCandidates(o){
-  return[...new Set([o.qmin,clamp(o.qmin*1.4,o.qmin,o.qmax),Math.sqrt(o.qmin*o.qmax),clamp(o.qmax/1.4,o.qmin,o.qmax),o.qmax])];
-}
-function localFit(e,f,i,o,qs){
+function bestAround(e,f,fc0,o,span,Q){
+  const flo=clamp(fc0/span,o.fmin,o.fmax),fhi=clamp(fc0*span,o.fmin,o.fmax);
   let best=null;
-  for(const q of qs){const c=optAt(e,f,winIdx(f,f[i]),f[i],q,o.gmin,o.gmax);if(!best||c.s<best.s)best=c;}
-  for(let round=0;round<2;round++){
-    const flo=clamp(best.f/1.5,o.fmin,o.fmax),fhi=clamp(best.f*1.5,o.fmin,o.fmax);
-    for(let t=0;t<9;t++){
-      const ff=flo*Math.pow(fhi/flo,t/8);
-      const w=winIdx(f,ff);
-      for(const q of qs){const c=optAt(e,f,w,ff,q,o.gmin,o.gmax);if(c.s<best.s-1e-9)best=c;}
+  for(let t=0;t<9;t++){
+    const ff=flo*Math.pow(fhi/flo,t/8);
+    const w=winIdx(f,ff,1.55);
+    for(const q of Q){
+      const g=lsGainWin(e,w,f,ff,q,o.gmin,o.gmax);
+      let s=0;for(let i=0;i<f.length;i++){const d=e[i]+g*shape(f[i],ff,q);s+=d*d;}
+      if(!best||s<best.s-1e-9)best={f:ff,q,g,s};
     }
   }
   return best;
@@ -255,15 +299,27 @@ function fit(eFull,fFull,o){
   if(idx.length<10)return[];
   const f=idx.map(i=>fFull[i]);
   let e=idx.map(i=>eFull[i]);
-  const qs=qCandidates(o);
-  const filters=[];
+  const Q=[...new Set([o.qmin,clamp((o.qmin+o.qmax)/2,o.qmin,o.qmax),o.qmax])];
+  const filters=[],banned=[];
+  const tooClose=fc=>filters.some(fl=>Math.abs(Math.log2(fc/fl.f))<0.25);
   for(let k=0;k<o.count;k++){
-    let bi=0;for(let i=1;i<e.length;i++)if(Math.abs(e[i])>Math.abs(e[bi]))bi=i;
-    if(Math.abs(e[bi])<0.1)break;
-    const c=localFit(e,f,bi,o,qs);
-    if(!c||!isFinite(c.g)||!isFinite(c.f)||Math.abs(c.g)<0.05)break;
-    filters.push({f:c.f,q:c.q,g:c.g});
-    e=addResp(e,f,{f:c.f,q:c.q,g:c.g});
+    let placed=false;
+    for(let guard=0;guard<12&&!placed;guard++){
+      let bi=-1,bv=0;
+      for(let i=0;i<e.length;i++){
+        if(banned.indexOf(i)>=0)continue;
+        if(Math.abs(e[i])>bv){bv=Math.abs(e[i]);bi=i;}
+      }
+      if(bi<0||bv<0.2)break;
+      const base=sse(e);
+      let best=bestAround(e,f,f[bi],o,1.5,Q);
+      if(best)best=bestAround(e,f,best.f,o,1.25,Q);
+      if(!best||best.s>=base-1e-9||tooClose(best.f)){banned.push(bi);continue;}
+      filters.push({f:best.f,q:best.q,g:best.g});
+      for(let i=0;i<e.length;i++)e[i]+=best.g*shape(f[i],best.f,best.q);
+      placed=true;
+    }
+    if(!placed)break;
   }
   for(let round=0;round<2;round++){
     let changed=false;
@@ -271,20 +327,21 @@ function fit(eFull,fFull,o){
       const fl=filters[k];
       const ew=e.slice();
       for(let i=0;i<e.length;i++)ew[i]-=fl.g*shape(f[i],fl.f,fl.q);
-      const baseSse=sse(e);
-      const qs2=[...new Set([clamp(fl.q/1.5,o.qmin,o.qmax),fl.q,clamp(fl.q*1.5,o.qmin,o.qmax)])];
-      let best=null;
-      const flo=clamp(fl.f/1.6,o.fmin,o.fmax),fhi=clamp(fl.f*1.6,o.fmin,o.fmax);
-      for(let t=0;t<11;t++){
-        const ff=flo*Math.pow(fhi/flo,t/10);
-        const w=winIdx(f,ff);
-        for(const q of qs2){const c=optAt(ew,f,w,ff,q,o.gmin,o.gmax);if(!best||c.s<best.s)best=c;}
+      const base=sse(e);
+      const others=filters.filter((_,j)=>j!==k);
+      const okF=fc=>others.every(of=>Math.abs(Math.log2(fc/of.f))>=0.2);
+      const Q2=[...new Set([clamp(fl.q/1.5,o.qmin,o.qmax),fl.q,clamp(fl.q*1.5,o.qmin,o.qmax)])];
+      let best=bestAround(ew,f,fl.f,o,1.4,Q2);
+      if(best)best=bestAround(ew,f,best.f,o,1.2,Q2);
+      if(best&&okF(best.f)){
+        let s=0;for(let i=0;i<f.length;i++){const d=ew[i]+best.g*shape(f[i],best.f,best.q);s+=d*d;}
+        if(s<base-1e-9){
+          filters[k]={f:best.f,q:best.q,g:best.g};
+          for(let i=0;i<e.length;i++)e[i]=ew[i]+best.g*shape(f[i],best.f,best.q);
+          changed=true;continue;
+        }
       }
-      if(best){
-        const cand={f:best.f,q:best.q,g:best.g};
-        const cs=sse(addResp(ew,f,cand));
-        if(cs<baseSse-1e-9){filters[k]=cand;e=addResp(ew,f,cand);changed=true;}
-      }
+      for(let i=0;i<e.length;i++)e[i]=ew[i]+fl.g*shape(f[i],fl.f,fl.q);
     }
     if(!changed)break;
   }
@@ -296,7 +353,7 @@ return{fit};
 
 <script>
 "use strict";
-const BUILD="v12";
+const BUILD="v14";
 window.addEventListener("error",ev=>{
   const b=document.getElementById("errbar");if(!b)return;
   b.style.display="block";
@@ -304,7 +361,7 @@ window.addEventListener("error",ev=>{
 });
 const CFG={
   name:"Prih",normRange:[500,2000],
-  autoEqDefaults:{fmin:20,fmax:8000,gmin:-12,gmax:12,qmin:0.5,qmax:2},
+  autoEqDefaults:{fmin:20,fmax:8000,gmin:-10,gmax:6,qmin:0.5,qmax:1.5},
   targets:[
     {group:"Reference",name:"ISO 11904-1 DF",file:"targets/∆ ISO 11904-1 DF Target.txt",alt:"targets/ISO 11904-1 DF Target.txt",adjustable:true},
     {group:"Reference",name:"ISO DF Harman Bass",file:"targets/ISO DF Harman Bass 711.txt",adjustable:true},
@@ -316,18 +373,18 @@ const CFG={
   ],
   hps:[]
 };
-const FALLBACK={"Harman IE 2019 v2":[20,7.62973,22.44924,7.68487,25.19842,7.71947,28.28427,7.72681,31.74802,7.69917,35.63595,7.60681,40,7.41131,44.89848,7.08692,50.39684,6.63857,56.56854,6.10753,63.49604,5.50985,71.2719,4.85848,80,4.18831,89.79696,3.50032,100.79368,2.77975,113.13708,2.0519,126.99208,1.33947,142.54379,0.6872,160,0.09838,179.59393,-0.47266,201.58737,-0.98818,226.27417,-1.37155,253.98417,-1.60032,285.08759,-1.70023,320,-1.70974,359.18786,-1.6662,403.17474,-1.59545,452.54834,-1.50398,507.96834,-1.38436,570.17518,-1.24699,640,-1.07811,718.37571,-0.86396,806.34947,-0.62243,905.09668,-0.33051,1015.93667,0.05512,1140.35036,0.58276,1280,1.32076,1436.75142,2.21175,1612.69894,3.21386,1810.19336,4.49772,2031.87335,5.98719,2280.70072,7.3739,2560,8.4983,2873.50284,9.17476,3225.39789,9.41864,3620.38672,9.24472,4063.74669,8.8162,4561.40144,8.24556,5120,7.6048,5747.00569,6.99762,6450.79578,6.18873,7240.77344,4.97312,8127.49339,3.32921,9122.80287,1.21727,10240,-1.25957,11494.01137,-3.68367,12901.59155,-5.99103,14481.54688,-8.09968,16254.98677,-10.65092,18245.60575,-15.25816,20186.38231,-20.68071]};
 const NR=CFG.normRange;
 const PALETTE=["#38c5f4","#ff8a65","#aed581","#ba68c8","#ffd54f","#4db6ac","#f06292","#7986cb","#a1887f","#e57373"];
 const FMIN=20,FMAX=20000,SPO=96;
 const GRID=(()=>{const n=Math.round(Math.log2(FMAX/FMIN)*SPO),g=new Float64Array(n+1);for(let i=0;i<=n;i++)g[i]=FMIN*Math.pow(2,i/SPO);return g;})();
+const ZOOMS={bass:[20,500],mids:[500,5000],treble:[5000,20000]};
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const css=v=>getComputedStyle(document.body).getPropertyValue(v).trim();
 const $=id=>document.getElementById(id);
 const num=(el,fb)=>{const v=parseFloat(el.value);return Number.isFinite(v)?v:fb;};
 const r1=v=>Math.round(v*10)/10,r2=v=>Math.round(v*100)/100;
-const fmtF=f=>f>=100?Math.round(f):r1(f);
+const fmtF=f=>Math.round(f);
 const isAbs=u=>/^https?:\/\//i.test(u);
 function fetchWithTimeout(u,ms){const c=new AbortController();const t=setTimeout(()=>c.abort(),ms);return fetch(u,{signal:c.signal}).finally(()=>clearTimeout(t));}
 async function fetchLocal(u){const r=await fetchWithTimeout(u,8000);if(!r.ok)throw new Error("HTTP "+r.status);return r.text();}
@@ -374,25 +431,30 @@ function shift(y,d){const o=new Float64Array(y.length);for(let i=0;i<y.length;i+
 function averageCurves(list){const o=new Float64Array(GRID.length);for(const y of list)for(let i=0;i<GRID.length;i++)o[i]+=y[i];for(let i=0;i<GRID.length;i++)o[i]/=list.length;return o;}
 function shape(f,f0,q){const x=f/f0-f0/f;return 1/(1+(q*x)*(q*x));}
 function anchorVal(y,f){let s=0,n=0;const lo=f/1.06,hi=f*1.06;for(let i=0;i<GRID.length;i++)if(GRID[i]>=lo&&GRID[i]<=hi){s+=y[i];n++;}return n?s/n:y[0];}
-function addF(a,b){const o=new Float64Array(a.length);for(let i=0;i<a.length;i++)o[i]=a[i]+b[i];return o;}
-function biquadDb(type,f0,Q,gain,f){
-  const w0=2*Math.PI*clamp(f0,10,23000)/48000,w=2*Math.PI*clamp(f,10,23500)/48000;
-  const A=Math.pow(10,(gain||0)/40),cw=Math.cos(w0),sw=Math.sin(w0),al=sw/(2*Math.max(Q,0.05)),sA=Math.sqrt(A);
+function filterResp(fl,f){
+  if(!fl.on||!fl.g)return 0;
+  if(fl.t==="PK")return fl.g*shape(f,fl.f,fl.q);
+  /* LS/HS для ручных фильтров — честный biquad */
+  const w0=2*Math.PI*clamp(fl.f,10,23000)/48000,w=2*Math.PI*clamp(f,10,23500)/48000;
+  const A=Math.pow(10,fl.g/40),cw=Math.cos(w0),sw=Math.sin(w0),al=sw/(2*Math.max(fl.q,0.05)),sA=Math.sqrt(A);
   let b0,b1,b2,a0,a1,a2;
-  if(type==="ls"){b0=A*((A+1)+(A-1)*cw+2*sA*al);b1=2*A*((A-1)+(A+1)*cw);b2=A*((A+1)+(A-1)*cw-2*sA*al);a0=(A+1)+(A-1)*cw+2*sA*al;a1=-2*((A-1)+(A+1)*cw);a2=(A+1)+(A-1)*cw-2*sA*al;}
-  else if(type==="hs"){b0=A*((A+1)+(A-1)*cw-2*sA*al);b1=-2*A*((A-1)+(A+1)*cw);b2=A*((A+1)+(A-1)*cw+2*sA*al);a0=(A+1)+(A-1)*cw-2*sA*al;a1=2*((A-1)+(A+1)*cw);a2=(A+1)+(A-1)*cw+2*sA*al;}
-  else{b0=1+al*A;b1=-2*cw;b2=1-al*A;a0=1+al/A;a1=-2*cw;a2=1-al/A;}
+  if(fl.t==="LS"){b0=A*((A+1)+(A-1)*cw+2*sA*al);b1=2*A*((A-1)+(A+1)*cw);b2=A*((A+1)+(A-1)*cw-2*sA*al);a0=(A+1)+(A-1)*cw+2*sA*al;a1=-2*((A-1)+(A+1)*cw);a2=(A+1)+(A-1)*cw-2*sA*al;}
+  else{b0=A*((A+1)+(A-1)*cw-2*sA*al);b1=-2*A*((A-1)+(A+1)*cw);b2=A*((A+1)+(A-1)*cw+2*sA*al);a0=(A+1)+(A-1)*cw-2*sA*al;a1=2*((A-1)+(A+1)*cw);a2=(A+1)+(A-1)*cw+2*sA*al);}
   const c1=Math.cos(w),s1=Math.sin(w),c2=Math.cos(2*w),s2=Math.sin(2*w);
   const nbR=b0+b1*c1+b2*c2,nbI=-(b1*s1+b2*s2),dR=a0+a1*c1+a2*c2,dI=-(a1*s1+a2*s2);
   const den=dR*dR+dI*dI||1e-9,hR=(nbR*dR+nbI*dI)/den,hI=(nbI*dR-nbR*dI)/den;
   return 10*Math.log10(hR*hR+hI*hI+1e-12);
 }
 const state={
-  selected:new Map(),hidden:new Set(),average:null,avgN:0,target:null,brand:null,
+  selected:new Map(),hidden:new Set(),off:new Map(),average:null,avgN:0,target:null,brand:null,
   adj:{bass:0,bassQ:0.707,bassF:105,treble:0,tilt:0,ear:0},
   normOn:true,normDb:60,normHz:500,smoothN:5,ySpan:30,
   aeq:Object.assign({},CFG.autoEqDefaults),
-  eq:{name:null,filters:[],preamp:0,curve:null},eqShow:true,uploaded:[],remote:[],dbUpdated:null
+  eq:{name:null,filters:[],preamp:0,curve:null},eqShow:true,
+  uploaded:[],remote:[],impTargets:[],
+  zoom:null,inspect:false,label:true,palShift:0,mouse:null,
+  demo:{ctx:null,srcNode:null,playing:false,t0:0,timer:null,songBuf:null},
+  dbUpdated:null
 };
 const targets=new Map(),hpCache=new Map();
 function flatToPairs(p){const out=[];for(let i=0;i+1<p.length;i+=2)out.push([p[i],p[i+1]]);return out;}
@@ -402,7 +464,6 @@ async function loadTargets(){
       if(!u)continue;
       try{const pts=parseTable(await fetchLocal(u));if(pts.length>10){targets.set(t.name,{def:t,raw:resample(pts)});return;}}catch(e){}
     }
-    if(FALLBACK[t.name])targets.set(t.name,{def:t,raw:resample(flatToPairs(FALLBACK[t.name]))});
   }));
   if(!state.target||!targets.has(state.target)){
     const d=CFG.targets.find(t=>t.default&&targets.has(t.name));
@@ -423,34 +484,40 @@ async function loadRemoteDb(){
     if(state.remote.length)toast("База squig.link: "+state.remote.length+" замеров");
   }catch(e){}
 }
+/* Preference adjustments: монотонные полки без резонанса — таргет не может "уехать" */
 function adjCurve(){
   const a=state.adj,out=new Float64Array(GRID.length);
-  if(!a.bass&&!a.treble&&!a.tilt&&!a.ear)return out;
+  const B=clamp(a.bass,-12,12),T=clamp(a.treble,-12,12),E=clamp(a.ear,-12,12),TL=clamp(a.tilt,-3,3);
+  if(!B&&!T&&!E&&!TL)return out;
+  const fc=clamp(a.bassF,30,300);
+  const k=1.2/clamp(a.bassQ,0.3,2);
   for(let i=0;i<GRID.length;i++){
-    const f=GRID[i];let d=0;
-    if(a.bass)d+=biquadDb("ls",a.bassF,a.bassQ,a.bass,f);
-    if(a.treble)d+=biquadDb("hs",10000,0.707,a.treble,f);
-    if(a.ear)d+=biquadDb("pk",2700,0.9,a.ear,f);
-    if(a.tilt)d+=a.tilt*Math.log2(f/1000);
+    const f=GRID[i];
+    let d=0;
+    d+=B*0.5*(1-Math.tanh(k*Math.log2(f/fc)));
+    d+=T*0.5*(1+Math.tanh(k*Math.log2(f/10000)));
+    d+=E*Math.exp(-Math.pow(Math.log2(f/2700)/1.1,2));
+    d+=TL*Math.log2(f/1000);
     out[i]=d;
   }
   return out;
 }
-function targetRaw(){const t=targets.get(state.target);if(!t)return null;return t.def.adjustable?addF(t.raw,adjCurve()):t.raw;}
+function targetRaw(){const t=targets.get(state.target);if(!t)return null;return t.def.adjustable?shift(t.raw,0).map?t.raw.map((v,i)=>v+adjCurve()[i]):t.raw:t.raw;}
 function normalizeOnly(y){if(!state.normOn)return y;return shift(y,state.normDb-anchorVal(y,state.normHz));}
 function process(raw){
   let y=state.smoothN>0?smoothCurve(raw,1/state.smoothN):raw;
   if(state.normOn)y=shift(y,state.normDb-anchorVal(y,state.normHz));
   return y;
 }
-function filterResp(fl,f){
-  if(!fl.on||!fl.g)return 0;
-  if(fl.t==="PK")return fl.g*shape(f,fl.f,fl.q);
-  return biquadDb(fl.t==="LS"?"ls":"hs",fl.f,fl.q,fl.g,f);
-}
 function series(){
   const S=[];
-  for(const[name,s]of state.selected)if(s.raw&&!state.hidden.has(name))S.push({name,color:s.color,y:process(s.raw)});
+  for(const[name,s]of state.selected){
+    if(!s.raw||state.hidden.has(name))continue;
+    let y=process(s.raw);
+    const o=state.off.get(name)||0;
+    if(o)y=shift(y,o);
+    S.push({name,color:s.color,y});
+  }
   if(state.average&&!state.hidden.has("__avg"))S.push({name:"AVERAGE",color:"#ffffff",dash:[5,4],w:2,y:process(state.average)});
   const tr=targetRaw();
   if(tr)S.push({name:state.target,color:css("--target"),dash:[8,5],w:2,y:process(tr)});
@@ -475,7 +542,8 @@ async function doLoadHp(def){
 async function toggleHp(def){
   if(state.selected.has(def.name))state.selected.delete(def.name);
   else{
-    const color=PALETTE[state.selected.size%PALETTE.length];
+    const i=state.selected.size;
+    const color=PALETTE[(i+state.palShift)%PALETTE.length];
     state.selected.set(def.name,{color,raw:null});
     try{state.selected.get(def.name).raw=await loadHp(def);}
     catch(e){state.selected.delete(def.name);toast("Не удалось загрузить: "+def.name);}
@@ -483,7 +551,6 @@ async function toggleHp(def){
   renderEqCurveSelect();recomputeEq();renderModels();updateLegend();draw();
 }
 const XTICKS=[20,30,40,50,60,80,100,150,200,250,300,400,500,600,800,1000,1500,2000,3000,4000,5000,6000,8000,10000,15000,20000];
-const XTICKS_S=[20,50,100,200,500,1000,2000,5000,10000,20000];
 const XMAJ=new Set([20,60,250,500,600,2000,6000,20000]);
 function xlab(f){if(f===20)return"20Hz";if(f===20000)return"20kHz";return f>=1000?(f/1000)+"k":""+f;}
 function draw(){
@@ -495,6 +562,7 @@ function draw(){
   ctx.fillStyle=css("--bg");ctx.fillRect(0,0,W,H);
   const narrow=W<700;
   const m={l:narrow?34:46,r:narrow?8:16,t:narrow?18:26,b:narrow?20:26};
+  const[XF0,XF1]=state.zoom?ZOOMS[state.zoom]:[FMIN,FMAX];
   const S=series();
   const span=clamp(state.ySpan,10,120);
   let lo,hi;
@@ -506,9 +574,9 @@ function draw(){
     const mid=(a+b)/2;lo=mid-span/2;hi=mid+span/2;
   }
   const step=span<=24?2:span<=48?5:10;
-  const X=f=>m.l+(Math.log2(f/FMIN)/Math.log2(FMAX/FMIN))*(W-m.l-m.r);
+  const X=f=>m.l+(Math.log2(f/XF0)/Math.log2(XF1/XF0))*(W-m.l-m.r);
   const Y=v=>m.t+(hi-v)/(hi-lo)*(H-m.t-m.b);
-  const ticks=narrow?XTICKS_S:XTICKS;
+  const ticks=XTICKS.filter(f=>f>=XF0&&f<=XF1);
   for(const f of ticks){
     const x=X(f),maj=narrow?true:XMAJ.has(f);
     ctx.strokeStyle=css("--grid");ctx.lineWidth=1;ctx.globalAlpha=maj?0.9:0.35;
@@ -528,21 +596,46 @@ function draw(){
   for(const s of S){
     ctx.strokeStyle=s.color;ctx.lineWidth=s.w||2;ctx.setLineDash(s.dash||[]);
     ctx.beginPath();
-    for(let i=0;i<GRID.length;i++){const x=X(GRID[i]),y=Y(s.y[i]);if(i)ctx.lineTo(x,y);else ctx.moveTo(x,y);}
+    let started=false;
+    for(let i=0;i<GRID.length;i++){
+      if(GRID[i]<XF0||GRID[i]>XF1){started=false;continue;}
+      const x=X(GRID[i]),y=Y(s.y[i]);
+      if(started)ctx.lineTo(x,y);else{ctx.moveTo(x,y);started=true;}
+    }
     ctx.stroke();
+  }
+  /* Inspect: курсор-крест + показания */
+  if(state.inspect&&state.mouse){
+    const mx=state.mouse.x;
+    if(mx>m.l&&mx<W-m.r){
+      const f=XF0*Math.pow(XF1/XF0,(mx-m.l)/(W-m.l-m.r));
+      let gi=0,bd=1e9;
+      for(let i=0;i<GRID.length;i++){const d=Math.abs(Math.log2(GRID[i]/f));if(d<bd){bd=d;gi=i;}}
+      ctx.strokeStyle=css("--muted");ctx.lineWidth=1;ctx.setLineDash([3,3]);
+      ctx.beginPath();ctx.moveTo(mx,m.t);ctx.lineTo(mx,H-m.b);ctx.stroke();ctx.setLineDash([]);
+      const lines=S.map(s=>({c:s.color,t:s.name+": "+s.y[gi].toFixed(1)+" dB"}));
+      lines.unshift({c:css("--muted"),t:Math.round(f)+" Hz"});
+      const bw=150,bh=lines.length*14+8;
+      let bx=mx+10;if(bx+bw>W-m.r)bx=mx-10-bw;
+      ctx.fillStyle="rgba(0,0,0,0.72)";ctx.fillRect(bx,m.t+6,bw,bh);
+      ctx.font="10px ui-monospace,Menlo,monospace";ctx.textAlign="left";
+      lines.forEach((L,i)=>{ctx.fillStyle=L.c;ctx.fillText(L.t,bx+6,m.t+20+i*14);});
+    }
   }
   ctx.restore();ctx.setLineDash([]);
   ctx.fillStyle="rgba(255,255,255,0.06)";ctx.font=(narrow?"italic 900 40px":"italic 900 84px")+" system-ui";ctx.textAlign="right";
   ctx.fillText("PRIH",W-m.r-8,H-m.b-(narrow?10:16));
-  const leg=[];
-  if(targetRaw())leg.push({c:css("--target"),t:state.target+" Target"});
-  for(const[name,s]of state.selected)if(s.raw&&!state.hidden.has(name))leg.push({c:s.color,t:name});
-  if(state.average&&!state.hidden.has("__avg"))leg.push({c:"#ffffff",t:"AVERAGE ("+state.avgN+")"});
-  if(state.eq&&state.eqShow&&state.eq.curve&&!state.hidden.has("__eq"))leg.push({c:css("--eq"),t:"EQ result"});
-  const lstep=narrow?14:18;
-  ctx.font=(narrow?"700 11px":"700 13px")+" system-ui";ctx.textAlign="left";
-  let ly=H-m.b-(narrow?8:14)-(leg.length-1)*lstep;
-  for(const L of leg){ctx.fillStyle=L.c;ctx.fillText(L.t,m.l+(narrow?6:10),ly);ly+=lstep;}
+  if(state.label){
+    const leg=[];
+    if(targetRaw())leg.push({c:css("--target"),t:state.target+" Target"});
+    for(const[name,s]of state.selected)if(s.raw&&!state.hidden.has(name))leg.push({c:s.color,t:name});
+    if(state.average&&!state.hidden.has("__avg"))leg.push({c:"#ffffff",t:"AVERAGE ("+state.avgN+")"});
+    if(state.eq&&state.eqShow&&state.eq.curve&&!state.hidden.has("__eq"))leg.push({c:css("--eq"),t:"EQ result"});
+    const lstep=narrow?14:18;
+    ctx.font=(narrow?"700 11px":"700 13px")+" system-ui";ctx.textAlign="left";
+    let ly=H-m.b-(narrow?8:14)-(leg.length-1)*lstep;
+    for(const L of leg){ctx.fillStyle=L.c;ctx.fillText(L.t,m.l+(narrow?6:10),ly);ly+=lstep;}
+  }
   ctx.fillStyle=css("--muted");ctx.font=(narrow?"8px":"10px")+" ui-monospace,Menlo,monospace";ctx.textAlign="right";
   ctx.fillText("Measured on: IEC 60318-4 (711) · Prih "+BUILD,W-m.r-4,m.t-(narrow?6:9));
   if(!narrow){ctx.save();ctx.translate(12,m.t+18);ctx.rotate(-Math.PI/2);ctx.textAlign="right";ctx.fillText("dB",0,0);ctx.restore();}
@@ -575,35 +668,50 @@ function switchTab(t){
   $("brandList").hidden=t!=="brands";$("modelList").hidden=t!=="models";$("eqPane").hidden=t!=="eq";
   $("search").hidden=t!=="models";
 }
+function allTargetDefs(){return CFG.targets.concat(state.impTargets.map(n=>({name:n,group:"Reference",imported:true})));}
 function buildTargetChips(){
   $("refChips").innerHTML="";$("prefChips").innerHTML="";
-  for(const t of CFG.targets){
+  for(const t of allTargetDefs()){
     const ok=targets.has(t.name);
     const b=document.createElement("button");
     b.className="tchip tgt"+(state.target===t.name?" on":"");
-    b.textContent=t.name;b.disabled=!ok;
+    b.textContent=t.name+(t.imported?" ★":"");b.disabled=!ok;
     b.onclick=()=>{state.target=t.name;buildTargetChips();syncAdj();updateLegend();draw();};
     (t.group==="Preference"?$("prefChips"):$("refChips")).appendChild(b);
   }
 }
+function downloadCurve(name){
+  const s=state.selected.get(name);if(!s||!s.raw)return;
+  let y=process(s.raw);
+  const o=state.off.get(name)||0;
+  if(o)y=shift(y,o);
+  const lines=["freq,dB"];
+  for(let i=0;i<GRID.length;i+=4)lines.push(GRID[i].toFixed(2)+","+y[i].toFixed(3));
+  download(name.replace(/[^\w\d-]+/g,"_")+".csv",lines.join("\n"));
+}
 function updateLegend(){
   const lg=$("legend");lg.innerHTML="";
-  const item=(color,name,src,extra)=>{
+  for(const[name,s]of state.selected){
+    const def=allHps().find(h=>h.name===name);
     const d=document.createElement("div");d.className="litem";
-    d.innerHTML="<span class='sw' style='background:"+color+"'></span><span>"+esc(name)+"</span>"+(src?"<span class='src'>"+esc(src)+"</span>":"");
+    d.innerHTML="<span class='sw' style='background:"+s.color+"'></span><span>"+esc(name)+"</span>"+(def?"<span class='src'>"+esc(def.source||"")+"</span>":"")+
+      "<input class='off' type='number' step='0.5' title='Offset, dB' value='"+(state.off.get(name)||0)+"'>";
+    d.querySelector(".off").onchange=e=>{state.off.set(name,num(e.target,0));draw();};
+    const mk=(txt,fn)=>{const b=document.createElement("button");b.textContent=txt;b.onclick=fn;d.appendChild(b);};
+    mk(state.hidden.has(name)?"🚫":"",()=>{if(state.hidden.has(name))state.hidden.delete(name);else state.hidden.add(name);updateLegend();draw();});
+    mk("⬇",()=>downloadCurve(name));
+    mk("✕",()=>toggleHp(def));
+    lg.appendChild(d);
+  }
+  const item=(color,label,extra)=>{
+    const d=document.createElement("div");d.className="litem";
+    d.innerHTML="<span class='sw' style='background:"+color+"'></span><span>"+esc(label)+"</span>";
     for(const[txt,fn]of(extra||[])){const b=document.createElement("button");b.textContent=txt;b.onclick=fn;d.appendChild(b);}
     lg.appendChild(d);
   };
-  for(const[name,s]of state.selected){
-    const def=allHps().find(h=>h.name===name);
-    item(s.color,name,def?def.source:"",[
-      [state.hidden.has(name)?"🚫":"",()=>{if(state.hidden.has(name))state.hidden.delete(name);else state.hidden.add(name);updateLegend();draw();}],
-      ["✕",()=>toggleHp(def)]
-    ]);
-  }
-  if(state.average)item("#ffffff","AVERAGE ("+state.avgN+")","",[["✕",()=>{state.average=null;updateLegend();draw();}]]);
+  if(state.average)item("#ffffff","AVERAGE ("+state.avgN+")",[["✕",()=>{state.average=null;updateLegend();draw();}]]);
   if(state.target)item(css("--target"),"TARGET: "+state.target);
-  if(state.eq&&state.eq.curve)item(css("--eq"),"EQ result","",[[state.eqShow?"🚫":"",()=>{state.eqShow=!state.eqShow;$("eqShowChk").checked=state.eqShow;updateLegend();draw();}]]);
+  if(state.eq&&state.eq.curve)item(css("--eq"),"EQ result",[[state.eqShow?"🚫":"👁",()=>{state.eqShow=!state.eqShow;$("eqShowChk").checked=state.eqShow;updateLegend();draw();}]]);
 }
 function eqBase(){
   if(!state.eq.name||!state.selected.has(state.eq.name)){
@@ -637,7 +745,7 @@ function renderEqRows(){
     html+="<div class='frow' data-i='"+i+"'>"+
       "<input type='checkbox' class='fon' "+(fl.on?"checked":"")+">"+
       "<select class='ft'>"+["PK","LS","HS"].map(t=>"<option "+(t===fl.t?"selected":"")+">"+t+"</option>").join("")+"</select>"+
-      "<span class='inwrap'><input class='ff' type='number' step='0.1' value='"+fmtF(fl.f)+"'><i>Hz</i></span>"+
+      "<span class='inwrap'><input class='ff' type='number' step='1' value='"+fmtF(fl.f)+"'><i>Hz</i></span>"+
       "<span class='inwrap'><input class='fg' type='number' step='0.1' value='"+r1(fl.g)+"'><i>dB</i></span>"+
       "<input class='fq' type='number' step='0.01' value='"+r2(fl.q)+"'>"+
       "<button class='fx' title='Удалить'>✕</button></div>";
@@ -648,7 +756,7 @@ function renderEqRows(){
 function eqLines(){
   const L=["Preamp: "+state.eq.preamp.toFixed(2)+" dB"];
   state.eq.filters.filter(f=>f.on&&Math.abs(f.g)>=0.05).sort((a,b)=>a.f-b.f)
-    .forEach((fl,i)=>L.push("Filter "+(i+1)+": ON "+fl.t+" Fc "+(fl.f>=100?Math.round(fl.f):r1(fl.f))+" Hz Gain "+r1(fl.g).toFixed(1)+" dB Q "+r2(fl.q).toFixed(2)));
+    .forEach((fl,i)=>L.push("Filter "+(i+1)+": ON "+fl.t+" Fc "+Math.round(fl.f)+" Hz Gain "+r1(fl.g).toFixed(1)+" dB Q "+r2(fl.q).toFixed(2)));
   return L;
 }
 function runAutoEq(){
@@ -670,11 +778,79 @@ function runAutoEq(){
   updateLegend();draw();
   toast("AutoEQ "+BUILD+": фильтров "+fits.length+", pre-amp "+state.eq.preamp.toFixed(1)+" dB");
 }
+function parseEqText(t){
+  const fs=[];let pre=null;
+  const pm=t.match(/Preamp:\s*([-+0-9.]+)/i);if(pm)pre=parseFloat(pm[1]);
+  const re=/Filter\s*\d*\s*:\s*ON\s*([A-Za-z]+)?\s*Fc\s*([0-9.]+)\s*Hz\s*Gain\s*([-+0-9.]+)\s*dB\s*Q\s*([0-9.]+)/gi;
+  let m;
+  while((m=re.exec(t))){
+    const ty=(m[1]||"PK").toUpperCase();
+    fs.push({on:true,t:ty.startsWith("LS")?"LS":ty.startsWith("HS")?"HS":"PK",f:parseFloat(m[2]),g:parseFloat(m[3]),q:Math.max(0.05,parseFloat(m[4]))});
+  }
+  return{fs,pre};
+}
 function download(name,text){
   const b=new Blob([text],{type:"text/plain"});
   const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),5000);
 }
+/* ---------- EQ Demo (WebAudio) ---------- */
+function pinkBuffer(ctx,secs){
+  const sr=ctx.sampleRate,n=Math.floor(sr*secs),buf=ctx.createBuffer(2,n,sr);
+  for(let c=0;c<2;c++){
+    const d=buf.getChannelData(c);
+    let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+    for(let i=0;i<n;i++){
+      const w=Math.random()*2-1;
+      b0=0.99886*b0+w*0.0555179;b1=0.99332*b1+w*0.0750759;b2=0.96900*b2+w*0.1538520;
+      b3=0.86650*b3+w*0.3104856;b4=0.55000*b4+w*0.5329522;b5=-0.7616*b5-w*0.0168980;
+      d[i]=(b0+b1+b2+b3+b4+b5+b6+w*0.5362)*0.11;b6=w*0.115926;
+    }
+  }
+  return buf;
+}
+function demoStop(){
+  const d=state.demo;
+  if(d.timer){clearInterval(d.timer);d.timer=null;}
+  if(d.srcNode){try{d.srcNode.stop();}catch(e){}d.srcNode=null;}
+  d.playing=false;
+  $("btnDemo").textContent="▶ Play";
+  $("demoTime").textContent="00:00";
+}
+async function demoPlay(){
+  const d=state.demo;
+  demoStop();
+  try{
+    const ctx=d.ctx||(d.ctx=new(window.AudioContext||window.webkitAudioContext)());
+    await ctx.resume();
+    let buf;
+    if($("demoSrc").value==="song"){
+      if(!d.songBuf)return toast("Сначала загрузи трек (Upload Song)");
+      buf=d.songBuf;
+    }else buf=pinkBuffer(ctx,4);
+    const src=ctx.createBufferSource();src.buffer=buf;src.loop=true;
+    let node=src;
+    const pre=ctx.createGain();pre.gain.value=Math.pow(10,state.eq.preamp/20);node.connect(pre);node=pre;
+    for(const fl of state.eq.filters){
+      if(!fl.on||!fl.g)continue;
+      const bq=ctx.createBiquadFilter();
+      bq.type=fl.t==="PK"?"peaking":fl.t==="LS"?"lowshelf":"highshelf";
+      bq.frequency.value=clamp(fl.f,20,20000);bq.Q.value=clamp(fl.q,0.05,20);bq.gain.value=fl.g;
+      node.connect(bq);node=bq;
+    }
+    const pan=ctx.createStereoPanner?ctx.createStereoPanner():null;
+    if(pan){pan.pan.value=clamp(num($("balance"),0)/50,-1,1);node.connect(pan);node=pan;}
+    node.connect(ctx.destination);
+    src.start();
+    d.srcNode=src;d.playing=true;d.t0=ctx.currentTime;
+    $("btnDemo").textContent="■ Stop";
+    d.timer=setInterval(()=>{
+      const t=ctx.currentTime-d.t0;
+      $("demoTime").textContent=String(Math.floor(t/60)).padStart(2,"0")+":"+String(Math.floor(t%60)).padStart(2,"0");
+    },500);
+  }catch(e){toast("Demo error: "+e.message);}
+}
+/* ---------- замеры / модалки ---------- */
 function saveUploaded(){try{localStorage.setItem("prih-uploaded",JSON.stringify(state.uploaded.map(u=>({name:u.name,source:u.source,pts:u.pts}))));}catch(e){}}
 function loadUploaded(){
   try{
@@ -735,11 +911,41 @@ async function addMeasurement(){
     state.uploaded.push({name,source,pts:pts.filter((_,i)=>i%Math.max(1,Math.floor(pts.length/400))===0),raw:resample(pts)});
     saveUploaded();
     const def=state.uploaded[state.uploaded.length-1];
-    state.selected.set(def.name,{color:PALETTE[state.selected.size%PALETTE.length],raw:def.raw});
+    state.selected.set(def.name,{color:PALETTE[(state.selected.size+state.palShift)%PALETTE.length],raw:def.raw});
     renderEqCurveSelect();recomputeEq();renderBrands();renderModels();updateLegend();draw();closeModal();
     toast("Замер добавлен: "+name);
   }catch(e){err.textContent="Ошибка: "+e.message+". Если не качается — скачай файл и загрузь с компьютера.";}
 }
+async function importTarget(){
+  const err=$("tErr");err.textContent="";
+  const name=$("tName").value.trim()||("Imported Target "+(state.impTargets.length+1));
+  try{
+    let pts=null;
+    if($("tFile").files[0])pts=parseTable(await $("tFile").files[0].text());
+    else if($("tPaste").value.trim())pts=parseTable($("tPaste").value);
+    else if($("tUrl").value.trim())pts=parseTable(await fetchAny($("tUrl").value.trim()));
+    if(!pts)return err.textContent="Укажи URL, файл или текст";
+    if(pts.length<10)return err.textContent="Мало точек: "+pts.length;
+    targets.set(name,{def:{name,adjustable:true,imported:true},raw:resample(pts)});
+    state.impTargets.push(name);
+    state.target=name;
+    buildTargetChips();syncAdj();updateLegend();draw();
+    $("modalT").hidden=true;
+    toast("Таргет импортирован: "+name);
+  }catch(e){err.textContent="Ошибка: "+e.message;}
+}
+function importEq(){
+  const err=$("eErr");err.textContent="";
+  const txt=$("ePaste").value;
+  if(!txt.trim())return err.textContent="Вставь текст EQ";
+  const{fs}=parseEqText(txt);
+  if(!fs.length)return err.textContent="Не найдено строк Filter N: ON ...";
+  state.eq.filters=fs;
+  renderEqRows();recomputeEq();updateLegend();draw();
+  $("modalE").hidden=true;
+  toast("Импортировано фильтров: "+fs.length);
+}
+/* ---------- верхние кнопки ---------- */
 async function averageAll(){
   if(!allHps().length)return toast("Список замеров пуст");
   const btn=$("btnAvg");btn.disabled=true;
@@ -756,7 +962,7 @@ function screenshot(){
   $("graph").toBlob(b=>{const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="prih-playground.png";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);});
 }
 function hashFromState(){
-  return"#"+encodeURIComponent(JSON.stringify({v:12,sel:[...state.selected.keys()],tgt:state.target,adj:state.adj,nrm:state.normOn,ndb:state.normDb,nhz:state.normHz,sm:state.smoothN,ys:state.ySpan,aeq:state.aeq}));
+  return"#"+encodeURIComponent(JSON.stringify({v:14,sel:[...state.selected.keys()],tgt:state.target,adj:state.adj,nrm:state.normOn,ndb:state.normDb,nhz:state.normHz,sm:state.smoothN,ys:state.ySpan,aeq:state.aeq,zoom:state.zoom}));
 }
 async function copyUrl(){
   const u=location.origin+location.pathname+hashFromState();
@@ -774,7 +980,8 @@ function restore(){
   if(Number.isFinite(s.sm))state.smoothN=s.sm;
   if(Number.isFinite(s.ys))state.ySpan=s.ys;
   if(s.aeq)state.aeq=Object.assign(state.aeq,s.aeq);
-  syncInputs();buildTargetChips();syncAdj();
+  if(s.zoom&&ZOOMS[s.zoom])state.zoom=s.zoom;
+  syncInputs();buildTargetChips();syncAdj();syncZoom();
   (s.sel||[]).forEach(nm=>{const def=allHps().find(h=>h.name===nm);if(def)toggleHp(def);});
   draw();
 }
@@ -785,12 +992,19 @@ function syncAdj(){
   $("adjBass").value=state.adj.bass;$("adjBassQ").value=state.adj.bassQ;$("adjBassF").value=state.adj.bassF;
   $("adjTreble").value=state.adj.treble;$("adjTilt").value=state.adj.tilt;$("adjEar").value=state.adj.ear;
 }
+function syncZoom(){
+  $("zBass").classList.toggle("on",state.zoom==="bass");
+  $("zMids").classList.toggle("on",state.zoom==="mids");
+  $("zTreble").classList.toggle("on",state.zoom==="treble");
+}
 function syncInputs(){
   $("ySpan").value=state.ySpan;$("normDb").value=state.normDb;$("normHz").value=state.normHz;
   $("normOn").classList.toggle("on",state.normOn);$("smoothN").value=state.smoothN;
   $("aeFmin").value=state.aeq.fmin;$("aeFmax").value=state.aeq.fmax;
   $("aeGmin").value=state.aeq.gmin;$("aeGmax").value=state.aeq.gmax;$("aeQmin").value=state.aeq.qmin;$("aeQmax").value=state.aeq.qmax;
-  syncAdj();
+  syncAdj();syncZoom();
+  $("btnLabel").classList.toggle("on",state.label);
+  $("btnInspect").classList.toggle("on",state.inspect);
 }
 function wrapDetails(hostEl,summaryText,flex){
   const d=document.createElement("details");d.className=flex?"gdet":"adjdet";
@@ -816,13 +1030,34 @@ async function init(){
   $("normDb").onchange=e=>{state.normDb=num(e.target,60);draw();};
   $("normHz").onchange=e=>{state.normHz=clamp(num(e.target,500),20,20000);draw();};
   $("smoothN").onchange=e=>{state.smoothN=clamp(num(e.target,5),0,48);draw();};
+  const setZoom=z=>{state.zoom=state.zoom===z?null:z;syncZoom();draw();};
+  $("zBass").onclick=()=>setZoom("bass");
+  $("zMids").onclick=()=>setZoom("mids");
+  $("zTreble").onclick=()=>setZoom("treble");
+  $("btnInspect").onclick=()=>{state.inspect=!state.inspect;$("btnInspect").classList.toggle("on",state.inspect);$("graph").classList.toggle("inspect",state.inspect);draw();};
+  $("btnLabel").onclick=()=>{state.label=!state.label;$("btnLabel").classList.toggle("on",state.label);draw();};
+  $("btnRecolor").onclick=()=>{
+    state.palShift=(state.palShift+3)%PALETTE.length;
+    let i=0;
+    for(const[,s]of state.selected){s.color=PALETTE[(i+state.palShift)%PALETTE.length];i++;}
+    updateLegend();draw();
+  };
+  $("btnContrast").onclick=()=>{document.body.classList.toggle("contrast");$("btnContrast").classList.toggle("on");draw();};
+  const cv=$("graph");
+  cv.addEventListener("mousemove",e=>{
+    if(!state.inspect)return;
+    const r=cv.getBoundingClientRect();
+    state.mouse={x:e.clientX-r.left,y:e.clientY-r.top};
+    draw();
+  });
+  cv.addEventListener("mouseleave",()=>{state.mouse=null;if(state.inspect)draw();});
   ["adjBass","adjBassQ","adjBassF","adjTreble","adjTilt","adjEar"].forEach(id=>{$(id).onchange=()=>{
-    state.adj={bass:num($("adjBass"),0),bassQ:Math.max(0.1,num($("adjBassQ"),0.707)),bassF:clamp(num($("adjBassF"),105),20,1000),treble:num($("adjTreble"),0),tilt:num($("adjTilt"),0),ear:num($("adjEar"),0)};
+    state.adj={bass:clamp(num($("adjBass"),0),-12,12),bassQ:clamp(num($("adjBassQ"),0.707),0.3,2),bassF:clamp(num($("adjBassF"),105),30,300),treble:clamp(num($("adjTreble"),0),-12,12),tilt:clamp(num($("adjTilt"),0),-3,3),ear:clamp(num($("adjEar"),0),-12,12)};
     draw();
   };});
   $("adjReset").onclick=()=>{state.adj={bass:0,bassQ:0.707,bassF:105,treble:0,tilt:0,ear:0};syncAdj();draw();};
   ["aeFmin","aeFmax","aeGmin","aeGmax","aeQmin","aeQmax"].forEach(id=>{$(id).onchange=()=>{
-    state.aeq=Object.assign(state.aeq,{fmin:clamp(num($("aeFmin"),20),10,10000),fmax:clamp(num($("aeFmax"),8000),100,20000),gmin:num($("aeGmin"),-12),gmax:num($("aeGmax"),12),qmin:clamp(num($("aeQmin"),0.5),0.05,10),qmax:clamp(num($("aeQmax"),2),0.05,10)});
+    state.aeq=Object.assign(state.aeq,{fmin:clamp(num($("aeFmin"),20),10,10000),fmax:clamp(num($("aeFmax"),8000),100,20000),gmin:num($("aeGmin"),-10),gmax:num($("aeGmax"),6),qmin:clamp(num($("aeQmin"),0.5),0.05,10),qmax:clamp(num($("aeQmax"),1.5),0.05,10)});
   };});
   $("btnEq").onclick=runAutoEq;
   $("eqCurve").onchange=e=>{state.eq.name=e.target.value;recomputeEq();updateLegend();draw();};
@@ -834,7 +1069,7 @@ async function init(){
     else if(c.contains("ft"))fl.t=e.target.value;
     else if(c.contains("ff"))fl.f=clamp(num(e.target,fl.f),0,20000);
     else if(c.contains("fg"))fl.g=clamp(num(e.target,fl.g),-30,30);
-    else if(c.contains("fq"))fl.q=clamp(num(e.target,fl.q),0,20);
+    else if(c.contains("fq"))fl.q=clamp(num(e.target,fl.q),0.05,20);
     else return;
     recomputeEq();draw();
   });
@@ -853,7 +1088,30 @@ async function init(){
   $("btnApo").onclick=()=>{if(!state.eq.filters.length)return toast("Нет фильтров");download("prih-eq-apo.txt",["# Prih EQ Playground "+BUILD,"Device: all"].concat(eqLines()).join("\n"));};
   $("btnWavelet").onclick=()=>{if(!state.eq.filters.length)return toast("Нет фильтров");download("prih-eq-wavelet.txt",eqLines().join("\n"));};
   $("btnCopyEq").onclick=()=>{if(state.eq.filters.length)navigator.clipboard.writeText(eqLines().join("\n")).then(()=>toast("PEQ скопирован"));};
+  $("btnExportEq").onclick=()=>{if(!state.eq.filters.length)return toast("Нет фильтров");download("prih-parametric-eq.txt",eqLines().join("\n"));toast("Parametric EQ экспортирован");};
+  $("btnImportEq").onclick=()=>{$("modalE").hidden=false;};
+  $("eCancel").onclick=()=>{$("modalE").hidden=true;};
+  $("eOk").onclick=async()=>{
+    if($("eFile").files[0])$("ePaste").value=await $("eFile").files[0].text();
+    importEq();
+  };
   $("eqShowChk").onchange=e=>{state.eqShow=e.target.checked;draw();};
+  $("btnDemo").onclick=()=>{if(state.demo.playing)demoStop();else demoPlay();};
+  $("balance").oninput=()=>{if(state.demo.ctx&&state.demo.playing){/* pan применяется при следующем запуске */}};
+  $("btnUpFR").onclick=()=>{$("modal").hidden=false;};
+  $("btnUpTgt").onclick=()=>{$("modalT").hidden=false;};
+  $("btnUpSong").onclick=()=>{$("songFile").click();};
+  $("songFile").onchange=async e=>{
+    const f=e.target.files[0];if(!f)return;
+    try{
+      const ctx=state.demo.ctx||(state.demo.ctx=new(window.AudioContext||window.webkitAudioContext)());
+      state.demo.songBuf=await ctx.decodeAudioData(await f.arrayBuffer());
+      $("demoSrc").value="song";
+      toast("Трек загружен: "+f.name);
+    }catch(err){toast("Не удалось декодировать аудио");}
+  };
+  $("tCancel").onclick=()=>{$("modalT").hidden=true;};
+  $("tOk").onclick=importTarget;
   $("btnAvg").onclick=averageAll;$("btnShot").onclick=screenshot;$("btnUrl").onclick=copyUrl;
   $("btnTheme").onclick=()=>{document.body.classList.toggle("light");localStorage.setItem("prih-theme",document.body.classList.contains("light")?"light":"dark");draw();};
   $("btnAdd").onclick=()=>{$("modal").hidden=false;};
@@ -864,8 +1122,8 @@ async function init(){
   $("mUrl").addEventListener("input",queuePreview);
   $("mUrlL").addEventListener("input",queuePreview);
   $("mUrlR").addEventListener("input",queuePreview);
-  $("modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal();});
-  document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal();});
+  for(const mid of["modal","modalT","modalE"])$(mid).addEventListener("click",e=>{if(e.target.id===mid)$(mid).hidden=true;});
+  document.addEventListener("keydown",e=>{if(e.key==="Escape"){$("modal").hidden=true;$("modalT").hidden=true;$("modalE").hidden=true;}});
   if(matchMedia("(max-width:900px)").matches){
     wrapDetails($("toolbar"),"Graph settings",true);
     $("adjRow").appendChild($("adjNote"));

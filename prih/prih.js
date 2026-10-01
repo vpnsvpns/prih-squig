@@ -1,5 +1,11 @@
 "use strict";
-const CFG=window.CONFIG;
+/* Красный бар ошибок: если что-то упадёт — будет виден текст, а не чёрный экран */
+window.addEventListener("error",e=>{
+  const b=document.getElementById("errbar");if(!b)return;
+  b.style.display="block";
+  b.textContent="JS ERROR: "+(e.message||e)+" @ "+((e.filename||"").split("/").pop()||"?")+":"+(e.lineno||"?");
+});
+const CFG=window.CONFIG||{targets:[],hps:[],normRange:[500,2000],autoEqDefaults:{}};
 const NR=CFG.normRange||[500,2000];
 const PALETTE=["#38c5f4","#ff8a65","#aed581","#ba68c8","#ffd54f","#4db6ac","#f06292","#7986cb","#a1887f","#e57373"];
 const FMIN=20,FMAX=20000,SPO=96;
@@ -59,38 +65,63 @@ function shift(y,d){const o=new Float64Array(y.length);for(let i=0;i<y.length;i+
 function averageCurves(list){const o=new Float64Array(GRID.length);for(const y of list)for(let i=0;i<GRID.length;i++)o[i]+=y[i];for(let i=0;i<GRID.length;i++)o[i]/=list.length;return o;}
 function shape(f,f0,q){const x=f/f0-f0/f;return 1/(1+(q*x)*(q*x));}
 function anchorVal(y,f){let s=0,n=0;const lo=f/1.06,hi=f*1.06;for(let i=0;i<GRID.length;i++)if(GRID[i]>=lo&&GRID[i]<=hi){s+=y[i];n++;}return n?s/n:y[0];}
+function addF(a,b){const o=new Float64Array(a.length);for(let i=0;i<a.length;i++)o[i]=a[i]+b[i];return o;}
 function biquadDb(type,f0,Q,gain,f){
-  const w0=2*Math.PI*clamp(f0,10,23000)/48000,w=2*Math.PI*clamp(f,10,23500)/48000;
-  const A=Math.pow(10,(gain||0)/40),cw=Math.cos(w0),sw=Math.sin(w0),alpha=sw/(2*Math.max(Q,0.05));
+  const fs=48000,w0=2*Math.PI*clamp(f0,10,23000)/fs,w=2*Math.PI*clamp(f,10,23500)/fs;
+  const A=Math.pow(10,(gain||0)/40),cw=Math.cos(w0),sw=Math.sin(w0),al=sw/(2*Math.max(Q,0.05)),sA=Math.sqrt(A);
   let b0,b1,b2,a0,a1,a2;
-  if(type==="ls"){b0=A*((A+1)+(A-1)*cw+2*Math.sqrt(A)*alpha);b1=2*A*((A-1)+(A+1)*cw);b2=A*((A+1)+(A-1)*cw-2*Math.sqrt(A)*alpha);a0=(A+1)+(A-1)*cw+2*Math.sqrt(A)*alpha;a1=-2*((A-1)+(A+1)*cw);a2=(A+1)+(A-1)*cw-2*Math.sqrt(A)*alpha);}
-  else if(type==="hs"){b0=A*((A+1)+(A-1)*cw-2*Math.sqrt(A)*alpha);b1=-2*A*((A-1)+(A+1)*cw);b2=A*((A+1)+(A-1)*cw+2*Math.sqrt(A)*alpha);a0=(A+1)+(A-1)*cw-2*Math.sqrt(A)*alpha;a1=2*((A-1)+(A+1)*cw);a2=(A+1)+(A-1)*cw+2*Math.sqrt(A)*alpha);}
-  else{b0=1+alpha*A;b1=-2*cw;b2=1-alpha*A;a0=1+alpha/A;a1=-2*cw;a2=1-alpha/A;}
-  const z1r=Math.cos(w),z1i=-Math.sin(w),NR2=b1*Math.sin(w)+b2*Math.sin(2*w),NB=b0+b1*z1r+b2*Math.cos(2*w),DR=a0+a1*z1r+a2*Math.cos(2*w),DI=a1*Math.sin(w)+a2*Math.sin(2*w);
-  const den=DR*DR+DI*DI||1e-9,hr=(NB*DR+NR2*DI)/den,hi2=(NR2*DR-NB*DI)/den;
-  return 10*Math.log10(hr*hr+hi2*hi2+1e-12);
+  if(type==="ls"){b0=A*((A+1)+(A-1)*cw+2*sA*al);b1=2*A*((A-1)+(A+1)*cw);b2=A*((A+1)+(A-1)*cw-2*sA*al);a0=(A+1)+(A-1)*cw+2*sA*al;a1=-2*((A-1)+(A+1)*cw);a2=(A+1)+(A-1)*cw-2*sA*al);}
+  else if(type==="hs"){b0=A*((A+1)+(A-1)*cw-2*sA*al);b1=-2*A*((A-1)+(A+1)*cw);b2=A*((A+1)+(A-1)*cw+2*sA*al);a0=(A+1)+(A-1)*cw-2*sA*al;a1=2*((A-1)+(A+1)*cw);a2=(A+1)+(A-1)*cw+2*sA*al;}
+  else{b0=1+al*A;b1=-2*cw;b2=1-al*A;a0=1+al/A;a1=-2*cw;a2=1-al/A;}
+  const c1=Math.cos(w),s1=Math.sin(w),c2=Math.cos(2*w),s2=Math.sin(2*w);
+  const nbR=b0+b1*c1+b2*c2,nbI=-(b1*s1+b2*s2),dR=a0+a1*c1+a2*c2,dI=-(a1*s1+a2*s2);
+  const den=dR*dR+dI*dI||1e-9,hR=(nbR*dR+nbI*dI)/den,hI=(nbI*dR-nbR*dI)/den;
+  return 10*Math.log10(hR*hR+hI*hI+1e-12);
 }
 
 const state={
   selected:new Map(),hidden:new Set(),average:null,avgN:0,target:null,brand:null,
   adj:{bass:0,bassQ:0.707,bassF:105,treble:0,tilt:0,ear:0},
   normOn:true,normDb:60,normHz:500,smoothN:5,ySpan:30,
-  aeq:Object.assign({fmin:20,fmax:10000,gmin:-12,gmax:12,qmin:0.5,qmax:2},CFG.autoEqDefaults||{}),
-  eq:{name:null,filters:[],preamp:0,curve:null},eqShow:true,uploaded:[]
+  aeq:Object.assign({fmin:20,fmax:8000,gmin:-12,gmax:12,qmin:0.5,qmax:2},CFG.autoEqDefaults||{}),
+  eq:{name:null,filters:[],preamp:0,curve:null},eqShow:true,uploaded:[],remote:[],dbUpdated:null
 };
 const targets=new Map(),hpCache=new Map();
 
+async function loadOneTarget(t){
+  const urls=[t.file,t.alt].filter(Boolean);
+  for(const u of urls){
+    try{
+      const pts=parseTable(await fetchLocal(u));
+      if(pts.length>10)return pts;
+    }catch(e){}
+  }
+  return null;
+}
 async function loadTargets(){
-  await Promise.allSettled(CFG.targets.map(async t=>{
-    let pts=t.pts;
-    if(pts&&typeof pts[0]==="number"){const p=[];for(let i=0;i<pts.length;i+=2)p.push([pts[i],pts[i+1]]);pts=p;}
-    if(!pts)pts=parseTable(await fetchAny(t.file));
-    if(pts.length>10)targets.set(t.name,{def:t,raw:resample(pts)});
+  await Promise.allSettled((CFG.targets||[]).map(async t=>{
+    const pts=await loadOneTarget(t);
+    if(pts)targets.set(t.name,{def:t,raw:resample(pts)});
   }));
   if(!state.target||!targets.has(state.target)){
-    const d=CFG.targets.find(t=>t.default&&targets.has(t.name));
+    const d=(CFG.targets||[]).find(t=>t.default&&targets.has(t.name));
     state.target=d?d.name:[...targets.keys()][0]||null;
   }
+}
+async function loadRemoteDb(){
+  try{
+    const r=await fetchWithTimeout("data/squig-db.json",8000);
+    if(!r.ok)return;
+    const j=await r.json();
+    for(const rec of (j.hps||[])){
+      const p=rec.pts||[];if(p.length<40)continue;
+      const pairs=[];for(let i=0;i+1<p.length;i+=2)pairs.push([p[i],p[i+1]]);
+      if(pairs.length<20)continue;
+      state.remote.push({name:rec.name,source:rec.src,raw:resample(pairs),remote:true});
+    }
+    state.dbUpdated=(j.meta&&j.meta.updated)||null;
+    if(state.remote.length)toast("База squig.link: "+state.remote.length+" замеров"+(state.dbUpdated?" ("+state.dbUpdated.slice(0,10)+")":""));
+  }catch(e){}
 }
 function adjCurve(){
   const a=state.adj,out=new Float64Array(GRID.length);
@@ -106,7 +137,6 @@ function adjCurve(){
   return out;
 }
 function targetRaw(){const t=targets.get(state.target);if(!t)return null;return t.def.adjustable?addF(t.raw,adjCurve()):t.raw;}
-function addF(a,b){const o=new Float64Array(a.length);for(let i=0;i<a.length;i++)o[i]=a[i]+b[i];return o;}
 function normalizeOnly(y){if(!state.normOn)return y;return shift(y,state.normDb-anchorVal(y,state.normHz));}
 function process(raw){
   let y=state.smoothN>0?smoothCurve(raw,1/state.smoothN):raw;
@@ -128,7 +158,7 @@ function series(){
   return S;
 }
 
-const allHps=()=>CFG.hps.concat(state.uploaded);
+const allHps=()=>(CFG.hps||[]).concat(state.uploaded,state.remote);
 function loadHp(def){
   if(def.raw)return Promise.resolve(def.raw);
   if(!hpCache.has(def.name))hpCache.set(def.name,doLoadHp(def).catch(e=>{hpCache.delete(def.name);throw e;}));
@@ -154,12 +184,13 @@ async function toggleHp(def){
   renderEqCurveSelect();recomputeEq();renderModels();updateLegend();draw();
 }
 
-/* ---------- график ---------- */
+/* ---------- график (оси моно-шрифтом, как на squig.link) ---------- */
 const XTICKS=[20,30,40,50,60,80,100,150,200,250,300,400,500,600,800,1000,1500,2000,3000,4000,5000,6000,8000,10000,15000,20000];
 const XTICKS_S=[20,50,100,200,500,1000,2000,5000,10000,20000];
 const XMAJ=new Set([20,60,250,500,600,2000,6000,20000]);
 function xlab(f){if(f===20)return"20Hz";if(f===20000)return"20kHz";return f>=1000?(f/1000)+"k":""+f;}
 function draw(){
+  try{
   const cv=$("graph"),dpr=devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;
   if(!W||!H)return;
   cv.width=W*dpr;cv.height=H*dpr;
@@ -186,14 +217,14 @@ function draw(){
     ctx.strokeStyle=css("--grid");ctx.lineWidth=1;ctx.globalAlpha=maj?0.9:0.35;
     ctx.beginPath();ctx.moveTo(x,m.t);ctx.lineTo(x,H-m.b);ctx.stroke();ctx.globalAlpha=1;
     ctx.fillStyle=maj?css("--text"):css("--muted");
-    ctx.font=(narrow?"700 8px":(maj?"700 11px":"10px"))+" system-ui";ctx.textAlign="center";
-    ctx.fillText(narrow?xlab(f):xlab(f),x,H-m.b+(narrow?12:15));
+    ctx.font=(narrow?"700 8px":(maj?"700 11px":"10px"))+" ui-monospace,Menlo,monospace";ctx.textAlign="center";
+    ctx.fillText(xlab(f),x,H-m.b+(narrow?12:15));
   }
   for(let v=Math.ceil(lo/step)*step;v<=hi;v+=step){
     const y=Y(v);
     ctx.strokeStyle=css("--grid");ctx.lineWidth=1;ctx.globalAlpha=0.7;
     ctx.beginPath();ctx.moveTo(m.l,y);ctx.lineTo(W-m.r,y);ctx.stroke();ctx.globalAlpha=1;
-    ctx.fillStyle=css("--muted");ctx.font=(narrow?"8px":"10px")+" system-ui";ctx.textAlign="right";
+    ctx.fillStyle=css("--muted");ctx.font=(narrow?"8px":"10px")+" ui-monospace,Menlo,monospace";ctx.textAlign="right";
     ctx.fillText(Math.round(v),m.l-(narrow?4:6),y+3);
   }
   ctx.save();ctx.beginPath();ctx.rect(m.l,m.t,W-m.l-m.r,H-m.t-m.b);ctx.clip();
@@ -204,7 +235,7 @@ function draw(){
     ctx.stroke();
   }
   ctx.restore();ctx.setLineDash([]);
-  ctx.fillStyle="rgba(255,255,255,0.06)";ctx.font=(narrow?"900 44px":"900 84px")+" system-ui";ctx.textAlign="right";
+  ctx.fillStyle="rgba(255,255,255,0.06)";ctx.font=(narrow?"italic 900 40px":"italic 900 84px")+" system-ui";ctx.textAlign="right";
   ctx.fillText("PRIH",W-m.r-8,H-m.b-(narrow?10:16));
   const leg=[];
   if(targetRaw())leg.push({c:css("--target"),t:state.target+" Target"});
@@ -215,9 +246,10 @@ function draw(){
   ctx.font=(narrow?"700 11px":"700 13px")+" system-ui";ctx.textAlign="left";
   let ly=H-m.b-(narrow?8:14)-(leg.length-1)*lstep;
   for(const L of leg){ctx.fillStyle=L.c;ctx.fillText(L.t,m.l+(narrow?6:10),ly);ly+=lstep;}
-  ctx.fillStyle=css("--muted");ctx.font=(narrow?"8px":"10px")+" system-ui";ctx.textAlign="right";
+  ctx.fillStyle=css("--muted");ctx.font=(narrow?"8px":"10px")+" ui-monospace,Menlo,monospace";ctx.textAlign="right";
   ctx.fillText("Measured on: IEC 60318-4 (711) · Prih",W-m.r-4,m.t-(narrow?6:9));
   if(!narrow){ctx.save();ctx.translate(12,m.t+18);ctx.rotate(-Math.PI/2);ctx.textAlign="right";ctx.fillText("dB",0,0);ctx.restore();}
+  }catch(e){const b=$("errbar");if(b){b.style.display="block";b.textContent="DRAW ERROR: "+e.message;}}
 }
 
 /* ---------- списки ---------- */
@@ -234,7 +266,7 @@ function renderModels(){
   const list=allHps().filter(hp=>(state.brand==null||(hp.source||"?")===state.brand)&&(!q||hp.name.toLowerCase().includes(q)));
   $("modelCount").textContent=list.length;
   const box=$("modelList");box.innerHTML="";
-  if(!list.length)box.innerHTML="<div class='muted' style='padding:8px'>Пусто. Добавь замеры в config.js или кнопкой «+ Add measurement»</div>";
+  if(!list.length)box.innerHTML="<div class='muted' style='padding:8px'>Пусто. Замеры появятся из data/squig-db.json (часовой парс) или кнопкой «+ Add measurement»</div>";
   for(const hp of list){
     const sel=state.selected.has(hp.name);
     const d=document.createElement("div");d.className="mrow"+(sel?" sel":"");
@@ -250,7 +282,7 @@ function switchTab(t){
 }
 function buildTargetChips(){
   for(const gid of["refChips","prefChips"])$(gid).innerHTML="";
-  for(const t of CFG.targets){
+  for(const t of (CFG.targets||[])){
     const ok=targets.has(t.name);
     const b=document.createElement("button");
     b.className="tchip tgt"+(state.target===t.name?" on":"");
@@ -327,6 +359,7 @@ function eqLines(){
   return L;
 }
 function runAutoEq(){
+  if(!window.AutoEqFit)return toast("autoeq.js не загружен — положи файл в корень");
   const base=eqBase();
   if(!base)return toast("Сначала выбери наушники");
   const tr=targetRaw();if(!tr)return toast("Таргет недоступен");
@@ -351,7 +384,7 @@ function download(name,text){
 }
 
 /* ---------- свои замеры ---------- */
-function saveUploaded(){try{localStorage.setItem("prih-uploaded",JSON.stringify(state.uploaded.map(u=>({name:u.name,source:u.source,pts:u.pts}))));}catch(e){toast("localStorage переполнен");}}
+function saveUploaded(){try{localStorage.setItem("prih-uploaded",JSON.stringify(state.uploaded.map(u=>({name:u.name,source:u.source,pts:u.pts}))));}catch(e){}}
 function loadUploaded(){
   try{
     const a=JSON.parse(localStorage.getItem("prih-uploaded")||"[]");
@@ -434,7 +467,7 @@ function screenshot(){
   $("graph").toBlob(b=>{const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="prih-playground.png";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);});
 }
 function hashFromState(){
-  return"#"+encodeURIComponent(JSON.stringify({v:9,sel:[...state.selected.keys()],tgt:state.target,adj:state.adj,nrm:state.normOn,ndb:state.normDb,nhz:state.normHz,sm:state.smoothN,ys:state.ySpan,aeq:state.aeq}));
+  return"#"+encodeURIComponent(JSON.stringify({v:10,sel:[...state.selected.keys()],tgt:state.target,adj:state.adj,nrm:state.normOn,ndb:state.normDb,nhz:state.normHz,sm:state.smoothN,ys:state.ySpan,aeq:state.aeq}));
 }
 async function copyUrl(){
   const u=location.origin+location.pathname+hashFromState();
@@ -457,7 +490,7 @@ function restore(){
   draw();
 }
 
-/* ---------- sync / mobile wrappers ---------- */
+/* ---------- sync / mobile ---------- */
 function syncAdj(){
   const t=targets.get(state.target),adj=t&&t.def.adjustable;
   $("adjRow").classList.toggle("disabled",!adj);
@@ -472,14 +505,13 @@ function syncInputs(){
   $("aeGmin").value=state.aeq.gmin;$("aeGmax").value=state.aeq.gmax;$("aeQmin").value=state.aeq.qmin;$("aeQmax").value=state.aeq.qmax;
   syncAdj();
 }
-function wrapDetails(hostEl,summaryText,flex,extra){
+function wrapDetails(hostEl,summaryText,flex){
   const d=document.createElement("details");d.className=flex?"gdet":"adjdet";
   const s=document.createElement("summary");s.textContent=summaryText;d.appendChild(s);
   let inner=d;
   if(flex){inner=document.createElement("div");inner.className="gwrap";d.appendChild(inner);}
   hostEl.parentNode.insertBefore(d,hostEl);
   while(hostEl.firstChild)inner.appendChild(hostEl.firstChild);
-  for(const el of(extra||[]))if(el)inner.appendChild(el);
   hostEl.remove();
   return d;
 }
@@ -488,6 +520,7 @@ function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show")
 
 /* ---------- init ---------- */
 async function init(){
+  try{
   if(localStorage.getItem("prih-theme")==="light")document.body.classList.add("light");
   loadUploaded();
   for(const b of document.querySelectorAll(".tabs button"))b.onclick=()=>switchTab(b.dataset.tab);
@@ -503,7 +536,7 @@ async function init(){
   };
   $("adjReset").onclick=()=>{state.adj={bass:0,bassQ:0.707,bassF:105,treble:0,tilt:0,ear:0};syncAdj();draw();};
   for(const id of["aeFmin","aeFmax","aeGmin","aeGmax","aeQmin","aeQmax"])$(id).onchange=()=>{
-    state.aeq=Object.assign(state.aeq,{fmin:clamp(num($("aeFmin"),20),10,10000),fmax:clamp(num($("aeFmax"),10000),100,20000),gmin:num($("aeGmin"),-12),gmax:num($("aeGmax"),12),qmin:clamp(num($("aeQmin"),0.5),0.05,10),qmax:clamp(num($("aeQmax"),2),0.05,10)});
+    state.aeq=Object.assign(state.aeq,{fmin:clamp(num($("aeFmin"),20),10,10000),fmax:clamp(num($("aeFmax"),8000),100,20000),gmin:num($("aeGmin"),-12),gmax:num($("aeGmax"),12),qmin:clamp(num($("aeQmin"),0.5),0.05,10),qmax:clamp(num($("aeQmax"),2),0.05,10)});
   };
   $("btnEq").onclick=runAutoEq;
   $("eqCurve").onchange=e=>{state.eq.name=e.target.value;recomputeEq();updateLegend();draw();};
@@ -553,7 +586,10 @@ async function init(){
     wrapDetails($("adjRow"),"Preference adjustments",false);
   }
   renderBrands();renderModels();renderEqCurveSelect();renderEqRows();syncInputs();updateLegend();draw();
-  loadTargets().then(()=>{buildTargetChips();syncAdj();updateLegend();draw();restore();});
-  new ResizeObserver(draw).observe($("graphWrap"));
+  await loadTargets();
+  buildTargetChips();syncAdj();updateLegend();draw();restore();
+  loadRemoteDb().then(()=>{renderBrands();renderModels();});
+  new ResizeObserver(()=>draw()).observe($("graphWrap"));
+  }catch(e){const b=$("errbar");if(b){b.style.display="block";b.textContent="INIT ERROR: "+e.message;}}
 }
 init();

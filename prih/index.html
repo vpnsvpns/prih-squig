@@ -9,7 +9,7 @@ window.__prihBootTimer=setTimeout(function(){
   var b=document.getElementById("errbar");
   if(b&&document.getElementById("boot")){
     b.style.display="block";
-    b.textContent="СКРИПТ НЕ СТАРТОВАЛ ЗА 15 c: файл обрезан или кэш. Ctrl+F5.";
+    b.textContent="СКРИПТ НЕ СТАРТОВАЛ ЗА 15 c: файл обрезан при копировании или кэш. Ctrl+F5.";
   }
 },15000);
 window.addEventListener("error",function(e){
@@ -21,8 +21,6 @@ window.addEventListener("error",function(e){
 <style>
 :root{--bg:#1b1a20;--panel:#211f27;--panel2:#2a2831;--line:#3a3742;
 --text:#e8e6ea;--muted:#9b97a4;--target:#c9c2b4;--eq:#d9c223;--grid:#2e2c35}
-body.contrast{--bg:#000;--panel:#0b0b0b;--panel2:#161616;--line:#4a4a4a;
---text:#fff;--muted:#c9c9c9;--target:#fff;--eq:#ffe14a;--grid:#3a3a3a}
 [hidden]{display:none!important}
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -203,9 +201,8 @@ z-index:30}
 <div id="errbar"></div>
 <div id="boot">Prih · загрузка…</div>
 <header id="top">
-  <div class="logo">Prih<span>EQ Playground · 711 · v18</span></div>
+  <div class="logo">Prih<span>EQ Playground · 711 · v19</span></div>
   <div class="topbtns">
-    <button id="btnUrl">Copy URL</button>
     <button id="btnShot">Screenshot</button>
     <button id="btnAvg">Average All</button>
   </div>
@@ -225,12 +222,10 @@ z-index:30}
       <div class="row">
         <button id="btnUpFR">Upload FR</button>
         <button id="btnUpTgt">Upload Target</button>
-        <button id="btnUpSong">Upload Song</button>
       </div>
       <input id="fileFR" type="file" accept=".csv,.txt,text/plain,text/csv" hidden>
       <input id="fileTgt" type="file" accept=".csv,.txt,text/plain,text/csv" hidden>
       <input id="fileEq" type="file" accept=".txt,.cfg,text/plain" hidden>
-      <input id="songFile" type="file" accept="audio/*" hidden>
       <div class="muted">Uploaded data will not be persistent</div>
       <h3>Parametric Equalizer</h3>
       <select id="eqCurve"></select>
@@ -260,10 +255,6 @@ z-index:30}
       </div>
       <h3>EQ Demo</h3>
       <div class="row">
-        <select id="demoSrc" style="width:110px">
-          <option value="pink">Pink Noise</option>
-          <option value="song">Song</option>
-        </select>
         <span id="demoTime" class="muted">00:00</span>
         <button id="btnDemo">▶ Play</button>
       </div>
@@ -291,9 +282,6 @@ z-index:30}
         <button id="zTreble" class="tchip">Treble</button>
       </span>
       <button id="btnInspect" class="tchip">Inspect</button>
-      <button id="btnLabel" class="tchip on">Label</button>
-      <button id="btnRecolor" class="tchip">Recolor</button>
-      <button id="btnContrast" class="tchip">Contrast Mode</button>
     </div>
     <div id="graphWrap"><canvas id="graph"></canvas></div>
     <div id="bands">
@@ -346,9 +334,9 @@ z-index:30}
 
 <script>
 "use strict";
-/* AutoEQ (версия v16 — возвращена по просьбе): greedy по пику ошибки,
-   LS-gain по окну ±0.63 окт, выбор (f,Q) по полной SSE, 3 Q-кандидата,
-   дистанция 1/4 окт, 2 прохода полировки, порог останова 0.2 дБ. */
+/* AutoEQ (ядро v16, проверенное): greedy по пику ошибки, LS-gain по окну
+   ±0.63 окт, выбор (f,Q) по полной SSE, дистанция 1/4 окт, 2 прохода
+   полировки, порог 0.2 дБ. Дефолты squig: -10..6 dB, Q 0.5..1.5, 20..8000. */
 window.AutoEqFit=(function(){
 var clamp=function(v,a,b){return v<a?a:v>b?b:v;};
 var shape=function(f,f0,q){
@@ -493,7 +481,7 @@ return{fit:fit};
 
 <script>
 "use strict";
-var BUILD="v18";
+var BUILD="v19";
 var RE_SPLIT=/[\s,;]+/;
 var RE_ABS=/^https?:\/\//i;
 var RE_ESC=/[&<>"]/g;
@@ -708,27 +696,24 @@ function biquadDb(type,f0,Q,gain,f){
   return 10*Math.log10(hR*hR+hI*hI+1e-12);
 }
 var state={
-  selected:new Map(),hidden:new Set(),off:new Map(),
+  selected:new Map(),hidden:new Set(),off:new Map(),curves:new Map(),
   average:null,avgN:0,target:null,brand:null,
   adj:{bass:0,bassQ:0.707,bassF:105,treble:0,tilt:0,ear:0},
   normOn:true,normDb:60,normHz:500,smoothN:5,ySpan:30,
   aeq:{fmin:20,fmax:8000,gmin:-10,gmax:6,qmin:0.5,qmax:1.5},
   eq:{name:null,filters:[],preamp:0,curve:null},eqShow:true,
   uploaded:[],remote:[],impTargets:[],
-  zoom:null,inspect:false,label:true,palShift:0,mouse:null,
-  demo:{ctx:null,srcNode:null,playing:false,t0:0,timer:null,songBuf:null},
+  zoom:null,inspect:false,palShift:0,mouse:null,
+  demo:{ctx:null,srcNode:null,playing:false,t0:0,timer:null},
   dbUpdated:null
 };
 var targets=new Map(),hpCache=new Map();
 function curveCfg(key){
-  if(!state.curvesHas(key)){
+  if(!state.curves.has(key)){
     state.curves.set(key,{comp:null,smOn:true,smN:null,off:0,pin:false});
   }
   return state.curves.get(key);
 }
-state.curves=new Map();
-function curvesHas(key){return state.curves.has(key);}
-state.curvesHas=curvesHas;
 function flatToPairs(p){
   var out=[],i;
   for(i=0;i+1<p.length;i+=2)out.push([p[i],p[i+1]]);
@@ -1030,33 +1015,32 @@ function draw(){
   ctx.font=(narrow?"italic 900 40px":"italic 900 84px")+" system-ui";
   ctx.textAlign="right";
   ctx.fillText("PRIH",W-m.r-8,H-m.b-(narrow?10:16));
-  if(state.label){
-    var leg=[];
-    if(targetRaw()&&!state.hidden.has("__target")){
-      leg.push({c:css("--target"),t:state.target+" Target"});
-    }
-    state.selected.forEach(function(s,name){
-      if(s.raw&&!state.hidden.has(name)){
-        leg.push({c:s.color,t:name});
-      }
-    });
-    if(state.average&&!state.hidden.has("__avg")){
-      leg.push({c:"#ffffff",t:"AVERAGE ("+state.avgN+")"});
-    }
-    if(state.eq&&state.eqShow&&state.eq.curve&&
-       !state.hidden.has("__eq")){
-      leg.push({c:css("--eq"),t:"EQ result"});
-    }
-    var lstep=narrow?14:18;
-    ctx.font=(narrow?"700 11px":"700 13px")+" system-ui";
-    ctx.textAlign="left";
-    var ly=H-m.b-(narrow?8:14)-(leg.length-1)*lstep;
-    leg.forEach(function(L){
-      ctx.fillStyle=L.c;
-      ctx.fillText(L.t,m.l+(narrow?6:10),ly);
-      ly+=lstep;
-    });
+  /* крупная легенда внутри графика, как на squig.link */
+  var leg=[];
+  if(targetRaw()&&!state.hidden.has("__target")){
+    leg.push({c:css("--target"),t:state.target+" Target"});
   }
+  state.selected.forEach(function(s,name){
+    if(s.raw&&!state.hidden.has(name)){
+      leg.push({c:s.color,t:name});
+    }
+  });
+  if(state.average&&!state.hidden.has("__avg")){
+    leg.push({c:"#ffffff",t:"AVERAGE ("+state.avgN+")"});
+  }
+  if(state.eq&&state.eqShow&&state.eq.curve&&
+     !state.hidden.has("__eq")){
+    leg.push({c:css("--eq"),t:"EQ result"});
+  }
+  var lstep=narrow?16:22;
+  ctx.font=(narrow?"700 12px":"700 16px")+" system-ui";
+  ctx.textAlign="left";
+  var ly=H-m.b-(narrow?10:18)-(leg.length-1)*lstep;
+  leg.forEach(function(L){
+    ctx.fillStyle=L.c;
+    ctx.fillText(L.t,m.l+(narrow?6:12),ly);
+    ly+=lstep;
+  });
   ctx.fillStyle=css("--muted");
   ctx.font=(narrow?"8px":"10px")+" ui-monospace,Menlo,monospace";
   ctx.textAlign="right";
@@ -1414,12 +1398,7 @@ function demoPlay(){
     }
     var ctx=d.ctx;
     ctx.resume();
-    var useSong=$("demoSrc").value==="song";
-    if(useSong&&!d.songBuf){
-      toast("Сначала загрузи трек (Upload Song)");
-      return;
-    }
-    var buf=useSong?d.songBuf:pinkBuffer(ctx,4);
+    var buf=pinkBuffer(ctx,4);
     var src=ctx.createBufferSource();
     src.buffer=buf;src.loop=true;
     var node=src;
@@ -1551,27 +1530,6 @@ function screenshot(){
     setTimeout(function(){URL.revokeObjectURL(a.href);},5000);
   });
 }
-function hashFromState(){
-  var o={v:18,sel:[...state.selected.keys()],tgt:state.target,
-    adj:state.adj,nrm:state.normOn,ndb:state.normDb,
-    nhz:state.normHz,sm:state.smoothN,ys:state.ySpan,
-    aeq:state.aeq,zoom:state.zoom};
-  return"#"+encodeURIComponent(JSON.stringify(o));
-}
-function copyUrl(){
-  var u=location.origin+location.pathname+hashFromState();
-  if(navigator.clipboard&&navigator.clipboard.writeText){
-    navigator.clipboard.writeText(u).then(function(){
-      toast("URL скопирован");
-    },function(){
-      location.hash=hashFromState();
-      toast("Скопируй URL из адресной строки");
-    });
-  }else{
-    location.hash=hashFromState();
-    toast("Скопируй URL из адресной строки");
-  }
-}
 function restore(){
   if(!location.hash||location.hash.length<2)return;
   var s;
@@ -1626,7 +1584,6 @@ function syncInputs(){
   $("aeQmin").value=state.aeq.qmin;
   $("aeQmax").value=state.aeq.qmax;
   syncAdj();syncZoom();
-  $("btnLabel").classList.toggle("on",state.label);
   $("btnInspect").classList.toggle("on",state.inspect);
 }
 function wrapDetails(hostEl,summaryText,flex){
@@ -1692,25 +1649,6 @@ function init(){
     state.inspect=!state.inspect;
     $("btnInspect").classList.toggle("on",state.inspect);
     $("graph").classList.toggle("inspect",state.inspect);
-    draw();
-  };
-  $("btnLabel").onclick=function(){
-    state.label=!state.label;
-    $("btnLabel").classList.toggle("on",state.label);
-    draw();
-  };
-  $("btnRecolor").onclick=function(){
-    state.palShift=(state.palShift+3)%PALETTE.length;
-    var i=0;
-    state.selected.forEach(function(s){
-      s.color=PALETTE[(i+state.palShift)%PALETTE.length];
-      i++;
-    });
-    updateLegend();draw();
-  };
-  $("btnContrast").onclick=function(){
-    document.body.classList.toggle("contrast");
-    $("btnContrast").classList.toggle("on");
     draw();
   };
   var cv=$("graph");
@@ -1872,7 +1810,6 @@ function init(){
   $("btnImportEq").onclick=function(){$("fileEq").click();};
   $("btnUpFR").onclick=function(){$("fileFR").click();};
   $("btnUpTgt").onclick=function(){$("fileTgt").click();};
-  $("btnUpSong").onclick=function(){$("songFile").click();};
   $("fileFR").onchange=function(e){
     if(e.target.files[0])importFRFile(e.target.files[0]);
     e.target.value="";
@@ -1885,30 +1822,22 @@ function init(){
     if(e.target.files[0])importEqFile(e.target.files[0]);
     e.target.value="";
   };
-  $("songFile").onchange=function(e){
-    var f=e.target.files[0];
-    if(!f)return;
-    f.arrayBuffer().then(function(ab){
-      if(!state.demo.ctx){
-        var AC=window.AudioContext||window.webkitAudioContext;
-        state.demo.ctx=new AC();
-      }
-      return state.demo.ctx.decodeAudioData(ab);
-    }).then(function(buf){
-      state.demo.songBuf=buf;
-      $("demoSrc").value="song";
-      toast("Трек загружен: "+f.name);
-    }).catch(function(){
-      toast("Не удалось декодировать аудио");
-    });
-    e.target.value="";
-  };
   $("btnDemo").onclick=function(){
     if(state.demo.playing)demoStop();else demoPlay();
   };
-  $("btnAvg").onclick=averageAll;
-  $("btnShot").onclick=screenshot;
-  $("btnUrl").onclick=copyUrl;
+  $("mCancel").onclick=function(){$("modal").hidden=true;};
+  $("mOk").onclick=addMeasurement;
+  $("mFile").addEventListener("change",doPreview);
+  $("mPaste").addEventListener("input",queuePreview);
+  $("mUrl").addEventListener("input",queuePreview);
+  $("mUrlL").addEventListener("input",queuePreview);
+  $("mUrlR").addEventListener("input",queuePreview);
+  $("modal").addEventListener("click",function(e){
+    if(e.target.id==="modal")$("modal").hidden=true;
+  });
+  document.addEventListener("keydown",function(e){
+    if(e.key==="Escape")$("modal").hidden=true;
+  });
   if(window.matchMedia&&window.matchMedia("(max-width:900px)").matches){
     wrapDetails($("toolbar"),"Graph settings",true);
     $("adjRow").appendChild($("adjNote"));

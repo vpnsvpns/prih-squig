@@ -116,6 +116,8 @@ padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
 letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
 font-family:ui-monospace,Menlo,monospace}
 .tb input{width:52px}
+.tb .unit{padding:3px 8px;background:var(--panel2);
+border:1px solid var(--line);border-radius:5px;color:var(--muted)}
 .tchip{padding:3px 10px;border-radius:5px}
 .tchip.on{background:#fff;color:#111;border-color:#fff;font-weight:700}
 #graphWrap{flex:1;min-height:260px;position:relative}
@@ -135,23 +137,33 @@ color:var(--muted);flex:none}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .tchip.tgt{padding:4px 12px}
 #adjRow label{flex-direction:row;align-items:center;gap:5px}
-#adjRow input{width:64px}
+#adjRow input{width:70px}
+#adjBassQ{width:82px}
 #adjRow.disabled input,#adjRow.disabled button{opacity:.35;
 pointer-events:none}
 #legendRows{display:flex;flex-direction:column;gap:4px;padding:8px 12px;
 background:var(--panel);border-top:1px solid var(--line)}
 .crow{display:grid;align-items:center;gap:6px;font-size:12px;
-grid-template-columns:14px minmax(90px,1.1fr) 76px 54px 96px 24px 24px 44px 26px 26px 26px 22px}
+grid-template-columns:14px minmax(90px,1.1fr) 22px 76px 54px 44px 26px 26px 26px 22px}
 .crow .sw{width:12px;height:12px;border-radius:3px}
-.crow .cname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crow .cname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+display:flex;align-items:center;gap:4px}
 .crow .src{color:var(--muted);font-size:10px}
 .crow canvas.spark{width:72px;height:16px}
 .crow input[type=number]{padding:2px 4px;font-size:11px}
-.crow select{padding:2px 3px;font-size:11px}
 .crow button{padding:1px 4px;border:none;background:none;color:var(--muted);
 font-size:12px;cursor:pointer}
 .crow button:hover{color:var(--text)}
 .crow button.on{color:var(--text);background:var(--panel2);border-radius:4px}
+.chpair{display:flex;flex-direction:column;gap:1px}
+.chpair button{font-size:8px;padding:0 5px;line-height:11px;
+border:1px solid var(--line);border-radius:3px;
+background:var(--panel2);color:var(--muted);cursor:pointer}
+.chpair button.on{background:#fff;color:#111;font-weight:700}
+.exp{font-size:11px;border:1px solid var(--line);border-radius:50%;
+width:16px;height:16px;line-height:14px;padding:0;
+background:var(--panel2);color:var(--muted);cursor:pointer}
+.crow.sub{opacity:.85}
 #modal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;
 align-items:center;justify-content:center;z-index:20}
 #modal .box{width:420px;max-width:92vw;background:var(--panel);
@@ -189,10 +201,11 @@ z-index:30}
  #adjRow{flex-wrap:nowrap;overflow-x:auto;gap:6px}
  #adjRow label{flex:none;white-space:nowrap}
  #adjRow input{width:56px}
+ #adjBassQ{width:64px}
  #legendRows{padding:6px 8px;gap:3px}
- .crow{grid-template-columns:14px 1fr 40px 24px 24px 24px 22px}
- .crow .spark,.crow .ccomp,.crow .csn,.crow .csm,
- .crow .cpin,.crow .ph{display:none}
+ .crow{grid-template-columns:14px 1fr 40px 24px 24px 22px}
+ .crow .spark,.crow .chpair,.crow .cpin,.crow .ph,
+ .crow .cdev{display:none}
  .pane{max-height:none;overflow:visible;padding:0 8px 16px}
  .tabs button{font-size:12px;padding:8px 4px}
  #search{margin:6px 8px}
@@ -209,7 +222,7 @@ z-index:30}
 <div id="errbar"></div>
 <div id="boot">Prih · loading…</div>
 <header id="top">
-  <div class="logo">Prih<span>EQ Playground · 711 · v31</span></div>
+  <div class="logo">Prih<span>EQ Playground · 711 · v34</span></div>
   <div class="topbtns">
     <button id="btnShot">Screenshot</button>
     <button id="btnAvg">Average All</button>
@@ -237,7 +250,7 @@ z-index:30}
       accept=".csv,.txt,text/plain,text/csv" hidden>
       <input id="fileEq" type="file"
       accept=".txt,.cfg,text/plain" hidden>
-      <div class="muted">Uploaded data will not be persistent</div>
+      <div class="muted">Names ending in L / R merge into one AVG entry</div>
       <h3>Parametric Equalizer</h3>
       <select id="eqCurve"></select>
       <div id="eqPreamp" class="preamp">Pre-amp: 0.0 dB</div>
@@ -269,7 +282,7 @@ z-index:30}
         <button id="btnImportEq">Import EQ</button>
         <button id="btnExportEq">Export Parametric EQ</button>
       </div>
-      <div class="muted">Filters are editable; curve and pre-amp update live.</div>
+      <div class="muted">Filters editable; curve and pre-amp update live. EQ always fits the AVG of L+R.</div>
     </div>
   </aside>
   <section id="center">
@@ -277,8 +290,9 @@ z-index:30}
       <label class="tb">Y-AXIS SCALE:<input id="ySpan" type="number" value="30" min="10" max="120" step="5"><span>dB</span></label>
       <label class="tb">NORMALIZE:
         <button id="normOn" class="tchip on">dB</button>
-        <input id="normDb" type="number" value="60"><span>@</span>
-        <input id="normHz" type="number" value="500"><span>Hz</span>
+        <input id="normDb" type="number" value="60">
+        <span class="unit">Hz</span>
+        <input id="normHz" type="number" value="500">
       </label>
       <label class="tb">SMOOTH:<span>1/</span><input id="smoothN" type="number" value="5" min="0" max="48"><span>oct</span></label>
       <span class="tb">ZOOM:
@@ -309,7 +323,7 @@ z-index:30}
     <div id="adjRow">
       <span class="lbl">Preference adjustments:</span>
       <label>Bass (dB)<input id="adjBass" type="number" step="0.5" value="0"></label>
-      <label>Bass Q<input id="adjBassQ" type="number" step="0.001" value="0.707"></label>
+      <label>Bass Q<input id="adjBassQ" type="number" step="0.01" value="0.71"></label>
       <label>Bass F (Hz)<input id="adjBassF" type="number" value="105"></label>
       <label>Treble (dB)<input id="adjTreble" type="number" step="0.5" value="0"></label>
       <label>Tilt (dB/Oct)<input id="adjTilt" type="number" step="0.05" value="0"></label>
@@ -330,6 +344,7 @@ z-index:30}
       <label style="flex:1">URL L<input id="mUrlL" placeholder="...L.csv"></label>
       <label style="flex:1">URL R<input id="mUrlR" placeholder="...R.csv"></label>
     </div>
+    <div class="muted">L+R together = one AVG entry with L/R switch.</div>
     <label>File<input id="mFile" type="file"
     accept=".csv,.txt,text/plain,text/csv"></label>
     <label>Or paste text<textarea id="mPaste" rows="4"
@@ -345,12 +360,10 @@ z-index:30}
 <div id="toast"></div>
 <script>
 "use strict";
-/* AutoEQ v31: coordinate descent with 3-param Nelder-Mead
-   (log2 f, log2 Q, gain) on FULL weighted SSE; greedy seeding by peak;
-   add/remove pass; two deterministic starts; mask zeroes above Fmax.
-   No ternary operators on purpose (copy-safe). */
+/* AutoEQ v31-core: coordinate descent, 3-param Nelder-Mead on FULL
+   weighted SSE; greedy seeding by peak; add/remove; two deterministic
+   starts; mask zeroes everything above Freq max. */
 window.AutoEqFit=(function(){
-function T(c,a,b){if(c){return a;}return b;}
 function clamp(v,a,b){
   if(v<a){return a;}
   if(v>b){return b;}
@@ -477,16 +490,16 @@ function clampCand(x,o){
     g:clamp(x[2],o.gmin,o.gmax)
   };
 }
-function seedFit(e,f,o,W,bi,iters){
+function seedFit(e,f,o,W,bi){
   var F=makeF(e,f,W,o);
   var x0=[
     Math.log2(clamp(f[bi],o.fmin,o.fmax)),
     Math.log2(clamp(1,o.qmin,o.qmax)),
     -e[bi]
   ];
-  return clampCand(nm3(F,x0,iters),o);
+  return clampCand(nm3(F,x0,120),o);
 }
-function refine(e0,f,fs,k,o,W,iters){
+function refine(e0,f,fs,k,o,W){
   var ew=residWithout(e0,f,fs,k);
   var F=makeF(ew,f,W,o);
   var cur=fs[k];
@@ -495,7 +508,7 @@ function refine(e0,f,fs,k,o,W,iters){
     Math.log2(clamp(cur.q,o.qmin,o.qmax)),
     cur.g
   ];
-  var cand=clampCand(nm3(F,x0,iters),o);
+  var cand=clampCand(nm3(F,x0,90),o);
   var trial=fs.slice();
   trial[k]=cand;
   if(fullSSE(e0,f,trial,W)<fullSSE(e0,f,fs,W)-1e-9){
@@ -507,12 +520,12 @@ function refine(e0,f,fs,k,o,W,iters){
 function tick(){
   return new Promise(function(r){setTimeout(r,0);});
 }
-async function rounds(e0,f,fs,o,W,tEnd,iters,maxG){
+async function rounds(e0,f,fs,o,W,tEnd,maxG){
   var guard=0,changed=true,k;
   while(changed&&guard<maxG&&performance.now()<tEnd){
     changed=false;
     for(k=0;k<fs.length;k++){
-      if(refine(e0,f,fs,k,o,W,iters)){changed=true;}
+      if(refine(e0,f,fs,k,o,W)){changed=true;}
     }
     guard++;
     await tick();
@@ -528,7 +541,7 @@ function greedySeed(e0,f,o,W,count,tEnd){
       if(av>bv){bv=av;bi=i;}
     }
     if(bi<0||bv<0.15){break;}
-    var cand=seedFit(e,f,o,W,bi,120);
+    var cand=seedFit(e,f,o,W,bi);
     if(Math.abs(cand.g)<0.05){break;}
     var before=0,after=0;
     for(i=0;i<e.length;i++){
@@ -572,7 +585,7 @@ function pruneAdd(e0,f,fs,o,W,tEnd){
       if(av>bv){bv=av;bi=i;}
     }
     if(bi<0||bv<0.15){break;}
-    var cand=seedFit(e,f,o,W,bi,120);
+    var cand=seedFit(e,f,o,W,bi);
     if(Math.abs(cand.g)<0.05){break;}
     if(fullSSE(e0,f,fs.concat([cand]),W)>=
        fullSSE(e0,f,fs,W)-1e-9){break;}
@@ -610,8 +623,7 @@ async function fitAsync(eFull,fFull,o,onProg){
   var e0=idx.map(function(k){return eFull[k];});
   var W=f.map(function(ff){return maskW(ff,o.fmax);});
   var t0=performance.now();
-  var BUDGET=o.budget||12000;
-  var tEnd=t0+BUDGET;
+  var tEnd=t0+(o.budget||12000);
   var starts=[
     greedySeed(e0,f,o,W,o.count,tEnd),
     logSeed(o,o.count)
@@ -619,9 +631,9 @@ async function fitAsync(eFull,fFull,o,onProg){
   var best=null,si;
   for(si=0;si<starts.length;si++){
     var fs=starts[si];
-    fs=await rounds(e0,f,fs,o,W,tEnd,140,6);
+    fs=await rounds(e0,f,fs,o,W,tEnd,6);
     fs=pruneAdd(e0,f,fs,o,W,tEnd);
-    fs=await rounds(e0,f,fs,o,W,tEnd,90,4);
+    fs=await rounds(e0,f,fs,o,W,tEnd,4);
     var sc=fullSSE(e0,f,fs,W);
     if(!best||sc<best.sc-1e-9){best={fs:fs,sc:sc};}
     if(onProg){
@@ -642,7 +654,7 @@ return{fitAsync:fitAsync,mask:maskW};
 </script>
 <script>
 "use strict";
-var BUILD="v31";
+var BUILD="v34";
 function T(c,a,b){if(c){return a;}return b;}
 var RE_SPLIT=/[\s,;]+/;
 var RE_ABS=/^https?:\/\//i;
@@ -659,6 +671,9 @@ var RE_FILTER=new RegExp(
   "Gain\\s*([-+0-9.]+)\\s*dB\\s*"+
   "Q\\s*([0-9.]+)","gi");
 var RE_SAN=new RegExp("[^\\w\\d-]+","g");
+var RE_CH=new RegExp("[\\s_\\-.(]+([LR])\\)?$/i");
+var SUF_L=" (L)";
+var SUF_R=" (R)";
 var CFG={
   name:"Prih",normRange:[500,2000],
   autoEqDefaults:{fmin:20,fmax:8000,gmin:-10,gmax:6,qmin:0.5,qmax:1.5},
@@ -877,8 +892,9 @@ function biquadDb(type,f0,Q,gain,f){
 }
 var state={
   selected:new Map(),hidden:new Set(),curves:new Map(),
+  chMode:new Map(),expanded:new Set(),
   target:null,brand:null,
-  adj:{bass:0,bassQ:0.707,bassF:105,treble:0,tilt:0,ear:0},
+  adj:{bass:0,bassQ:0.71,bassF:105,treble:0,tilt:0,ear:0},
   normOn:true,normDb:60,normHz:500,smoothN:5,ySpan:30,
   aeq:{fmin:20,fmax:8000,gmin:-10,gmax:6,qmin:0.5,qmax:1.5},
   eq:{name:null,filters:[],preamp:0,curve:null},
@@ -890,8 +906,7 @@ var state={
 var targets=new Map(),hpCache=new Map();
 function curveCfg(key){
   if(!state.curves.has(key)){
-    state.curves.set(key,{
-      comp:null,smOn:false,smN:null,off:0,pin:false});
+    state.curves.set(key,{off:0,pin:false});
   }
   return state.curves.get(key);
 }
@@ -919,6 +934,27 @@ var FALLBACK_HARMAN=[
 8127.49339,3.32921,9122.80287,1.21727,10240,-1.25957,
 11494.01137,-3.68367,12901.59155,-5.99103,14481.54688,-8.09968,
 16254.98677,-10.65092,18245.60575,-15.25816,20186.38231,-20.68071];
+/* --- channel helpers: name "... L" / "... (R)" -> base + ch --- */
+function channelOf(name){
+  var m=name.match(RE_CH);
+  if(m){
+    var base=name.slice(0,name.length-m[0].length).trim();
+    if(base){
+      return{base:base,ch:m[1].toUpperCase()};
+    }
+  }
+  return{base:name,ch:null};
+}
+function allHps(){return CFG.hps.concat(state.uploaded,state.remote);}
+function findUploaded(base){
+  var lb=base.toLowerCase(),i;
+  for(i=0;i<state.uploaded.length;i++){
+    if(state.uploaded[i].name.toLowerCase()===lb){
+      return state.uploaded[i];
+    }
+  }
+  return null;
+}
 function nameTaken(x){
   if(targets.has(x)){return true;}
   var all=allHps(),i;
@@ -934,6 +970,93 @@ function uniqueName(base){
     i++;
   }
   return n;
+}
+function decim(pts){
+  return pts.filter(function(_,i){
+    var st=Math.max(1,Math.floor(pts.length/400));
+    return i%st===0;
+  });
+}
+function recomputeAvg(def){
+  if(def.rawL&&def.rawR){
+    def.raw=averageCurves([def.rawL,def.rawR]);
+  }else if(def.rawL){
+    def.raw=def.rawL;
+  }else if(def.rawR){
+    def.raw=def.rawR;
+  }
+}
+function syncSelected(def){
+  var s=state.selected.get(def.name);
+  if(s){
+    s.raw=def.raw;
+    s.rawL=def.rawL||null;
+    s.rawR=def.rawR||null;
+  }
+}
+function allocColors(){
+  var i=state.selected.size+state.palShift;
+  return{
+    color:PALETTE[i%PALETTE.length],
+    colorR:PALETTE[(i+1)%PALETTE.length]};
+}
+/* add or merge one channel (ch = "L"/"R"/null) */
+function addChannelled(base,ch,pts,source){
+  var raw=resample(pts);
+  var existing=findUploaded(base);
+  if(existing){
+    if(ch==="L"){existing.rawL=raw;existing.ptsL=decim(pts);}
+    else if(ch==="R"){existing.rawR=raw;existing.ptsR=decim(pts);}
+    else{existing.raw=raw;existing.pts=decim(pts);}
+    recomputeAvg(existing);
+    syncSelected(existing);
+    saveUploaded();
+    afterSelChange();
+    if(existing.rawL&&existing.rawR){
+      toast("Channels merged: "+existing.name);
+    }else{
+      toast("Channel "+ch+" added: "+existing.name);
+    }
+    return existing.name;
+  }
+  var uname=uniqueName(base);
+  var def={name:uname,source:source,
+    pts:decim(pts),raw:raw};
+  if(ch==="L"){def.rawL=raw;def.ptsL=def.pts;}
+  if(ch==="R"){def.rawR=raw;def.ptsR=def.pts;}
+  state.uploaded.push(def);
+  saveUploaded();
+  var cols=allocColors();
+  state.selected.set(uname,{
+    color:cols.color,colorR:cols.colorR,
+    raw:def.raw,rawL:def.rawL||null,rawR:def.rawR||null});
+  afterSelChange();
+  toast("Measurement added: "+uname);
+  return uname;
+}
+function pushUploadedPair(name,source,ptsL,ptsR){
+  var uname=uniqueName(name);
+  var rawL=resample(ptsL),rawR=resample(ptsR);
+  var def={name:uname,source:source,
+    pts:decim(mergeLRpts(ptsL,ptsR)),
+    raw:averageCurves([rawL,rawR]),
+    ptsL:decim(ptsL),ptsR:decim(ptsR),
+    rawL:rawL,rawR:rawR};
+  state.uploaded.push(def);
+  saveUploaded();
+  var cols=allocColors();
+  state.selected.set(uname,{
+    color:cols.color,colorR:cols.colorR,
+    raw:def.raw,rawL:rawL,rawR:rawR});
+  return uname;
+}
+function mergeLRpts(L,R){
+  var la=resample(L),lb=resample(R);
+  var pts=[],j;
+  for(j=0;j<GRID.length;j++){
+    pts.push([GRID[j],(la[j]+lb[j])/2]);
+  }
+  return pts;
 }
 function loadTargets(){
   var jobs=CFG.targets.map(function(t){
@@ -1017,16 +1140,9 @@ function normalizeOnly(y){
   if(!state.normOn){return y;}
   return shift(y,state.normDb-anchorVal(y,state.normHz));
 }
-function processCurve(raw,cfg){
+function processCurve(raw,cfg,isTarget){
   var y=raw;
-  if(cfg&&cfg.comp&&targets.has(cfg.comp)){
-    y=minusF(y,targets.get(cfg.comp).raw);
-  }
-  var n=0;
-  if(cfg&&cfg.smOn){
-    if(cfg.smN!=null){n=cfg.smN;}
-    else{n=state.smoothN;}
-  }
+  var n=isTarget?0:state.smoothN;
   if(n>0){y=smoothCurve(y,1/n);}
   if(state.normOn){
     y=shift(y,state.normDb-anchorVal(y,state.normHz));
@@ -1034,12 +1150,12 @@ function processCurve(raw,cfg){
   if(cfg&&cfg.off){y=shift(y,cfg.off);}
   return y;
 }
-function displayedY(raw,cfg){
-  var y=processCurve(raw,cfg);
+function displayedY(raw,cfg,isTarget){
+  var y=processCurve(raw,cfg,isTarget);
   if(state.devMode){
     var tr=targetRaw();
     if(tr){
-      y=minusF(y,processCurve(tr,curveCfg("__target")));
+      y=minusF(y,processCurve(tr,curveCfg("__target"),1));
     }
   }
   return y;
@@ -1055,13 +1171,33 @@ function hasActiveEq(){
     return f.on&&Math.abs(f.g)>=0.05;
   });
 }
+function channelRaw(s,name){
+  var mode=state.chMode.get(name)||"avg";
+  if(mode==="L"&&s.rawL){return s.rawL;}
+  if(mode==="R"&&s.rawR){return s.rawR;}
+  return s.raw;
+}
 function series(){
   var S=[];
   state.selected.forEach(function(s,name){
-    if(!s.raw||state.hidden.has(name)){return;}
+    if(!s.raw){return;}
     var cfg=curveCfg(name);
+    if(state.expanded.has(name)&&s.rawL&&s.rawR){
+      if(!state.hidden.has(name+SUF_L)){
+        S.push({name:name+SUF_L,color:s.color,w:2,
+          pin:curveCfg(name+SUF_L).pin,
+          y:displayedY(s.rawL,curveCfg(name+SUF_L),0)});
+      }
+      if(!state.hidden.has(name+SUF_R)){
+        S.push({name:name+SUF_R,color:s.colorR,w:2,
+          pin:curveCfg(name+SUF_R).pin,
+          y:displayedY(s.rawR,curveCfg(name+SUF_R),0)});
+      }
+      return;
+    }
+    if(state.hidden.has(name)){return;}
     S.push({name:name,color:s.color,pin:cfg.pin,
-      y:displayedY(s.raw,cfg)});
+      y:displayedY(channelRaw(s,name),cfg,0)});
   });
   var tr=targetRaw();
   if(tr&&!state.hidden.has("__target")){
@@ -1070,7 +1206,7 @@ function series(){
     if(state.devMode){
       ty=new Float64Array(GRID.length);
     }else{
-      ty=processCurve(tr,ct);
+      ty=processCurve(tr,ct,1);
     }
     S.push({name:state.target,color:css("--target"),
       dash:[6,4],w:2,pin:ct.pin,y:ty});
@@ -1078,12 +1214,11 @@ function series(){
   if(hasActiveEq()&&!state.hidden.has("__eq")){
     S.push({name:"EQ result",color:css("--eq"),w:2,
       pin:curveCfg("__eq").pin,
-      y:displayedY(state.eq.curve,curveCfg("__eq"))});
+      y:displayedY(state.eq.curve,curveCfg("__eq"),0)});
   }
   S.sort(function(a,b){return(a.pin?1:0)-(b.pin?1:0);});
   return S;
 }
-function allHps(){return CFG.hps.concat(state.uploaded,state.remote);}
 function loadHp(def){
   if(def.raw){return Promise.resolve(def.raw);}
   if(!hpCache.has(def.name)){
@@ -1124,21 +1259,52 @@ function toggleHp(def){
   if(!def){return;}
   if(state.selected.has(def.name)){
     state.selected.delete(def.name);
+    state.expanded.delete(def.name);
     afterSelChange();
     return;
   }
-  var idx=state.selected.size+state.palShift;
-  var color=PALETTE[idx%PALETTE.length];
-  state.selected.set(def.name,{color:color,raw:null});
+  var cols=allocColors();
+  state.selected.set(def.name,{
+    color:cols.color,colorR:cols.colorR,
+    raw:null,rawL:null,rawR:null});
   loadHp(def).then(function(raw){
     var s=state.selected.get(def.name);
     if(s){s.raw=raw;}
-    afterSelChange();
+    return loadHpChannels(def).then(function(ch){
+      var s2=state.selected.get(def.name);
+      if(s2&&ch){
+        s2.rawL=ch.L;
+        s2.rawR=ch.R;
+        if(!s2.raw&&ch.L&&ch.R){
+          s2.raw=averageCurves([ch.L,ch.R]);
+        }
+      }
+      afterSelChange();
+    });
   }).catch(function(){
     state.selected.delete(def.name);
     toast("Load failed: "+def.name);
     afterSelChange();
   });
+}
+function loadHpChannels(def){
+  function one(u){
+    return fetchAny(u).then(function(t){
+      return resample(parseTable(t));
+    });
+  }
+  if(def.rawL&&def.rawR){
+    return Promise.resolve({L:def.rawL,R:def.rawR});
+  }
+  if(def.urlL&&def.urlR){
+    return Promise.all([one(def.urlL),one(def.urlR)])
+      .then(function(p){return{L:p[0],R:p[1]};});
+  }
+  if(def.L&&def.R){
+    return Promise.all([one(def.L),one(def.R)])
+      .then(function(p){return{L:p[0],R:p[1]};});
+  }
+  return Promise.resolve(null);
 }
 var XTICKS=[20,30,40,50,60,80,100,150,200,250,300,400,
 500,600,800,1000,1500,2000,3000,4000,5000,6000,8000,
@@ -1301,8 +1467,22 @@ function draw(){
     leg.push({c:css("--target"),t:state.target+" Target"});
   }
   state.selected.forEach(function(s,name){
-    if(s.raw&&!state.hidden.has(name)){
-      leg.push({c:s.color,t:name});
+    if(!s.raw){return;}
+    if(state.expanded.has(name)&&s.rawL&&s.rawR){
+      if(!state.hidden.has(name+SUF_L)){
+        leg.push({c:s.color,t:name+SUF_L});
+      }
+      if(!state.hidden.has(name+SUF_R)){
+        leg.push({c:s.colorR,t:name+SUF_R});
+      }
+      return;
+    }
+    if(!state.hidden.has(name)){
+      var mode=state.chMode.get(name)||"avg";
+      var suf="";
+      if(mode==="L"&&s.rawL){suf=" (L only)";}
+      if(mode==="R"&&s.rawR){suf=" (R only)";}
+      leg.push({c:s.color,t:name+suf});
     }
   });
   if(hasActiveEq()&&!state.hidden.has("__eq")){
@@ -1407,7 +1587,9 @@ function renderModels(){
     var sel=state.selected.has(hp.name);
     var d=document.createElement("div");
     d.className="mrow"+T(sel," sel","");
-    d.innerHTML="<span class='nm'>"+esc(hp.name)+
+    var tag="";
+    if(hp.rawL&&hp.rawR){tag=" <span class='src'>L+R</span>";}
+    d.innerHTML="<span class='nm'>"+esc(hp.name)+tag+
       "</span><span class='src'>"+esc(hp.source||"")+
       "</span><button class='add'>"+T(sel,"-","+")+
       "</button>";
@@ -1464,13 +1646,27 @@ function download(name,text){
 function curveYByKey(key){
   if(key==="__target"){
     if(state.devMode){return new Float64Array(GRID.length);}
-    return processCurve(targetRaw(),curveCfg(key));
+    return processCurve(targetRaw(),curveCfg(key),1);
   }
   if(key==="__eq"){
-    return displayedY(state.eq.curve,curveCfg(key));
+    return displayedY(state.eq.curve,curveCfg(key),0);
+  }
+  var isL=key.length>SUF_L.length&&
+    key.slice(-SUF_L.length)===SUF_L;
+  var isR=key.length>SUF_R.length&&
+    key.slice(-SUF_R.length)===SUF_R;
+  if(isL||isR){
+    var base=key.slice(0,isL?-SUF_L.length:-SUF_R.length);
+    var s2=state.selected.get(base);
+    if(!s2){return null;}
+    var raw2=isL?s2.rawL:s2.rawR;
+    if(!raw2){return null;}
+    return displayedY(raw2,curveCfg(key),0);
   }
   var s=state.selected.get(key);
-  if(s&&s.raw){return displayedY(s.raw,curveCfg(key));}
+  if(s&&s.raw){
+    return displayedY(channelRaw(s,key),curveCfg(key),0);
+  }
   return null;
 }
 function downloadCurveByKey(key){
@@ -1485,49 +1681,42 @@ function downloadCurveByKey(key){
 function updateLegend(){
   var lg=$("legendRows");
   lg.innerHTML="";
-  var compOpts="<option value=''><NO COMP></option>";
-  targets.forEach(function(v,k){
-    compOpts+="<option value='"+esc(k)+"'>"+esc(k)+"</option>";
-  });
-  function row(key,color,title,srcTxt,kind){
+  function row(key,color,title,srcTxt,kind,extra){
     var cfg=curveCfg(key);
     var d=document.createElement("div");
-    d.className="crow";
+    d.className="crow"+T(kind==="sub"," sub","");
     d.dataset.key=key;
-    var html="<span class='sw' style='background:"+
-      color+"'></span>"+
-      "<span class='cname'>"+esc(title);
-    if(srcTxt){
-      html+=" <span class='src'>"+esc(srcTxt)+"</span>";
+    var nameHtml="<span class='cname'>";
+    if(extra&&extra.hasCh){
+      nameHtml+="<button class='exp' title='Expand L and R'>"+
+        T(extra.exp,"-","+")+"</button>";
     }
-    html+="</span>"+
-      "<canvas class='spark' width='72' height='16'>"+
-      "</canvas>"+
+    nameHtml+=esc(title);
+    if(srcTxt){
+      nameHtml+=" <span class='src'>"+esc(srcTxt)+"</span>";
+    }
+    nameHtml+="</span>";
+    var html="<span class='sw' style='background:"+
+      color+"'></span>"+nameHtml;
+    if(extra&&extra.hasCh){
+      var mode=state.chMode.get(key)||"avg";
+      html+="<span class='chpair'>"+
+        "<button data-ch='L' class='"+
+        T(mode==="L","on","")+"' title='Left only'>L</button>"+
+        "<button data-ch='R' class='"+
+        T(mode==="R","on","")+"' title='Right only'>R</button>"+
+        "</span>";
+    }else{
+      html+="<span class='ph'></span>";
+    }
+    html+="<canvas class='spark' width='72' height='16'></canvas>"+
       "<input class='coff' type='number' step='0.5'"+
       " title='Offset, dB' value='"+cfg.off+"'>";
-    if(kind==="meas"){
-      html+="<select class='ccomp' title='Compensation'>"+
-        compOpts+"</select>"+
-        "<span class='ph'></span>"+
-        "<span class='ph'></span>"+
-        "<span class='ph'></span>";
-    }else if(kind==="target"){
-      html+="<span class='ph'></span>"+
-        "<button class='cdev"+T(state.devMode," on","")+
-        "' title='Deviation from target'>"+
-        T(state.devMode,"-","~")+"</button>"+
-        "<button class='csm"+T(cfg.smOn," on","")+
-        "' title='Smoothing on/off'>~</button>"+
-        "<input class='csn' type='number' min='0' max='48'"+
-        " title='Smooth 1/N oct' value='";
-      if(cfg.smN!=null){html+=cfg.smN;}
-      else{html+=state.smoothN;}
-      html+="'>";
+    if(kind==="target"){
+      html+="<button class='cdev"+T(state.devMode," on","")+
+        "' title='Deviation from target'>DEV</button>";
     }else{
-      html+="<span class='ph'></span>"+
-        "<span class='ph'></span>"+
-        "<span class='ph'></span>"+
-        "<span class='ph'></span>";
+      html+="<span class='ph'></span>";
     }
     html+="<button class='ceye' title='Hide/show'>"+
       T(state.hidden.has(key),"H","")+"</button>"+
@@ -1536,9 +1725,6 @@ function updateLegend(){
       "<button class='cdl' title='Download CSV'>D</button>"+
       "<button class='cx' title='Remove'>X</button>";
     d.innerHTML=html;
-    if(kind==="meas"&&cfg.comp){
-      d.querySelector(".ccomp").value=cfg.comp;
-    }
     lg.appendChild(d);
     var y=curveYByKey(key);
     if(y){drawSpark(d.querySelector(".spark"),y,color);}
@@ -1546,7 +1732,7 @@ function updateLegend(){
   }
   if(state.target){
     row("__target",css("--target"),
-      "Target: "+state.target,"","target");
+      "Target: "+state.target,"","target",null);
   }
   state.selected.forEach(function(s,name){
     if(!s.raw){return;}
@@ -1554,12 +1740,17 @@ function updateLegend(){
     for(i=0;i<all.length;i++){
       if(all[i].name===name){def=all[i];}
     }
-    var src="";
-    if(def){src=def.source||"";}
-    row(name,s.color,name,src,"meas");
+    var hasCh=!!(s.rawL&&s.rawR);
+    var exp=state.expanded.has(name);
+    row(name,s.color,name,def?def.source||"":"",
+      "meas",{hasCh:hasCh,exp:exp});
+    if(hasCh&&exp){
+      row(name+SUF_L,s.color,name+SUF_L,"","sub",null);
+      row(name+SUF_R,s.colorR,name+SUF_R,"","sub",null);
+    }
   });
   if(hasActiveEq()){
-    row("__eq",css("--eq"),"EQ result","","eq");
+    row("__eq",css("--eq"),"EQ result","","eq",null);
   }
 }
 function eqBase(){
@@ -1623,7 +1814,8 @@ function renderEqRows(){
     "<span>Gain</span><span>Q</span><span></span></div>";
   state.eq.filters.forEach(function(fl,i){
     var opts=["PK","LS","HS"].map(function(t){
-      return"<option "+T(t===fl.t,"selected","")+">"+t+"</option>";
+      return"<option "+T(t===fl.t,"selected","")+">"+t+
+        "</option>";
     }).join("");
     html+="<div class='frow' data-i='"+i+"'>"+
       "<input type='checkbox' class='fon' "+
@@ -1748,7 +1940,10 @@ function parseEqText(t){
 function saveUploaded(){
   try{
     var arr=state.uploaded.map(function(u){
-      return{name:u.name,source:u.source,pts:u.pts};
+      var o={name:u.name,source:u.source,pts:u.pts};
+      if(u.ptsL){o.ptsL=u.ptsL;}
+      if(u.ptsR){o.ptsR=u.ptsR;}
+      return o;
     });
     localStorage.setItem("prih-uploaded",
       JSON.stringify(arr));
@@ -1759,8 +1954,18 @@ function loadUploaded(){
     var a=JSON.parse(
       localStorage.getItem("prih-uploaded")||"[]");
     state.uploaded=a.map(function(u){
-      return{name:u.name,source:u.source||"uploaded",
+      var d={name:u.name,source:u.source||"uploaded",
         pts:u.pts,raw:resample(u.pts)};
+      if(u.ptsL){d.rawL=resample(u.ptsL);}
+      if(u.ptsR){d.rawR=resample(u.ptsR);}
+      if(d.rawL&&d.rawR){
+        d.raw=averageCurves([d.rawL,d.rawR]);
+      }else if(d.rawL){
+        d.raw=d.rawL;
+      }else if(d.rawR){
+        d.raw=d.rawR;
+      }
+      return d;
     });
     var seen={},i;
     for(i=0;i<state.uploaded.length;i++){
@@ -1775,21 +1980,6 @@ function loadUploaded(){
   }catch(e){state.uploaded=[];}
 }
 function baseName(fn){return fn.replace(/\.[^.]+$/,"")||"Uploaded";}
-function pushUploaded(name,source,pts,raw){
-  var uname=uniqueName(name);
-  var keep=pts.filter(function(_,i){
-    var st=Math.max(1,Math.floor(pts.length/400));
-    return i%st===0;
-  });
-  state.uploaded.push({
-    name:uname,source:source,pts:keep,raw:raw});
-  saveUploaded();
-  var def=state.uploaded[state.uploaded.length-1];
-  var ci=state.selected.size+state.palShift;
-  state.selected.set(def.name,{
-    color:PALETTE[ci%PALETTE.length],raw:def.raw});
-  return uname;
-}
 function importFRFile(f){
   f.text().then(function(t){
     var pts=parseTable(t);
@@ -1797,10 +1987,8 @@ function importFRFile(f){
       toast("File does not look like FR");
       return;
     }
-    var name=pushUploaded(baseName(f.name),
-      "uploaded",pts,resample(pts));
-    afterSelChange();
-    toast("Measurement added: "+name);
+    var info=channelOf(baseName(f.name));
+    addChannelled(info.base,info.ch,pts,"uploaded");
   }).catch(function(e){
     toast("File error: "+e.message);
   });
@@ -1849,22 +2037,33 @@ function importEqFile(f){
 function addMeasurement(){
   var err=$("mErr");
   err.textContent="";
-  var name=$("mName").value.trim()||"Uploaded";
+  var name=$("mName").value.trim();
   var source=$("mSource").value.trim()||"uploaded";
-  grabPts().then(function(pts){
-    if(!pts){
+  grabPts().then(function(res){
+    if(!res){
       err.textContent="Provide URL, file or text";
       return;
     }
-    if(pts.length<20){
-      err.textContent="Not a measurement: few points ("+
-        pts.length+")";
+    if(res.L&&res.R){
+      var base=name||channelOf(baseName("x")).base;
+      if(!name){base="Uploaded";}
+      var uname=pushUploadedPair(base,source,res.L,res.R);
+      afterSelChange();
+      closeModal();
+      toast("Measurement added (L+R): "+uname);
       return;
     }
-    var uname=pushUploaded(name,source,pts,resample(pts));
+    var pts=res.avg;
+    if(!pts||pts.length<20){
+      err.textContent="Not a measurement: few points";
+      return;
+    }
+    var info=channelOf(name||baseName("Uploaded"));
+    if(name){info=channelOf(name);}
+    else{info={base:"Uploaded",ch:null};}
+    addChannelled(info.base,info.ch,pts,source);
     afterSelChange();
     closeModal();
-    toast("Measurement added: "+uname);
   }).catch(function(e){
     err.textContent="Error: "+e.message;
   });
@@ -1908,40 +2107,31 @@ function fetchPtsFromUrl(u){
     if(R){
       return Promise.all([fetchAny(L),fetchAny(R)])
       .then(function(p){
-        var la=resample(parseTable(p[0]));
-        var lb=resample(parseTable(p[1]));
-        var pts=[],j;
-        for(j=0;j<GRID.length;j++){
-          pts.push([GRID[j],(la[j]+lb[j])/2]);
-        }
-        return pts;
+        return{L:parseTable(p[0]),R:parseTable(p[1])};
       });
     }
     return fetchAny(links[0]).then(function(t2){
-      return parseTable(t2);
+      return{avg:parseTable(t2)};
     });
   });
 }
 function grabPts(){
   if($("mFile").files[0]){
     return $("mFile").files[0].text().then(function(t){
-      return parseTable(t);
+      return{avg:parseTable(t)};
     });
   }
   if($("mPaste").value.trim()){
-    return Promise.resolve(parseTable($("mPaste").value));
+    return Promise.resolve({avg:parseTable($("mPaste").value)});
   }
   if($("mUrlL").value.trim()&&$("mUrlR").value.trim()){
     return Promise.all([
       fetchPtsFromUrl($("mUrlL").value.trim()),
       fetchPtsFromUrl($("mUrlR").value.trim())
     ]).then(function(p){
-      var la=resample(p[0]),lb=resample(p[1]);
-      var pts=[],j;
-      for(j=0;j<GRID.length;j++){
-        pts.push([GRID[j],(la[j]+lb[j])/2]);
-      }
-      return pts;
+      var L=p[0].avg||p[0].L;
+      var R=p[1].avg||p[1].R;
+      return{avg:mergeLRpts(L,R),L:L,R:R};
     });
   }
   if($("mUrl").value.trim()){
@@ -1957,12 +2147,15 @@ function queuePreview(){
 function doPreview(){
   var el=$("mPrev");
   el.textContent="";
-  return grabPts().then(function(pts){
+  return grabPts().then(function(res){
+    if(!res){return;}
+    var pts=res.avg;
     if(!pts){return;}
     if(pts.length>=20){
       el.textContent="OK "+pts.length+" points, "+
         Math.round(pts[0][0])+"-"+
-        Math.round(pts[pts.length-1][0])+" Hz";
+        Math.round(pts[pts.length-1][0])+" Hz"+
+        T(res.L&&res.R," (L+R will merge)","");
     }else{
       el.textContent="Few points: "+pts.length;
     }
@@ -1987,10 +2180,18 @@ function averageAll(){
         for(k=0;k<GRID.length;k+=4){
           pairs.push([GRID[k],sum[k]]);
         }
-        var name=pushUploaded("Average ("+n+")",
-          "avg",pairs,Float64Array.from(sum));
+        var uname=uniqueName("Average ("+n+")");
+        state.uploaded.push({
+          name:uname,source:"avg",
+          pts:pairs,raw:Float64Array.from(sum)});
+        saveUploaded();
+        var cols=allocColors();
+        state.selected.set(uname,{
+          color:cols.color,colorR:cols.colorR,
+          raw:Float64Array.from(sum),
+          rawL:null,rawR:null});
         afterSelChange();
-        toast("Average of "+n+" -> "+name);
+        toast("Average of "+n+" -> "+uname);
       }
       btn.textContent="Average All";
       btn.disabled=false;
@@ -2137,7 +2338,7 @@ function init(){
     var eb=$("errbar");
     if(eb){
       eb.style.display="block";
-      eb.textContent="AutoEQ block failed to parse; rest of site works, AutoEQ disabled.";
+      eb.textContent="AutoEQ block failed; site works, AutoEQ disabled.";
     }
   }
   loadUploaded();
@@ -2204,19 +2405,6 @@ function init(){
     if(e.target.classList.contains("coff")){
       cfg.off=num(e.target,0);
       draw();
-    }else if(e.target.classList.contains("csn")){
-      cfg.smN=clamp(num(e.target,0),0,48);
-      draw();
-    }
-  });
-  lg.addEventListener("change",function(e){
-    var row=e.target.closest(".crow");
-    if(!row){return;}
-    var key=row.dataset.key,cfg=curveCfg(key);
-    if(e.target.classList.contains("ccomp")){
-      cfg.comp=e.target.value||null;
-      updateLegend();
-      draw();
     }
   });
   lg.addEventListener("click",function(e){
@@ -2224,12 +2412,23 @@ function init(){
     if(!row){return;}
     var key=row.dataset.key,cfg=curveCfg(key);
     var c=e.target.classList;
-    if(c.contains("cdev")){
+    if(e.target.dataset&&e.target.dataset.ch){
+      var ch=e.target.dataset.ch;
+      var cur=state.chMode.get(key)||"avg";
+      if(cur===ch){state.chMode.set(key,"avg");}
+      else{state.chMode.set(key,ch);}
+      updateLegend();
+      draw();
+    }else if(c.contains("cdev")){
       state.devMode=!state.devMode;
       updateLegend();
       draw();
-    }else if(c.contains("csm")){
-      cfg.smOn=!cfg.smOn;
+    }else if(c.contains("exp")){
+      if(state.expanded.has(key)){
+        state.expanded.delete(key);
+      }else{
+        state.expanded.add(key);
+      }
       updateLegend();
       draw();
     }else if(c.contains("ceye")){
@@ -2251,8 +2450,13 @@ function init(){
       }else if(key==="__eq"){
         state.eqShow=false;
         $("eqShowChk").checked=false;
+      }else if(key.slice(-SUF_L.length)===SUF_L||
+         key.slice(-SUF_R.length)===SUF_R){
+        var parent=key.slice(0,-SUF_L.length);
+        state.expanded.delete(parent);
       }else{
         state.selected.delete(key);
+        state.expanded.delete(key);
         renderEqCurveSelect();
         recomputeEq();
         renderModels();
@@ -2267,7 +2471,7 @@ function init(){
     on(id,"change",function(){
       state.adj={
         bass:clamp(num($("adjBass"),0),-12,12),
-        bassQ:clamp(num($("adjBassQ"),0.707),0.3,2),
+        bassQ:clamp(num($("adjBassQ"),0.71),0.3,2),
         bassF:clamp(num($("adjBassF"),105),30,300),
         treble:clamp(num($("adjTreble"),0),-12,12),
         tilt:clamp(num($("adjTilt"),0),-3,3),
@@ -2276,7 +2480,7 @@ function init(){
     });
   });
   on("adjReset","click",function(){
-    state.adj={bass:0,bassQ:0.707,bassF:105,
+    state.adj={bass:0,bassQ:0.71,bassF:105,
       treble:0,tilt:0,ear:0};
     syncAdj();
     draw();
@@ -2463,7 +2667,7 @@ function init(){
   }
 }
 init();
-/*EOF v31*/
+/*EOF v34*/
 </script>
 </body>
 </html>

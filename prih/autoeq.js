@@ -1,9 +1,7 @@
 "use strict";
-/* AutoEqFit — порт ядра AutoEQ (Jaakko Pasanen, github.com/jaakkopasanen/AutoEQ, autoeq.py):
-   1) greedy: точка макс.|ошибки| -> PK-фильтр (fc,Q через Nelder-Mead по log2, gain аналитически LS);
-   2) раунды координатного спуска по всем фильтрам;
-   3) prune |gain| < 0.08 dB, сортировка по f.
-   Поведение и качество как у AutoEQ/squig.link. */
+/* AutoEqFit — порт ядра AutoEQ (Jaakko Pasanen, github.com/jaakkopasanen/AutoEQ, autoeq.py),
+   как использует squig.link: greedy по макс.|ошибки| -> PK (fc,Q через Nelder-Mead по log2,
+   gain аналитически LS) -> координатный спуск -> prune |gain|<0.08 dB. */
 window.AutoEqFit=(()=>{
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const shape=(f,f0,q)=>{const x=f/f0-f0/f;return 1/(1+q*q*x*x);};

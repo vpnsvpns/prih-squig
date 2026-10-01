@@ -145,12 +145,12 @@ grid-template-columns:14px minmax(90px,1.1fr) 76px 54px 96px 24px 44px 26px 26px
 font-size:12px;cursor:pointer}
 .crow button:hover{color:var(--text)}
 .crow button.on{color:var(--text);background:var(--panel2);border-radius:4px}
-#modal,#modalT,#modalE{position:fixed;inset:0;background:rgba(0,0,0,.65);
-display:flex;align-items:center;justify-content:center;z-index:20}
-#modal .box,#modalT .box,#modalE .box{width:420px;max-width:92vw;
-background:var(--panel);border:1px solid var(--line);border-radius:10px;
-padding:18px;display:flex;flex-direction:column;gap:10px}
-#modal h3,#modalT h3,#modalE h3{margin:0;font-size:14px;color:var(--text)}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;
+align-items:center;justify-content:center;z-index:20}
+#modal .box{width:420px;max-width:92vw;background:var(--panel);
+border:1px solid var(--line);border-radius:10px;padding:18px;display:flex;
+flex-direction:column;gap:10px}
+#modal h3{margin:0;font-size:14px;color:var(--text)}
 .muted{color:var(--muted);font-size:11px}
 .err{color:#ff8a8a}.prev{color:#8af0a0}
 #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);
@@ -193,7 +193,7 @@ z-index:30}
  .frow input[type=number]{padding:6px 4px;font-size:12px}
  .inwrap input{padding-right:22px;font-size:12px}
  #eqPane .row button{padding:7px 12px}
- #modal .box,#modalT .box,#modalE .box{max-height:86vh;overflow-y:auto}
+ #modal .box{max-height:86vh;overflow-y:auto}
 }
 </style>
 </head>
@@ -201,7 +201,7 @@ z-index:30}
 <div id="errbar"></div>
 <div id="boot">Prih · загрузка…</div>
 <header id="top">
-  <div class="logo">Prih<span>EQ Playground · 711 · v19</span></div>
+  <div class="logo">Prih<span>EQ Playground · 711 · v20</span></div>
   <div class="topbtns">
     <button id="btnShot">Screenshot</button>
     <button id="btnAvg">Average All</button>
@@ -334,9 +334,8 @@ z-index:30}
 
 <script>
 "use strict";
-/* AutoEQ (ядро v16, проверенное): greedy по пику ошибки, LS-gain по окну
-   ±0.63 окт, выбор (f,Q) по полной SSE, дистанция 1/4 окт, 2 прохода
-   полировки, порог 0.2 дБ. Дефолты squig: -10..6 dB, Q 0.5..1.5, 20..8000. */
+/* AutoEQ (ядро v16): greedy по пику, LS-gain по окну ±0.63 окт,
+   выбор (f,Q) по полной SSE, дистанция 1/4 окт, 2 прохода полировки. */
 window.AutoEqFit=(function(){
 var clamp=function(v,a,b){return v<a?a:v>b?b:v;};
 var shape=function(f,f0,q){
@@ -481,7 +480,7 @@ return{fit:fit};
 
 <script>
 "use strict";
-var BUILD="v19";
+var BUILD="v20";
 var RE_SPLIT=/[\s,;]+/;
 var RE_ABS=/^https?:\/\//i;
 var RE_ESC=/[&<>"]/g;
@@ -508,8 +507,8 @@ var CFG={
     {group:"Reference",name:"PEQdB Diamond β",
      file:"targets/PEQdB Diamond β.txt"},
     {group:"Reference",name:"Harman IE 2019 v2",
-     file:"targets/Harman IE 2019v2 Target.txt",
-     alt:"targets/Harman IE 2019v2 Target Target.txt",
+     file:"targets/Harman IE 2019v2 Target Target.txt",
+     alt:"targets/Harman IE 2019v2 Target.txt",
      adjustable:true},
     {group:"Reference",name:"Prih Target",
      file:"targets/Prih Target.txt",default:true},
@@ -541,6 +540,11 @@ function css(v){
   return getComputedStyle(document.body).getPropertyValue(v).trim();
 }
 function $(id){return document.getElementById(id);}
+function on(id,ev,fn){
+  var el=$(id);
+  if(el)el.addEventListener(ev,fn);
+  return el;
+}
 function num(el,fb){
   var v=parseFloat(el.value);
   return isFinite(v)?v:fb;
@@ -719,6 +723,25 @@ function flatToPairs(p){
   for(i=0;i+1<p.length;i+=2)out.push([p[i],p[i+1]]);
   return out;
 }
+/* fallback, если папки targets/ нет рядом */
+var FALLBACK_HARMAN=[
+20,7.62973,22.44924,7.68487,25.19842,7.71947,28.28427,7.72681,
+31.74802,7.69917,35.63595,7.60681,40,7.41131,44.89848,7.08692,
+50.39684,6.63857,56.56854,6.10753,63.49604,5.50985,71.2719,4.85848,
+80,4.18831,89.79696,3.50032,100.79368,2.77975,113.13708,2.0519,
+126.99208,1.33947,142.54379,0.6872,160,0.09838,179.59393,-0.47266,
+201.58737,-0.98818,226.27417,-1.37155,253.98417,-1.60032,
+285.08759,-1.70023,320,-1.70974,359.18786,-1.6662,403.17474,-1.59545,
+452.54834,-1.50398,507.96834,-1.38436,570.17518,-1.24699,
+640,-1.07811,718.37571,-0.86396,806.34947,-0.62243,905.09668,-0.33051,
+1015.93667,0.05512,1140.35036,0.58276,1280,1.32076,1436.75142,2.21175,
+1612.69894,3.21386,1810.19336,4.49772,2031.87335,5.98719,
+2280.70072,7.3739,2560,8.4983,2873.50284,9.17476,3225.39789,9.41864,
+3620.38672,9.24472,4063.74669,8.8162,4561.40144,8.24556,5120,7.6048,
+5747.00569,6.99762,6450.79578,6.18873,7240.77344,4.97312,
+8127.49339,3.32921,9122.80287,1.21727,10240,-1.25957,
+11494.01137,-3.68367,12901.59155,-5.99103,14481.54688,-8.09968,
+16254.98677,-10.65092,18245.60575,-15.25816,20186.38231,-20.68071];
 function loadTargets(){
   var jobs=CFG.targets.map(function(t){
     var urls=[t.file,t.alt].filter(Boolean);
@@ -735,7 +758,13 @@ function loadTargets(){
         });
       });
     });
-    return chain.catch(function(){});
+    return chain.catch(function(){
+      if(t.name==="Harman IE 2019 v2"&&!targets.has(t.name)){
+        targets.set(t.name,{
+          def:t,raw:resample(flatToPairs(FALLBACK_HARMAN))
+        });
+      }
+    });
   });
   return Promise.all(jobs).then(function(){
     if(!state.target||!targets.has(state.target)){
@@ -1015,7 +1044,6 @@ function draw(){
   ctx.font=(narrow?"italic 900 40px":"italic 900 84px")+" system-ui";
   ctx.textAlign="right";
   ctx.fillText("PRIH",W-m.r-8,H-m.b-(narrow?10:16));
-  /* крупная легенда внутри графика, как на squig.link */
   var leg=[];
   if(targetRaw()&&!state.hidden.has("__target")){
     leg.push({c:css("--target"),t:state.target+" Target"});
@@ -1495,6 +1523,121 @@ function importEqFile(f){
     toast("Импортировано фильтров: "+r.fs.length);
   }).catch(function(e){toast("Ошибка файла: "+e.message);});
 }
+/* добавление замера из модалки (URL / L+R / файл / текст) */
+function addMeasurement(){
+  var err=$("mErr");err.textContent="";
+  var name=$("mName").value.trim()||"Uploaded";
+  var source=$("mSource").value.trim()||"uploaded";
+  grabPts().then(function(pts){
+    if(!pts){err.textContent="Укажи URL, файл или вставь текст";return;}
+    if(pts.length<20){
+      err.textContent="Не похоже на замер: мало точек ("+pts.length+")";
+      return;
+    }
+    state.uploaded.push({
+      name:name,source:source,
+      pts:pts.filter(function(_,i){
+        return i%Math.max(1,Math.floor(pts.length/400))===0;
+      }),
+      raw:resample(pts)
+    });
+    saveUploaded();
+    var def=state.uploaded[state.uploaded.length-1];
+    state.selected.set(def.name,{
+      color:PALETTE[(state.selected.size+state.palShift)%PALETTE.length],
+      raw:def.raw
+    });
+    afterSelChange();closeModal();
+    toast("Замер добавлен: "+name);
+  }).catch(function(e){
+    err.textContent="Ошибка: "+e.message;
+  });
+}
+function absUrl(base,rel){
+  try{return new URL(rel,base).href;}
+  catch(e){return rel;}
+}
+function fetchPtsFromUrl(u){
+  return fetchAny(u).then(function(t){
+    if(!RE_HTML.test(t))return parseTable(t);
+    var links=[],mm;
+    RE_HREF.lastIndex=0;
+    while((mm=RE_HREF.exec(t))!==null&&links.length<6){
+      links.push(absUrl(u,mm[1]));
+    }
+    if(!links.length){
+      throw new Error("на странице нет ссылок на CSV/TXT");
+    }
+    var L=links[0],R=null,i;
+    for(i=0;i<links.length;i++){
+      if(RE_L.test(links[i])){L=links[i];break;}
+    }
+    for(i=0;i<links.length;i++){
+      if(RE_R.test(links[i])&&links[i]!==L){R=links[i];break;}
+    }
+    if(R){
+      return Promise.all([fetchAny(L),fetchAny(R)]).then(function(p){
+        var la=resample(parseTable(p[0]));
+        var lb=resample(parseTable(p[1]));
+        var pts=[],j;
+        for(j=0;j<GRID.length;j++){
+          pts.push([GRID[j],(la[j]+lb[j])/2]);
+        }
+        return pts;
+      });
+    }
+    return fetchAny(links[0]).then(function(t2){
+      return parseTable(t2);
+    });
+  });
+}
+function grabPts(){
+  if($("mFile").files[0]){
+    return $("mFile").files[0].text().then(function(t){
+      return parseTable(t);
+    });
+  }
+  if($("mPaste").value.trim()){
+    return Promise.resolve(parseTable($("mPaste").value));
+  }
+  if($("mUrlL").value.trim()&&$("mUrlR").value.trim()){
+    return Promise.all([
+      fetchPtsFromUrl($("mUrlL").value.trim()),
+      fetchPtsFromUrl($("mUrlR").value.trim())
+    ]).then(function(p){
+      var la=resample(p[0]),lb=resample(p[1]);
+      var pts=[],j;
+      for(j=0;j<GRID.length;j++){
+        pts.push([GRID[j],(la[j]+lb[j])/2]);
+      }
+      return pts;
+    });
+  }
+  if($("mUrl").value.trim()){
+    return fetchPtsFromUrl($("mUrl").value.trim());
+  }
+  return Promise.resolve(null);
+}
+var prevTimer=null;
+function queuePreview(){
+  clearTimeout(prevTimer);
+  prevTimer=setTimeout(doPreview,600);
+}
+function doPreview(){
+  var el=$("mPrev");el.textContent="";
+  return grabPts().then(function(pts){
+    if(!pts)return;
+    if(pts.length>=20){
+      el.textContent="✔ "+pts.length+" точек, "+
+        Math.round(pts[0][0])+"–"+
+        Math.round(pts[pts.length-1][0])+" Гц";
+    }else{
+      el.textContent="Мало точек: "+pts.length;
+    }
+  }).catch(function(e){
+    el.textContent="Ошибка: "+e.message;
+  });
+}
 function averageAll(){
   if(!allHps().length){toast("Список замеров пуст");return;}
   var btn=$("btnAvg");btn.disabled=true;
@@ -1530,6 +1673,27 @@ function screenshot(){
     setTimeout(function(){URL.revokeObjectURL(a.href);},5000);
   });
 }
+/* санация состояния: мусор из hash/ввода не может сломать UI */
+function sanState(){
+  state.ySpan=clamp(state.ySpan,10,120);
+  state.normDb=clamp(state.normDb,-20,140);
+  state.normHz=clamp(state.normHz,20,20000);
+  state.smoothN=clamp(state.smoothN,0,48);
+  state.adj.bass=clamp(state.adj.bass,-12,12);
+  state.adj.bassQ=clamp(state.adj.bassQ,0.3,2);
+  state.adj.bassF=clamp(state.adj.bassF,30,300);
+  state.adj.treble=clamp(state.adj.treble,-12,12);
+  state.adj.tilt=clamp(state.adj.tilt,-3,3);
+  state.adj.ear=clamp(state.adj.ear,-12,12);
+  state.aeq.fmin=clamp(state.aeq.fmin,10,10000);
+  state.aeq.fmax=clamp(state.aeq.fmax,100,20000);
+  state.aeq.gmin=clamp(state.aeq.gmin,-30,0);
+  state.aeq.gmax=clamp(state.aeq.gmax,0,30);
+  state.aeq.qmin=clamp(state.aeq.qmin,0.05,10);
+  state.aeq.qmax=clamp(state.aeq.qmax,0.05,10);
+  if(state.aeq.fmax<=state.aeq.fmin)state.aeq.fmax=8000;
+  if(state.aeq.qmax<=state.aeq.qmin)state.aeq.qmax=1.5;
+}
 function restore(){
   if(!location.hash||location.hash.length<2)return;
   var s;
@@ -1544,6 +1708,7 @@ function restore(){
   if(isFinite(s.ys))state.ySpan=s.ys;
   if(s.aeq)state.aeq=Object.assign(state.aeq,s.aeq);
   if(s.zoom&&ZOOMS[s.zoom])state.zoom=s.zoom;
+  sanState();
   syncInputs();buildTargetChips();syncAdj();
   (s.sel||[]).forEach(function(nm){
     var def=null,all=allHps(),i;
@@ -1572,6 +1737,7 @@ function syncZoom(){
   $("zTreble").classList.toggle("on",state.zoom==="treble");
 }
 function syncInputs(){
+  sanState();
   $("ySpan").value=state.ySpan;
   $("normDb").value=state.normDb;
   $("normHz").value=state.normHz;
@@ -1621,36 +1787,38 @@ function init(){
   for(ti=0;ti<tabs.length;ti++){
     tabs[ti].onclick=function(){switchTab(this.dataset.tab);};
   }
-  $("search").addEventListener("input",renderModels);
-  $("ySpan").onchange=function(e){
+  on("search","input",renderModels);
+  on("ySpan","change",function(e){
     state.ySpan=clamp(num(e.target,30),10,120);draw();
-  };
-  $("normOn").onclick=function(){
+  });
+  on("normOn","click",function(){
     state.normOn=!state.normOn;
     $("normOn").classList.toggle("on",state.normOn);
     draw();
-  };
-  $("normDb").onchange=function(e){state.normDb=num(e.target,60);draw();};
-  $("normHz").onchange=function(e){
+  });
+  on("normDb","change",function(e){
+    state.normDb=clamp(num(e.target,60),-20,140);draw();
+  });
+  on("normHz","change",function(e){
     state.normHz=clamp(num(e.target,500),20,20000);draw();
-  };
-  $("smoothN").onchange=function(e){
+  });
+  on("smoothN","change",function(e){
     state.smoothN=clamp(num(e.target,5),0,48);
     updateLegend();draw();
-  };
+  });
   function setZoom(z){
     state.zoom=state.zoom===z?null:z;
     syncZoom();draw();
   }
-  $("zBass").onclick=function(){setZoom("bass");};
-  $("zMids").onclick=function(){setZoom("mids");};
-  $("zTreble").onclick=function(){setZoom("treble");};
-  $("btnInspect").onclick=function(){
+  on("zBass","click",function(){setZoom("bass");});
+  on("zMids","click",function(){setZoom("mids");});
+  on("zTreble","click",function(){setZoom("treble");});
+  on("btnInspect","click",function(){
     state.inspect=!state.inspect;
     $("btnInspect").classList.toggle("on",state.inspect);
     $("graph").classList.toggle("inspect",state.inspect);
     draw();
-  };
+  });
   var cv=$("graph");
   cv.addEventListener("mousemove",function(e){
     if(!state.inspect)return;
@@ -1715,10 +1883,9 @@ function init(){
       updateLegend();draw();
     }
   });
-  var adjIds=["adjBass","adjBassQ","adjBassF",
-    "adjTreble","adjTilt","adjEar"];
-  adjIds.forEach(function(id){
-    $(id).onchange=function(){
+  ["adjBass","adjBassQ","adjBassF","adjTreble","adjTilt","adjEar"]
+  .forEach(function(id){
+    on(id,"change",function(){
       state.adj={
         bass:clamp(num($("adjBass"),0),-12,12),
         bassQ:clamp(num($("adjBassQ"),0.707),0.3,2),
@@ -1728,30 +1895,31 @@ function init(){
         ear:clamp(num($("adjEar"),0),-12,12)
       };
       draw();
-    };
+    });
   });
-  $("adjReset").onclick=function(){
+  on("adjReset","click",function(){
     state.adj={bass:0,bassQ:0.707,bassF:105,treble:0,tilt:0,ear:0};
     syncAdj();draw();
-  };
-  var aeIds=["aeFmin","aeFmax","aeGmin","aeGmax","aeQmin","aeQmax"];
-  aeIds.forEach(function(id){
-    $(id).onchange=function(){
+  });
+  ["aeFmin","aeFmax","aeGmin","aeGmax","aeQmin","aeQmax"]
+  .forEach(function(id){
+    on(id,"change",function(){
       state.aeq=Object.assign(state.aeq,{
         fmin:clamp(num($("aeFmin"),20),10,10000),
         fmax:clamp(num($("aeFmax"),8000),100,20000),
-        gmin:num($("aeGmin"),-10),
-        gmax:num($("aeGmax"),6),
+        gmin:clamp(num($("aeGmin"),-10),-30,0),
+        gmax:clamp(num($("aeGmax"),6),0,30),
         qmin:clamp(num($("aeQmin"),0.5),0.05,10),
         qmax:clamp(num($("aeQmax"),1.5),0.05,10)
       });
-    };
+      sanState();
+    });
   });
-  $("btnEq").onclick=runAutoEq;
-  $("eqCurve").onchange=function(e){
+  on("btnEq","click",runAutoEq);
+  on("eqCurve","change",function(e){
     state.eq.name=e.target.value;
     recomputeEq();updateLegend();draw();
-  };
+  });
   $("eqRows").addEventListener("input",function(e){
     var row=e.target.closest(".frow");
     if(!row||row.classList.contains("head"))return;
@@ -1773,76 +1941,79 @@ function init(){
       renderEqRows();recomputeEq();updateLegend();draw();
     }
   });
-  $("btnAddF").onclick=function(){
+  on("btnAddF","click",function(){
     state.eq.filters.push({on:true,t:"PK",f:1000,g:0,q:0.7});
     renderEqRows();recomputeEq();updateLegend();draw();
-  };
-  $("btnDelF").onclick=function(){
+  });
+  on("btnDelF","click",function(){
     state.eq.filters.pop();
     renderEqRows();recomputeEq();updateLegend();draw();
-  };
-  $("btnSort").onclick=function(){
+  });
+  on("btnSort","click",function(){
     state.eq.filters.sort(function(a,b){return a.f-b.f;});
     renderEqRows();recomputeEq();draw();
-  };
-  $("btnDisable").onclick=function(){
+  });
+  on("btnDisable","click",function(){
     var allOn=state.eq.filters.every(function(f){return f.on;});
     state.eq.filters.forEach(function(f){f.on=!allOn;});
     renderEqRows();recomputeEq();updateLegend();draw();
-  };
+  });
   function exportApo(){
     if(!state.eq.filters.length){toast("Нет фильтров");return;}
     var head=["# Prih EQ Playground "+BUILD,"Device: all"];
     download("prih-eq-apo.txt",head.concat(eqLines()).join("\n"));
   }
-  $("btnSaveEq").onclick=exportApo;
-  $("btnCopyEq").onclick=function(){
+  on("btnSaveEq","click",exportApo);
+  on("btnCopyEq","click",function(){
     if(!state.eq.filters.length)return;
     navigator.clipboard.writeText(eqLines().join("\n")).then(function(){
       toast("PEQ скопирован");
     });
-  };
-  $("btnExportEq").onclick=function(){
+  });
+  on("btnExportEq","click",function(){
     if(!state.eq.filters.length){toast("Нет фильтров");return;}
     download("prih-parametric-eq.txt",eqLines().join("\n"));
     toast("Parametric EQ экспортирован");
-  };
-  $("btnImportEq").onclick=function(){$("fileEq").click();};
-  $("btnUpFR").onclick=function(){$("fileFR").click();};
-  $("btnUpTgt").onclick=function(){$("fileTgt").click();};
-  $("fileFR").onchange=function(e){
+  });
+  on("btnImportEq","click",function(){$("fileEq").click();});
+  on("btnUpFR","click",function(){$("fileFR").click();});
+  on("btnUpTgt","click",function(){$("fileTgt").click();});
+  on("fileFR","change",function(e){
     if(e.target.files[0])importFRFile(e.target.files[0]);
     e.target.value="";
-  };
-  $("fileTgt").onchange=function(e){
+  });
+  on("fileTgt","change",function(e){
     if(e.target.files[0])importTargetFile(e.target.files[0]);
     e.target.value="";
-  };
-  $("fileEq").onchange=function(e){
+  });
+  on("fileEq","change",function(e){
     if(e.target.files[0])importEqFile(e.target.files[0]);
     e.target.value="";
-  };
-  $("btnDemo").onclick=function(){
+  });
+  on("btnDemo","click",function(){
     if(state.demo.playing)demoStop();else demoPlay();
-  };
-  $("mCancel").onclick=function(){$("modal").hidden=true;};
-  $("mOk").onclick=addMeasurement;
-  $("mFile").addEventListener("change",doPreview);
-  $("mPaste").addEventListener("input",queuePreview);
-  $("mUrl").addEventListener("input",queuePreview);
-  $("mUrlL").addEventListener("input",queuePreview);
-  $("mUrlR").addEventListener("input",queuePreview);
-  $("modal").addEventListener("click",function(e){
+  });
+  on("mCancel","click",function(){$("modal").hidden=true;});
+  on("mOk","click",addMeasurement);
+  on("mFile","change",doPreview);
+  on("mPaste","input",queuePreview);
+  on("mUrl","input",queuePreview);
+  on("mUrlL","input",queuePreview);
+  on("mUrlR","input",queuePreview);
+  on("modal","click",function(e){
     if(e.target.id==="modal")$("modal").hidden=true;
   });
   document.addEventListener("keydown",function(e){
     if(e.key==="Escape")$("modal").hidden=true;
   });
+  on("btnAvg","click",averageAll);
+  on("btnShot","click",screenshot);
   if(window.matchMedia&&window.matchMedia("(max-width:900px)").matches){
     wrapDetails($("toolbar"),"Graph settings",true);
     $("adjRow").appendChild($("adjNote"));
     wrapDetails($("adjRow"),"Preference adjustments",false);
   }
+  sanState();
   renderBrands();renderModels();
   renderEqCurveSelect();renderEqRows();
   syncInputs();updateLegend();draw();

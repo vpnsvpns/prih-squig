@@ -230,7 +230,7 @@ z-index:30;max-width:90vw;text-align:center}
 <div id="errbar"></div>
 <div id="boot">Prih · loading…</div>
 <header id="top">
-  <div class="logo">Prih<span>EQ Playground · 711 · v36</span></div>
+  <div class="logo">Prih<span>EQ Playground · 711 · v37</span></div>
   <div class="topbtns">
     <button id="btnShot">Screenshot</button>
     <button id="btnAvg">Average All</button>
@@ -368,9 +368,9 @@ z-index:30;max-width:90vw;text-align:center}
 <div id="toast"></div>
 <script>
 "use strict";
-/* AutoEQ v31-core: coordinate descent, 3-param Nelder-Mead on FULL
-   weighted SSE; greedy seeding by peak; add/remove; two deterministic
-   starts; mask zeroes everything above Freq max. */
+/* AutoEQ core: coordinate descent + 3-param Nelder-Mead on FULL weighted
+   SSE; greedy seeding by peak; add/remove; two deterministic starts;
+   mask zeroes everything above Freq max. No ternary, no question marks. */
 window.AutoEqFit=(function(){
 function clamp(v,a,b){
   if(v<a){return a;}
@@ -662,7 +662,7 @@ return{fitAsync:fitAsync,mask:maskW};
 </script>
 <script>
 "use strict";
-var BUILD="v36";
+var BUILD="v37";
 function T(c,a,b){if(c){return a;}return b;}
 var QM=String.fromCharCode(63);
 var RE_SPLIT=/[\s,;]+/;
@@ -2441,7 +2441,7 @@ function init(){
   }
 }
 init();
-/*EOF v36*/
+/*EOF v37*/
 </script>
 </body>
 </html>

@@ -195,6 +195,7 @@ z-index:30;max-width:90vw;text-align:center}
   -webkit-overflow-scrolling:touch}
  #adjRow label{flex:none;white-space:nowrap;font-size:12px}
  #adjRow input{width:64px}
+ #adjBassQ{width:64px}
  #adjRow button{padding:8px 12px;flex:none}
  #legendRows{padding:8px 10px;gap:6px}
  .crow{grid-template-columns:14px 1fr 46px 34px 34px 34px 30px;gap:4px}
@@ -229,7 +230,7 @@ z-index:30;max-width:90vw;text-align:center}
 <div id="errbar"></div>
 <div id="boot">Prih · loading…</div>
 <header id="top">
-  <div class="logo">Prih<span>EQ Playground · 711 · v35</span></div>
+  <div class="logo">Prih<span>EQ Playground · 711 · v36</span></div>
   <div class="topbtns">
     <button id="btnShot">Screenshot</button>
     <button id="btnAvg">Average All</button>
@@ -661,23 +662,25 @@ return{fitAsync:fitAsync,mask:maskW};
 </script>
 <script>
 "use strict";
-var BUILD="v35";
+var BUILD="v36";
 function T(c,a,b){if(c){return a;}return b;}
+var QM=String.fromCharCode(63);
 var RE_SPLIT=/[\s,;]+/;
-var RE_ABS=/^https?:\/\//i;
+var RE_ABS=/^https{0,1}:\/\//i;
 var RE_ESC=/[&<>"]/g;
 var RE_HTML=new RegExp("^\\s*(<|<!DOCTYPE)","i");
-var RE_HREF=new RegExp('href="([^"]+\\.(?:csv|txt))"',"gi");
+var RE_HREF=new RegExp('href="([^"]+\\.(csv|txt))"',"gi");
 var RE_L=new RegExp("[._\\- ]L([._\\- \\d]|\\.csv|\\.txt)","i");
 var RE_R=new RegExp("[._\\- ]R([._\\- \\d]|\\.csv|\\.txt)","i");
 var RE_PRE=new RegExp("Preamp:\\s*([-+0-9.]+)","i");
 var RE_FILTER=new RegExp(
   "Filter\\s*\\d*\\s*:\\s*ON\\s*"+
-  "([A-Za-z]+)?\\s*"+
+  "([A-Za-z]{0,4})\\s*"+
   "Fc\\s*([0-9.]+)\\s*Hz\\s*"+
   "Gain\\s*([-+0-9.]+)\\s*dB\\s*"+
   "Q\\s*([0-9.]+)","gi");
 var RE_SAN=new RegExp("[^\\w\\d-]+","g");
+var RE_NL=new RegExp("\\r{0,1}\\n");
 var CFG={
   name:"Prih",normRange:[500,2000],
   autoEqDefaults:{fmin:20,fmax:8000,gmin:-10,gmax:6,qmin:0.5,qmax:1.5},
@@ -759,8 +762,8 @@ function fetchLocal(u){
   });
 }
 function fetchRemote(u){
-  var p1="https://api.allorigins.win/raw?url=";
-  var p2="https://corsproxy.io/?url=";
+  var p1="https://api.allorigins.win/raw"+QM+"url=";
+  var p2="https://corsproxy.io/"+QM+"url=";
   var urls=[u,p1+encodeURIComponent(u),p2+encodeURIComponent(u)];
   var chain=Promise.reject(new Error("fetch failed"));
   urls.forEach(function(uu){
@@ -778,7 +781,7 @@ function fetchRemote(u){
 }
 function fetchAny(u){return isAbs(u)?fetchRemote(u):fetchLocal(u);}
 function parseTable(text){
-  var rows=[],lines=text.split(/\r?\n/),i;
+  var rows=[],lines=text.split(RE_NL),i;
   for(i=0;i<lines.length;i++){
     var toks=lines[i].trim().split(RE_SPLIT)
       .filter(function(t){return t.length;});
@@ -881,7 +884,7 @@ function biquadDb(type,f0,Q,gain,f){
     b2=A*((A+1)+(A-1)*cw+2*sA*al);
     a0=(A+1)+(A-1)*cw-2*sA*al;
     a1=2*((A-1)+(A+1)*cw);
-    a2=(A+1)+(A-1)*cw-2*sA*al;
+    a2=(A+1)+(A-1)*cw+2*sA*al;
   }
   var c1=Math.cos(w),s1=Math.sin(w);
   var c2=Math.cos(2*w),s2=Math.sin(2*w);
@@ -1840,13 +1843,13 @@ function addMeasurement(){
       err.textContent="Provide URL, file or text";
       return;
     }
-    var pts=res.avg;
-    if(pts.length<20){
+    if(res.avg.length<20){
       err.textContent="Not a measurement: few points ("+
-        pts.length+")";
+        res.avg.length+")";
       return;
     }
-    var uname=pushUploaded(name,source,pts,resample(pts));
+    var uname=pushUploaded(name,source,res.avg,
+      resample(res.avg));
     afterSelChange();
     closeModal();
     toast("Measurement added: "+uname);
@@ -2085,9 +2088,9 @@ function syncInputs(){
   syncZoom();
   $("btnInspect").classList.toggle("on",state.inspect);
 }
-/* mobile: wrap element into details WITHOUT removing it (id stays alive) */
 function wrapDetails(hostEl,summaryText){
-  if(!hostEl||hostEl.parentNode.tagName==="DETAILS"){return;}
+  if(!hostEl){return;}
+  if(hostEl.parentNode&&hostEl.parentNode.tagName==="DETAILS"){return;}
   var d=document.createElement("details");
   d.className="gdet";
   var s=document.createElement("summary");
@@ -2438,7 +2441,7 @@ function init(){
   }
 }
 init();
-/*EOF v35*/
+/*EOF v36*/
 </script>
 </body>
 </html>

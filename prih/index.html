@@ -21,8 +21,6 @@ window.addEventListener("error",function(e){
 <style>
 :root{--bg:#1b1a20;--panel:#211f27;--panel2:#2a2831;--line:#3a3742;
 --text:#e8e6ea;--muted:#9b97a4;--target:#c9c2b4;--eq:#d9c223;--grid:#2e2c35}
-body.light{--bg:#f1f0f4;--panel:#e7e6ec;--panel2:#dfdfe6;--line:#c9c8d4;
---text:#1c1b22;--muted:#66646f;--grid:#d4d3dc}
 body.contrast{--bg:#000;--panel:#0b0b0b;--panel2:#161616;--line:#4a4a4a;
 --text:#fff;--muted:#c9c9c9;--target:#fff;--eq:#ffe14a;--grid:#3a3a3a}
 [hidden]{display:none!important}
@@ -48,8 +46,6 @@ font-size:12px}
 button:hover{border-color:var(--muted)}
 button.accent{background:#fff;color:#111;border-color:#fff;font-weight:600}
 button:disabled{opacity:.4;cursor:default}
-.linkbtn{background:none;border:none;color:var(--muted);font-size:11px;
-text-decoration:underline;padding:0 4px;cursor:pointer}
 main{flex:1;display:flex;min-height:0}
 aside{width:320px;flex:none;background:var(--panel);
 border-right:1px solid var(--line);display:flex;flex-direction:column;
@@ -137,7 +133,6 @@ color:var(--muted);flex:none}
 #adjRow input{width:64px}
 #adjRow.disabled input,#adjRow.disabled button{opacity:.35;
 pointer-events:none}
-/* панель кривых как на squig */
 #legendRows{display:flex;flex-direction:column;gap:4px;padding:8px 12px;
 background:var(--panel);border-top:1px solid var(--line)}
 .crow{display:grid;align-items:center;gap:6px;font-size:12px;
@@ -208,13 +203,11 @@ z-index:30}
 <div id="errbar"></div>
 <div id="boot">Prih · загрузка…</div>
 <header id="top">
-  <div class="logo">Prih<span>EQ Playground · 711 · v17</span></div>
+  <div class="logo">Prih<span>EQ Playground · 711 · v18</span></div>
   <div class="topbtns">
-    <button id="btnAdd" class="accent">+ Add measurement</button>
     <button id="btnUrl">Copy URL</button>
     <button id="btnShot">Screenshot</button>
     <button id="btnAvg">Average All</button>
-    <button id="btnTheme" title="Тема">☀</button>
   </div>
 </header>
 <main>
@@ -234,11 +227,6 @@ z-index:30}
         <button id="btnUpTgt">Upload Target</button>
         <button id="btnUpSong">Upload Song</button>
       </div>
-      <div class="row">
-        <button class="linkbtn" id="lnkFR">FR via URL/текст…</button>
-        <button class="linkbtn" id="lnkTgt">Target via URL…</button>
-        <button class="linkbtn" id="lnkEq">EQ из текста…</button>
-      </div>
       <input id="fileFR" type="file" accept=".csv,.txt,text/plain,text/csv" hidden>
       <input id="fileTgt" type="file" accept=".csv,.txt,text/plain,text/csv" hidden>
       <input id="fileEq" type="file" accept=".txt,.cfg,text/plain" hidden>
@@ -255,8 +243,6 @@ z-index:30}
         <button id="btnSaveEq">Save EQ</button>
       </div>
       <div class="row">
-        <button id="btnApo">⬇ APO</button>
-        <button id="btnWavelet">⬇ Wavelet</button>
         <button id="btnCopyEq">Копировать</button>
       </div>
       <h3>AutoEQ</h3>
@@ -341,16 +327,13 @@ z-index:30}
     <h3>Добавить замер (только 711)</h3>
     <label>Название<input id="mName" placeholder="Имя наушников"></label>
     <label>Подпись источника<input id="mSource" placeholder="pw / boizoff / gudkov / своё"></label>
-    <div class="muted">1) Ссылка со сквига (CSV/TXT или страница модели):</div>
     <label>URL<input id="mUrl" placeholder="https://gudkov.squig.link/..."></label>
     <div class="row">
       <label style="flex:1">URL L<input id="mUrlL" placeholder="...L.csv"></label>
       <label style="flex:1">URL R<input id="mUrlR" placeholder="...R.csv"></label>
     </div>
-    <div class="muted">2) — или — файл (CSV / TXT):</div>
-    <label><input id="mFile" type="file" accept=".csv,.txt,text/plain,text/csv"></label>
-    <div class="muted">3) — или — вставь текст замеров:</div>
-    <textarea id="mPaste" rows="4" placeholder="20 82.981 / 20.36 82.974 / ..."></textarea>
+    <label>Файл<input id="mFile" type="file" accept=".csv,.txt,text/plain,text/csv"></label>
+    <label>Текст<textarea id="mPaste" rows="4" placeholder="20 82.981 / 20.36 82.974 / ..."></textarea></label>
     <div id="mPrev" class="muted prev"></div>
     <div class="row">
       <button id="mOk" class="accent">Добавить</button>
@@ -359,39 +342,13 @@ z-index:30}
     <div id="mErr" class="muted err"></div>
   </div>
 </div>
-
-<div id="modalT" hidden>
-  <div class="box">
-    <h3>Импорт таргета (URL / текст)</h3>
-    <label>Название<input id="tName" placeholder="My Target"></label>
-    <label>URL (CSV/TXT)<input id="tUrl" placeholder="https://.../target.csv"></label>
-    <label>Или вставь текст<textarea id="tPaste" rows="4" placeholder="20 7.63 / 100 2.78 / ..."></textarea></label>
-    <div class="row">
-      <button id="tOk" class="accent">Импортировать</button>
-      <button id="tCancel">Отмена</button>
-    </div>
-    <div id="tErr" class="muted err"></div>
-  </div>
-</div>
-
-<div id="modalE" hidden>
-  <div class="box">
-    <h3>Импорт EQ из текста (AutoEQ / APO)</h3>
-    <label>Вставь текст<textarea id="ePaste" rows="6" placeholder="Preamp: -2.5 dB / Filter 1: ON PK Fc 21 Hz Gain 2.2 dB Q 0.7"></textarea></label>
-    <div class="row">
-      <button id="eOk" class="accent">Импортировать</button>
-      <button id="eCancel">Отмена</button>
-    </div>
-    <div id="eErr" class="muted err"></div>
-  </div>
-</div>
 <div id="toast"></div>
 
 <script>
 "use strict";
-/* AutoEQ v17: greedy + LS-gain (узкое окно) + выбор (f,Q) по полной SSE,
-   5 геометрических Q-кандидатов, 3 прохода полировки, дистанция 1/8 окт,
-   порог останова 0.15 дБ. Дефолты squig: -10..6 dB, Q 0.5..1.5, 20..8000 Hz. */
+/* AutoEQ (версия v16 — возвращена по просьбе): greedy по пику ошибки,
+   LS-gain по окну ±0.63 окт, выбор (f,Q) по полной SSE, 3 Q-кандидата,
+   дистанция 1/4 окт, 2 прохода полировки, порог останова 0.2 дБ. */
 window.AutoEqFit=(function(){
 var clamp=function(v,a,b){return v<a?a:v>b?b:v;};
 var shape=function(f,f0,q){
@@ -428,16 +385,12 @@ function evalCand(e,f,fc,q,o){
   }
   return{f:fc,q:q,g:g,s:s};
 }
-function qList5(o){
-  var r=Math.pow(o.qmax/o.qmin,0.25);
-  return[o.qmin,o.qmin*r,Math.sqrt(o.qmin*o.qmax),o.qmin*r*r*r,o.qmax];
-}
 function bestAround(e,f,fc0,o,span,Q){
   var lo=clamp(fc0/span,o.fmin,o.fmax);
   var hi=clamp(fc0*span,o.fmin,o.fmax);
   var best=null,t,i,c;
-  for(t=0;t<11;t++){
-    var ff=lo*Math.pow(hi/lo,t/10);
+  for(t=0;t<9;t++){
+    var ff=lo*Math.pow(hi/lo,t/8);
     for(i=0;i<Q.length;i++){
       c=evalCand(e,f,ff,Q[i],o);
       if(!best||c.s<best.s-1e-9)best=c;
@@ -453,28 +406,28 @@ function fit(eFull,fFull,o){
   if(idx.length<10)return[];
   var f=idx.map(function(k){return fFull[k];});
   var e=idx.map(function(k){return eFull[k];});
-  var Q=qList5(o);
+  var Q=[o.qmin,clamp((o.qmin+o.qmax)/2,o.qmin,o.qmax),o.qmax];
   var filters=[],banned=[];
   function tooClose(fc){
     var k;
     for(k=0;k<filters.length;k++){
-      if(Math.abs(Math.log2(fc/filters[k].f))<0.125)return true;
+      if(Math.abs(Math.log2(fc/filters[k].f))<0.25)return true;
     }
     return false;
   }
   var k,guard,bi,bv,base,best,placed;
   for(k=0;k<o.count;k++){
     placed=false;
-    for(guard=0;guard<14&&!placed;guard++){
+    for(guard=0;guard<12&&!placed;guard++){
       bi=-1;bv=0;
       for(i=0;i<e.length;i++){
         if(banned.indexOf(i)>=0)continue;
         if(Math.abs(e[i])>bv){bv=Math.abs(e[i]);bi=i;}
       }
-      if(bi<0||bv<0.15)break;
+      if(bi<0||bv<0.2)break;
       base=sse(e);
       best=bestAround(e,f,f[bi],o,1.5,Q);
-      if(best)best=bestAround(e,f,best.f,o,1.22,Q);
+      if(best)best=bestAround(e,f,best.f,o,1.25,Q);
       if(!best||best.s>=base-1e-9||tooClose(best.f)){
         banned.push(bi);
         continue;
@@ -492,11 +445,11 @@ function fit(eFull,fFull,o){
     var j2;
     for(j2=0;j2<filters.length;j2++){
       if(j2===kk)continue;
-      if(Math.abs(Math.log2(fc/filters[j2].f))<0.1)return false;
+      if(Math.abs(Math.log2(fc/filters[j2].f))<0.2)return false;
     }
     return true;
   }
-  for(round=0;round<3;round++){
+  for(round=0;round<2;round++){
     changed=false;
     for(k=0;k<filters.length;k++){
       var fl=filters[k];
@@ -505,9 +458,10 @@ function fit(eFull,fFull,o){
         ew[i]-=fl.g*shape(f[i],fl.f,fl.q);
       }
       base=sse(e);
-      Q2=[clamp(fl.q/1.4,o.qmin,o.qmax),fl.q,clamp(fl.q*1.4,o.qmin,o.qmax)];
-      best2=bestAround(ew,f,fl.f,o,1.35,Q2);
-      if(best2)best2=bestAround(ew,f,best2.f,o,1.15,Q2);
+      Q2=[clamp(fl.q/1.5,o.qmin,o.qmax),fl.q,
+          clamp(fl.q*1.5,o.qmin,o.qmax)];
+      best2=bestAround(ew,f,fl.f,o,1.4,Q2);
+      if(best2)best2=bestAround(ew,f,best2.f,o,1.2,Q2);
       if(best2&&okF(best2.f,k)){
         s2=0;
         for(i=0;i<f.length;i++){
@@ -539,7 +493,7 @@ return{fit:fit};
 
 <script>
 "use strict";
-var BUILD="v17";
+var BUILD="v18";
 var RE_SPLIT=/[\s,;]+/;
 var RE_ABS=/^https?:\/\//i;
 var RE_ESC=/[&<>"]/g;
@@ -754,7 +708,7 @@ function biquadDb(type,f0,Q,gain,f){
   return 10*Math.log10(hR*hR+hI*hI+1e-12);
 }
 var state={
-  selected:new Map(),hidden:new Set(),curves:new Map(),
+  selected:new Map(),hidden:new Set(),off:new Map(),
   average:null,avgN:0,target:null,brand:null,
   adj:{bass:0,bassQ:0.707,bassF:105,treble:0,tilt:0,ear:0},
   normOn:true,normDb:60,normHz:500,smoothN:5,ySpan:30,
@@ -767,11 +721,14 @@ var state={
 };
 var targets=new Map(),hpCache=new Map();
 function curveCfg(key){
-  if(!state.curves.has(key)){
+  if(!state.curvesHas(key)){
     state.curves.set(key,{comp:null,smOn:true,smN:null,off:0,pin:false});
   }
   return state.curves.get(key);
 }
+state.curves=new Map();
+function curvesHas(key){return state.curves.has(key);}
+state.curvesHas=curvesHas;
 function flatToPairs(p){
   var out=[],i;
   for(i=0;i+1<p.length;i+=2)out.push([p[i],p[i+1]]);
@@ -853,8 +810,7 @@ function normalizeOnly(y){
   if(!state.normOn)return y;
   return shift(y,state.normDb-anchorVal(y,state.normHz));
 }
-/* обработка кривой с учётом персональных настроек ряда (comp/smooth/off) */
-function processCurve(raw,cfg,forceRawSmooth){
+function processCurve(raw,cfg,forceRaw){
   var y=raw;
   if(cfg&&cfg.comp&&targets.has(cfg.comp)){
     y=minusF(y,targets.get(cfg.comp).raw);
@@ -862,13 +818,13 @@ function processCurve(raw,cfg,forceRawSmooth){
   var n;
   if(cfg&&cfg.smOn===false)n=0;
   else if(cfg&&cfg.smN!=null)n=cfg.smN;
-  else n=forceRawSmooth===0?0:state.smoothN;
+  else n=forceRaw?0:state.smoothN;
   if(n>0)y=smoothCurve(y,1/n);
   if(state.normOn)y=shift(y,state.normDb-anchorVal(y,state.normHz));
   if(cfg&&cfg.off)y=shift(y,cfg.off);
   return y;
 }
-function process(raw){return processCurve(raw,null);}
+function process(raw){return processCurve(raw,null,0);}
 function filterResp(fl,f){
   if(!fl.on||!fl.g)return 0;
   if(fl.t==="PK")return fl.g*shape(f,fl.f,fl.q);
@@ -880,24 +836,24 @@ function series(){
     if(!s.raw||state.hidden.has(name))return;
     var cfg=curveCfg(name);
     S.push({name:name,color:s.color,pin:cfg.pin,
-      y:processCurve(s.raw,cfg)});
+      y:processCurve(s.raw,cfg,0)});
   });
   if(state.average&&!state.hidden.has("__avg")){
     S.push({name:"AVERAGE",color:"#ffffff",dash:[5,4],w:2,
       pin:curveCfg("__avg").pin,
-      y:processCurve(state.average,curveCfg("__avg"))});
+      y:processCurve(state.average,curveCfg("__avg"),0)});
   }
   var tr=targetRaw();
   if(tr&&!state.hidden.has("__target")){
     var ct=curveCfg("__target");
     S.push({name:state.target,color:css("--target"),dash:[8,5],w:2,
-      pin:ct.pin,y:processCurve(tr,ct,0)});
+      pin:ct.pin,y:processCurve(tr,ct,1)});
   }
   if(state.eq&&state.eqShow&&state.eq.curve&&
      !state.hidden.has("__eq")){
     S.push({name:"EQ result",color:css("--eq"),w:2,
       pin:curveCfg("__eq").pin,
-      y:processCurve(state.eq.curve,curveCfg("__eq"))});
+      y:processCurve(state.eq.curve,curveCfg("__eq"),0)});
   }
   S.sort(function(a,b){return(a.pin?1:0)-(b.pin?1:0);});
   return S;
@@ -1170,7 +1126,7 @@ function renderModels(){
   var box=$("modelList");box.innerHTML="";
   if(!list.length){
     box.innerHTML="<div class='muted' style='padding:8px'>Пусто. "+
-      "Замеры: data/squig-db.json или «+ Add measurement»</div>";
+      "Замеры: data/squig-db.json или «Upload FR»</div>";
   }
   list.forEach(function(hp){
     var sel=state.selected.has(hp.name);
@@ -1221,11 +1177,11 @@ function download(name,text){
   setTimeout(function(){URL.revokeObjectURL(a.href);},5000);
 }
 function curveYByKey(key){
-  if(key==="__target")return processCurve(targetRaw(),curveCfg(key),0);
-  if(key==="__eq")return processCurve(state.eq.curve,curveCfg(key));
-  if(key==="__avg")return processCurve(state.average,curveCfg(key));
+  if(key==="__target")return processCurve(targetRaw(),curveCfg(key),1);
+  if(key==="__eq")return processCurve(state.eq.curve,curveCfg(key),0);
+  if(key==="__avg")return processCurve(state.average,curveCfg(key),0);
   var s=state.selected.get(key);
-  return s&&s.raw?processCurve(s.raw,curveCfg(key)):null;
+  return s&&s.raw?processCurve(s.raw,curveCfg(key),0):null;
 }
 function downloadCurveByKey(key){
   var y=curveYByKey(key);
@@ -1236,7 +1192,6 @@ function downloadCurveByKey(key){
   }
   download(key.replace(RE_SAN,"_")+".csv",lines.join("\n"));
 }
-/* нижняя панель кривых в стиле squig/crin-graph */
 function updateLegend(){
   var lg=$("legendRows");lg.innerHTML="";
   var compOpts="<option value=''><NO COMP></option>";
@@ -1255,14 +1210,14 @@ function updateLegend(){
       " value='"+cfg.off+"'>";
     if(withComp){
       html+="<select class='ccomp' title='Compensation'>"+
-        compOpts.replace("value='"+esc(cfg.comp)+"'",
-          "value='"+esc(cfg.comp)+"' selected")+"</select>";
+        compOpts+"</select>";
     }else{
       html+="<span></span>";
     }
     html+="<button class='csm"+(cfg.smOn===false?"":" on")+
       "' title='Smoothing on/off'>~</button>"+
-      "<input class='csn' type='number' min='0' max='48' title='Smooth 1/N oct'"+
+      "<input class='csn' type='number' min='0' max='48'"+
+      " title='Smooth 1/N oct'"+
       " value='"+(cfg.smN!=null?cfg.smN:state.smoothN)+"'>"+
       "<button class='ceye' title='Hide/show'>"+
       (state.hidden.has(key)?"🚫":"")+"</button>"+
@@ -1271,6 +1226,9 @@ function updateLegend(){
       "<button class='cdl' title='Download CSV'>⬇</button>"+
       "<button class='cx' title='Remove'>✕</button>";
     d.innerHTML=html;
+    if(withComp&&cfg.comp){
+      d.querySelector(".ccomp").value=cfg.comp;
+    }
     lg.appendChild(d);
     var y=curveYByKey(key);
     if(y)drawSpark(d.querySelector(".spark"),y,color);
@@ -1294,7 +1252,6 @@ function updateLegend(){
     row("__avg","#ffffff","AVERAGE ("+state.avgN+")","",false);
   }
 }
-$("legendRows")&&null;
 function eqBase(){
   if(!state.eq.name||!state.selected.has(state.eq.name)){
     state.eq.name=[...state.selected.keys()].pop()||null;
@@ -1513,7 +1470,6 @@ function loadUploaded(){
   }catch(e){state.uploaded=[];}
 }
 function baseName(fn){return fn.replace(/\.[^.]+$/,"")||"Uploaded";}
-/* прямой импорт файлов (без модалок) */
 function importFRFile(f){
   f.text().then(function(t){
     var pts=parseTable(t);
@@ -1532,8 +1488,7 @@ function importFRFile(f){
       color:PALETTE[(state.selected.size+state.palShift)%PALETTE.length],
       raw:def.raw
     });
-    renderEqCurveSelect();recomputeEq();
-    renderBrands();renderModels();updateLegend();draw();
+    afterSelChange();
     toast("Замер добавлен: "+name);
   }).catch(function(e){toast("Ошибка файла: "+e.message);});
 }
@@ -1560,174 +1515,6 @@ function importEqFile(f){
     renderEqRows();recomputeEq();updateLegend();draw();
     toast("Импортировано фильтров: "+r.fs.length);
   }).catch(function(e){toast("Ошибка файла: "+e.message);});
-}
-function closeModal(){
-  $("modal").hidden=true;$("mErr").textContent="";$("mPrev").textContent="";
-  $("mName").value="";$("mUrl").value="";
-  $("mUrlL").value="";$("mUrlR").value="";
-  $("mFile").value="";$("mPaste").value="";
-}
-function absUrl(base,rel){
-  try{return new URL(rel,base).href;}
-  catch(e){return rel;}
-}
-function fetchPtsFromUrl(u){
-  return fetchAny(u).then(function(t){
-    if(!RE_HTML.test(t))return parseTable(t);
-    var links=[],mm;
-    RE_HREF.lastIndex=0;
-    while((mm=RE_HREF.exec(t))!==null&&links.length<6){
-      links.push(absUrl(u,mm[1]));
-    }
-    if(!links.length){
-      throw new Error("на странице нет ссылок на CSV/TXT");
-    }
-    var L=links[0],R=null,i;
-    for(i=0;i<links.length;i++){
-      if(RE_L.test(links[i])){L=links[i];break;}
-    }
-    for(i=0;i<links.length;i++){
-      if(RE_R.test(links[i])&&links[i]!==L){R=links[i];break;}
-    }
-    if(R){
-      return Promise.all([fetchAny(L),fetchAny(R)]).then(function(p){
-        var la=resample(parseTable(p[0]));
-        var lb=resample(parseTable(p[1]));
-        var pts=[],j;
-        for(j=0;j<GRID.length;j++){
-          pts.push([GRID[j],(la[j]+lb[j])/2]);
-        }
-        return pts;
-      });
-    }
-    return fetchAny(links[0]).then(function(t2){
-      return parseTable(t2);
-    });
-  });
-}
-function grabPts(){
-  if($("mFile").files[0]){
-    return $("mFile").files[0].text().then(function(t){
-      return parseTable(t);
-    });
-  }
-  if($("mPaste").value.trim()){
-    return Promise.resolve(parseTable($("mPaste").value));
-  }
-  if($("mUrlL").value.trim()&&$("mUrlR").value.trim()){
-    return Promise.all([
-      fetchPtsFromUrl($("mUrlL").value.trim()),
-      fetchPtsFromUrl($("mUrlR").value.trim())
-    ]).then(function(p){
-      var la=resample(p[0]),lb=resample(p[1]);
-      var pts=[],j;
-      for(j=0;j<GRID.length;j++){
-        pts.push([GRID[j],(la[j]+lb[j])/2]);
-      }
-      return pts;
-    });
-  }
-  if($("mUrl").value.trim()){
-    return fetchPtsFromUrl($("mUrl").value.trim());
-  }
-  return Promise.resolve(null);
-}
-var prevTimer=null;
-function queuePreview(){
-  clearTimeout(prevTimer);
-  prevTimer=setTimeout(doPreview,600);
-}
-function doPreview(){
-  var el=$("mPrev");el.textContent="";
-  return grabPts().then(function(pts){
-    if(!pts)return;
-    if(pts.length>=20){
-      el.textContent="✔ "+pts.length+" точек, "+
-        Math.round(pts[0][0])+"–"+
-        Math.round(pts[pts.length-1][0])+" Гц";
-    }else{
-      el.textContent="Мало точек: "+pts.length;
-    }
-  }).catch(function(e){
-    el.textContent="Ошибка: "+e.message;
-  });
-}
-function addMeasurement(){
-  var err=$("mErr");err.textContent="";
-  var name=$("mName").value.trim()||"Uploaded";
-  var source=$("mSource").value.trim()||"uploaded";
-  grabPts().then(function(pts){
-    if(!pts){err.textContent="Укажи URL, файл или вставь текст";return;}
-    if(pts.length<20){
-      err.textContent="Не похоже на замер: мало точек ("+pts.length+")";
-      return;
-    }
-    state.uploaded.push({
-      name:name,source:source,
-      pts:pts.filter(function(_,i){
-        return i%Math.max(1,Math.floor(pts.length/400))===0;
-      }),
-      raw:resample(pts)
-    });
-    saveUploaded();
-    var def=state.uploaded[state.uploaded.length-1];
-    state.selected.set(def.name,{
-      color:PALETTE[(state.selected.size+state.palShift)%PALETTE.length],
-      raw:def.raw
-    });
-    renderEqCurveSelect();recomputeEq();
-    renderBrands();renderModels();updateLegend();draw();closeModal();
-    toast("Замер добавлен: "+name);
-  }).catch(function(e){
-    err.textContent="Ошибка: "+e.message;
-  });
-}
-function importTargetModal(){
-  var err=$("tErr");err.textContent="";
-  var name=$("tName").value.trim()||
-    ("Imported Target "+(state.impTargets.length+1));
-  var p;
-  if($("tPaste").value.trim()){
-    p=Promise.resolve(parseTable($("tPaste").value));
-  }else if($("tUrl").value.trim()){
-    p=fetchAny($("tUrl").value.trim()).then(function(t){
-      return parseTable(t);
-    });
-  }else{
-    err.textContent="Укажи URL или текст";
-    return;
-  }
-  p.then(function(pts){
-    if(!pts||pts.length<10){
-      err.textContent="Мало точек: "+(pts?pts.length:0);
-      return;
-    }
-    targets.set(name,{
-      def:{name:name,adjustable:true,imported:true},
-      raw:resample(pts)
-    });
-    if(state.impTargets.indexOf(name)<0)state.impTargets.push(name);
-    state.target=name;
-    buildTargetChips();syncAdj();updateLegend();draw();
-    $("modalT").hidden=true;
-    toast("Таргет импортирован: "+name);
-  }).catch(function(e){
-    err.textContent="Ошибка: "+e.message;
-  });
-}
-function importEqModal(){
-  var err=$("eErr");err.textContent="";
-  var txt=$("ePaste").value;
-  if(!txt.trim()){err.textContent="Вставь текст EQ";return;}
-  var r=parseEqText(txt);
-  if(!r.fs.length){
-    err.textContent="Не найдено строк Filter N: ON ...";
-    return;
-  }
-  state.eq.filters=r.fs;
-  renderEqRows();recomputeEq();updateLegend();draw();
-  $("modalE").hidden=true;
-  toast("Импортировано фильтров: "+r.fs.length);
 }
 function averageAll(){
   if(!allHps().length){toast("Список замеров пуст");return;}
@@ -1765,7 +1552,7 @@ function screenshot(){
   });
 }
 function hashFromState(){
-  var o={v:17,sel:[...state.selected.keys()],tgt:state.target,
+  var o={v:18,sel:[...state.selected.keys()],tgt:state.target,
     adj:state.adj,nrm:state.normOn,ndb:state.normDb,
     nhz:state.normHz,sm:state.smoothN,ys:state.ySpan,
     aeq:state.aeq,zoom:state.zoom};
@@ -1872,9 +1659,6 @@ function init(){
   try{
   if(window.__prihBootTimer)clearTimeout(window.__prihBootTimer);
   console.info("Prih build "+BUILD);
-  if(localStorage.getItem("prih-theme")==="light"){
-    document.body.classList.add("light");
-  }
   loadUploaded();
   var tabs=document.querySelectorAll(".tabs button"),ti;
   for(ti=0;ti<tabs.length;ti++){
@@ -1940,7 +1724,6 @@ function init(){
     state.mouse=null;
     if(state.inspect)draw();
   });
-  /* делегирование панели кривых */
   var lg=$("legendRows");
   lg.addEventListener("input",function(e){
     var row=e.target.closest(".crow");
@@ -1988,10 +1771,6 @@ function init(){
       }else if(key==="__avg"){
         state.average=null;
       }else{
-        var def=null,all=allHps(),i;
-        for(i=0;i<all.length;i++){
-          if(all[i].name===key)def=all[i];
-        }
         state.selected.delete(key);
         renderEqCurveSelect();recomputeEq();renderModels();
       }
@@ -2079,11 +1858,6 @@ function init(){
     download("prih-eq-apo.txt",head.concat(eqLines()).join("\n"));
   }
   $("btnSaveEq").onclick=exportApo;
-  $("btnApo").onclick=exportApo;
-  $("btnWavelet").onclick=function(){
-    if(!state.eq.filters.length){toast("Нет фильтров");return;}
-    download("prih-eq-wavelet.txt",eqLines().join("\n"));
-  };
   $("btnCopyEq").onclick=function(){
     if(!state.eq.filters.length)return;
     navigator.clipboard.writeText(eqLines().join("\n")).then(function(){
@@ -2095,10 +1869,10 @@ function init(){
     download("prih-parametric-eq.txt",eqLines().join("\n"));
     toast("Parametric EQ экспортирован");
   };
-  /* прямой выбор файлов */
+  $("btnImportEq").onclick=function(){$("fileEq").click();};
   $("btnUpFR").onclick=function(){$("fileFR").click();};
   $("btnUpTgt").onclick=function(){$("fileTgt").click();};
-  $("btnImportEq").onclick=function(){$("fileEq").click();};
+  $("btnUpSong").onclick=function(){$("songFile").click();};
   $("fileFR").onchange=function(e){
     if(e.target.files[0])importFRFile(e.target.files[0]);
     e.target.value="";
@@ -2111,10 +1885,6 @@ function init(){
     if(e.target.files[0])importEqFile(e.target.files[0]);
     e.target.value="";
   };
-  $("lnkFR").onclick=function(){$("modal").hidden=false;};
-  $("lnkTgt").onclick=function(){$("modalT").hidden=false;};
-  $("lnkEq").onclick=function(){$("modalE").hidden=false;};
-  $("btnUpSong").onclick=function(){$("songFile").click();};
   $("songFile").onchange=function(e){
     var f=e.target.files[0];
     if(!f)return;
@@ -2136,39 +1906,9 @@ function init(){
   $("btnDemo").onclick=function(){
     if(state.demo.playing)demoStop();else demoPlay();
   };
-  $("tCancel").onclick=function(){$("modalT").hidden=true;};
-  $("tOk").onclick=importTargetModal;
-  $("eCancel").onclick=function(){$("modalE").hidden=true;};
-  $("eOk").onclick=importEqModal;
   $("btnAvg").onclick=averageAll;
   $("btnShot").onclick=screenshot;
   $("btnUrl").onclick=copyUrl;
-  $("btnTheme").onclick=function(){
-    document.body.classList.toggle("light");
-    var lite=document.body.classList.contains("light");
-    localStorage.setItem("prih-theme",lite?"light":"dark");
-    draw();
-  };
-  $("btnAdd").onclick=function(){$("modal").hidden=false;};
-  $("mCancel").onclick=closeModal;
-  $("mOk").onclick=addMeasurement;
-  $("mFile").addEventListener("change",doPreview);
-  $("mPaste").addEventListener("input",queuePreview);
-  $("mUrl").addEventListener("input",queuePreview);
-  $("mUrlL").addEventListener("input",queuePreview);
-  $("mUrlR").addEventListener("input",queuePreview);
-  ["modal","modalT","modalE"].forEach(function(mid){
-    $(mid).addEventListener("click",function(e){
-      if(e.target.id===mid)$(mid).hidden=true;
-    });
-  });
-  document.addEventListener("keydown",function(e){
-    if(e.key==="Escape"){
-      $("modal").hidden=true;
-      $("modalT").hidden=true;
-      $("modalE").hidden=true;
-    }
-  });
   if(window.matchMedia&&window.matchMedia("(max-width:900px)").matches){
     wrapDetails($("toolbar"),"Graph settings",true);
     $("adjRow").appendChild($("adjNote"));

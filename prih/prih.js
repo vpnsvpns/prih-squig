@@ -64,10 +64,9 @@ function biquadDb(type,f0,Q,gain,f){
   const A=Math.pow(10,(gain||0)/40),cw=Math.cos(w0),sw=Math.sin(w0),alpha=sw/(2*Math.max(Q,0.05));
   let b0,b1,b2,a0,a1,a2;
   if(type==="ls"){b0=A*((A+1)+(A-1)*cw+2*Math.sqrt(A)*alpha);b1=2*A*((A-1)+(A+1)*cw);b2=A*((A+1)+(A-1)*cw-2*Math.sqrt(A)*alpha);a0=(A+1)+(A-1)*cw+2*Math.sqrt(A)*alpha;a1=-2*((A-1)+(A+1)*cw);a2=(A+1)+(A-1)*cw-2*Math.sqrt(A)*alpha);}
-  else if(type==="hs"){b0=A*((A+1)+(A-1)*cw-2*Math.sqrt(A)*alpha);b1=-2*A*((A-1)+(A+1)*cw);b2=A*((A+1)+(A-1)*cw+2*Math.sqrt(A)*alpha);a0=(A+1)+(A-1)*cw-2*Math.sqrt(A)*alpha;a1=2*((A-1)+(A+1)*cw);a2=(A+1)+(A-1)*cw-2*Math.sqrt(A)*alpha);}
+  else if(type==="hs"){b0=A*((A+1)+(A-1)*cw-2*Math.sqrt(A)*alpha);b1=-2*A*((A-1)+(A+1)*cw);b2=A*((A+1)+(A-1)*cw+2*Math.sqrt(A)*alpha);a0=(A+1)+(A-1)*cw-2*Math.sqrt(A)*alpha;a1=2*((A-1)+(A+1)*cw);a2=(A+1)+(A-1)*cw+2*Math.sqrt(A)*alpha);}
   else{b0=1+alpha*A;b1=-2*cw;b2=1-alpha*A;a0=1+alpha/A;a1=-2*cw;a2=1-alpha/A;}
-  const z1r=Math.cos(w),z1i=-Math.sin(w),nr=b0+b1*z1r+b2*Math.cos(2*w),ni=b1*z1i+b2*z1i*Math.cos(w)?0:0,dr=a0+a1*z1r+a2*Math.cos(2*w),di=a1*z1i+a2*(-Math.sin(2*w));
-  const NR2=b1*Math.sin(w)+b2*Math.sin(2*w),NB=b0+b1*z1r+b2*Math.cos(2*w),DR=a0+a1*z1r+a2*Math.cos(2*w),DI=a1*Math.sin(w)+a2*Math.sin(2*w);
+  const z1r=Math.cos(w),z1i=-Math.sin(w),NR2=b1*Math.sin(w)+b2*Math.sin(2*w),NB=b0+b1*z1r+b2*Math.cos(2*w),DR=a0+a1*z1r+a2*Math.cos(2*w),DI=a1*Math.sin(w)+a2*Math.sin(2*w);
   const den=DR*DR+DI*DI||1e-9,hr=(NB*DR+NR2*DI)/den,hi2=(NR2*DR-NB*DI)/den;
   return 10*Math.log10(hr*hr+hi2*hi2+1e-12);
 }
@@ -435,7 +434,7 @@ function screenshot(){
   $("graph").toBlob(b=>{const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="prih-playground.png";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);});
 }
 function hashFromState(){
-  return"#"+encodeURIComponent(JSON.stringify({v:8,sel:[...state.selected.keys()],tgt:state.target,adj:state.adj,nrm:state.normOn,ndb:state.normDb,nhz:state.normHz,sm:state.smoothN,ys:state.ySpan,aeq:state.aeq}));
+  return"#"+encodeURIComponent(JSON.stringify({v:9,sel:[...state.selected.keys()],tgt:state.target,adj:state.adj,nrm:state.normOn,ndb:state.normDb,nhz:state.normHz,sm:state.smoothN,ys:state.ySpan,aeq:state.aeq}));
 }
 async function copyUrl(){
   const u=location.origin+location.pathname+hashFromState();
@@ -548,11 +547,10 @@ async function init(){
   $("mUrlR").addEventListener("input",queuePreview);
   $("modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal();});
   document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal();});
-  const ac=$("aeCount");if(ac){const lb=ac.closest("label");if(lb)lb.style.display="none";}
   if(matchMedia("(max-width:900px)").matches){
     wrapDetails($("toolbar"),"Graph settings",true);
     $("adjRow").appendChild($("adjNote"));
-    wrapDetails($("adjRow"),"Preference adjustments",false,$("adjReset")?[$("adjReset").parentNode===$("adjRow")?null:null]:[]);
+    wrapDetails($("adjRow"),"Preference adjustments",false);
   }
   renderBrands();renderModels();renderEqCurveSelect();renderEqRows();syncInputs();updateLegend();draw();
   loadTargets().then(()=>{buildTargetChips();syncAdj();updateLegend();draw();restore();});

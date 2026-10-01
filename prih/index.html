@@ -118,6 +118,10 @@ font-family:ui-monospace,Menlo,monospace}
 #graphWrap{flex:1;min-height:260px;position:relative}
 #graph{position:absolute;inset:0;width:100%;height:100%}
 #graph.inspect{cursor:crosshair}
+#eqOverlay{position:absolute;inset:0;display:flex;align-items:center;
+justify-content:center;background:rgba(0,0,0,.55);z-index:6}
+#eqOverlayMsg{color:#fff;font-weight:700;font-size:14px;
+text-shadow:0 1px 4px #000;padding:0 16px;text-align:center}
 #bands{display:flex;justify-content:space-between;padding:4px 60px 6px;
 color:var(--muted);font-size:10.5px;border-top:1px solid var(--line);
 background:var(--panel)}
@@ -201,7 +205,7 @@ z-index:30}
 <div id="errbar"></div>
 <div id="boot">Prih · загрузка…</div>
 <header id="top">
-  <div class="logo">Prih<span>EQ Playground · 711 · v20</span></div>
+  <div class="logo">Prih<span>EQ Playground · 711 · v21</span></div>
   <div class="topbtns">
     <button id="btnShot">Screenshot</button>
     <button id="btnAvg">Average All</button>
@@ -283,7 +287,12 @@ z-index:30}
       </span>
       <button id="btnInspect" class="tchip">Inspect</button>
     </div>
-    <div id="graphWrap"><canvas id="graph"></canvas></div>
+    <div id="graphWrap">
+      <canvas id="graph"></canvas>
+      <div id="eqOverlay" hidden>
+        <div id="eqOverlayMsg">AutoEQ is running, it could take 5–20 seconds or more.</div>
+      </div>
+    </div>
     <div id="bands">
       <span>Sub bass</span><span>Bass</span><span>Lower Mids</span>
       <span>Midrange</span><span>Upper Mids</span><span>Presence</span>
@@ -334,18 +343,15 @@ z-index:30}
 
 <script>
 "use strict";
-/* AutoEQ (ядро v16): greedy по пику, LS-gain по окну ±0.63 окт,
-   выбор (f,Q) по полной SSE, дистанция 1/4 окт, 2 прохода полировки. */
+/* AutoEQ v21 "slow & thorough" (как squig: 5–20 c):
+   multi-start greedy + annealing coordinate descent (радиус 1.5→1.02 окт)
+   + Nelder-Mead полировка каждого фильтра + pass add/remove,
+   выбор лучшего захода по полной SSE, бюджет ~12 c, чанками с yield. */
 window.AutoEqFit=(function(){
 var clamp=function(v,a,b){return v<a?a:v>b?b:v;};
 var shape=function(f,f0,q){
   var x=f/f0-f0/f;
   return 1/(1+q*q*x*x);
-};
-var sse=function(e){
-  var s=0,i;
-  for(i=0;i<e.length;i++)s+=e[i]*e[i];
-  return s;
 };
 function lsGainWin(e,w,f,f0,q,ga,gb){
   var n=0,d=0,k,i,m;
@@ -362,125 +368,280 @@ function winIdx(f,fc,span){
   }
   return w;
 }
-function evalCand(e,f,fc,q,o){
-  var w=winIdx(f,fc,1.55);
-  var g=lsGainWin(e,w,f,fc,q,o.gmin,o.gmax);
-  var s=0,i,d;
-  for(i=0;i<f.length;i++){
-    d=e[i]+g*shape(f[i],fc,q);
+function winSSE(e,w,f,fc,q,g){
+  var s=0,k,i,d;
+  for(k=0;k<w.length;k++){
+    i=w[k];d=e[i]+g*shape(f[i],fc,q);
     s+=d*d;
   }
-  return{f:fc,q:q,g:g,s:s};
+  return s;
 }
-function bestAround(e,f,fc0,o,span,Q){
+function fullSSE(e0,f,fs){
+  var s=0,i,k,d,K=fs.length;
+  for(i=0;i<f.length;i++){
+    d=e0[i];
+    for(k=0;k<K;k++){
+      if(fs[k].g)d+=fs[k].g*shape(f[i],fs[k].f,fs[k].q);
+    }
+    s+=d*d;
+  }
+  return s;
+}
+function respInto(e,f,fl,sgn){
+  for(var i=0;i<e.length;i++){
+    e[i]+=sgn*fl.g*shape(f[i],fl.f,fl.q);
+  }
+}
+function residualWithout(e0,f,fs,k){
+  var ew=e0.slice(),j;
+  for(j=0;j<fs.length;j++){
+    if(j===k)continue;
+    if(fs[j].g)respInto(ew,f,fs[j],1);
+  }
+  return ew;
+}
+function qSet(o,n){
+  var out=[],i;
+  for(i=0;i<n;i++){
+    out.push(clamp(o.qmin*Math.pow(o.qmax/o.qmin,i/(n-1)),o.qmin,o.qmax));
+  }
+  return out;
+}
+function bestAround(e,f,fc0,o,span,Q,np){
   var lo=clamp(fc0/span,o.fmin,o.fmax);
   var hi=clamp(fc0*span,o.fmin,o.fmax);
-  var best=null,t,i,c;
-  for(t=0;t<9;t++){
-    var ff=lo*Math.pow(hi/lo,t/8);
+  var best=null,t,i,q,g,s,w;
+  for(t=0;t<np;t++){
+    var ff=lo*Math.pow(hi/lo,t/(np-1));
+    w=winIdx(f,ff,1.55);
     for(i=0;i<Q.length;i++){
-      c=evalCand(e,f,ff,Q[i],o);
-      if(!best||c.s<best.s-1e-9)best=c;
+      q=Q[i];
+      g=lsGainWin(e,w,f,ff,q,o.gmin,o.gmax);
+      s=winSSE(e,w,f,ff,q,g);
+      if(!best||s<best.s-1e-9)best={f:ff,q:q,g:g,s:s};
     }
   }
   return best;
 }
-function fit(eFull,fFull,o){
+function tooClose(fs,fc,minD){
+  for(var i=0;i<fs.length;i++){
+    if(Math.abs(Math.log2(fc/fs[i].f))<minD)return true;
+  }
+  return false;
+}
+function greedy(e0,f,o,Q){
+  var e=e0.slice(),fs=[],banned=[],k,guard,i;
+  for(k=0;k<o.count;k++){
+    var placed=false;
+    for(guard=0;guard<14&&!placed;guard++){
+      var bi=-1,bv=0;
+      for(i=0;i<e.length;i++){
+        if(banned.indexOf(i)>=0)continue;
+        var av=Math.abs(e[i]);
+        if(av>bv){bv=av;bi=i;}
+      }
+      if(bi<0||bv<0.15)break;
+      var best=bestAround(e,f,f[bi],o,1.6,Q,31);
+      if(best)best=bestAround(e,f,best.f,o,1.25,Q,31);
+      if(!best){banned.push(bi);continue;}
+      var cand={f:best.f,q:best.q,g:best.g};
+      if(tooClose(fs,cand.f,0.125)){banned.push(bi);continue;}
+      var before=fullSSE(e0,f,fs);
+      var after=fullSSE(e0,f,fs.concat([cand]));
+      if(after>=before-1e-9){banned.push(bi);continue;}
+      fs.push(cand);
+      respInto(e,f,cand,1);
+      placed=true;
+    }
+    if(!placed)break;
+  }
+  return fs;
+}
+function tick(){
+  return new Promise(function(r){setTimeout(r,0);});
+}
+async function anneal(e0,f,fs,o,tEnd,rStart){
+  var radii=[1.5,1.3,1.15,1.06,1.02];
+  var ri=rStart||0;
+  while(ri<radii.length){
+    var changed=false;
+    for(var k=0;k<fs.length;k++){
+      var ew=residualWithout(e0,f,fs,k);
+      var base=fullSSE(e0,f,fs);
+      var fl=fs[k];
+      var Q2=[
+        clamp(fl.q/1.6,o.qmin,o.qmax),
+        clamp(fl.q/1.25,o.qmin,o.qmax),
+        fl.q,
+        clamp(fl.q*1.25,o.qmin,o.qmax),
+        clamp(fl.q*1.6,o.qmin,o.qmax)
+      ];
+      var best=bestAround(ew,f,fl.f,o,radii[ri],Q2,41);
+      if(best){
+        var cand={f:best.f,q:best.q,g:best.g};
+        var others=fs.filter(function(_,j){return j!==k;});
+        if(!tooClose(others,cand.f,0.1)){
+          var after=fullSSE(e0,f,others.concat([cand]));
+          if(after<base-1e-9){fs[k]=cand;changed=true;}
+        }
+      }
+    }
+    if(!changed)ri++;
+    if(performance.now()>tEnd)break;
+    await tick();
+  }
+  return fs;
+}
+function nm2(F,x0,iters){
+  var S=[{x:[x0[0],x0[1]]},
+         {x:[x0[0]+0.25,x0[1]]},
+         {x:[x0[0],x0[1]+0.25]}],i,j;
+  for(i=0;i<3;i++)S[i].f=F(S[i].x);
+  for(i=0;i<iters;i++){
+    S.sort(function(a,b){return a.f-b.f;});
+    if(Math.abs(S[2].x[0]-S[0].x[0])<1e-4&&
+       Math.abs(S[2].x[1]-S[0].x[1])<1e-4)break;
+    var cx=(S[0].x[0]+S[1].x[0])/2;
+    var cy=(S[0].x[1]+S[1].x[1])/2;
+    var rx=2*cx-S[2].x[0],ry=2*cy-S[2].x[1];
+    var fr=F([rx,ry]);
+    if(fr<S[0].f){
+      var ex=cx+2*(cx-S[2].x[0]),ey=cy+2*(cy-S[2].x[1]);
+      var fe=F([ex,ey]);
+      S[2]=fe<fr?{x:[ex,ey],f:fe}:{x:[rx,ry],f:fr};
+    }else if(fr<S[1].f){
+      S[2]={x:[rx,ry],f:fr};
+    }else{
+      var kx=(cx+S[2].x[0])/2,ky=(cy+S[2].x[1])/2;
+      var fk=F([kx,ky]);
+      if(fk<S[2].f)S[2]={x:[kx,ky],f:fk};
+      else{
+        for(j=1;j<3;j++){
+          S[j].x=[S[0].x[0]+0.5*(S[j].x[0]-S[0].x[0]),
+                  S[0].x[1]+0.5*(S[j].x[1]-S[0].x[1])];
+          S[j].f=F(S[j].x);
+        }
+      }
+    }
+  }
+  S.sort(function(a,b){return a.f-b.f;});
+  return S[0].x;
+}
+async function nmPolish(e0,f,fs,o,tEnd){
+  for(var k=0;k<fs.length;k++){
+    var ew=residualWithout(e0,f,fs,k);
+    var fl=fs[k];
+    var F=(function(ew){
+      return function(x){
+        var fc=clamp(Math.pow(2,x[0]),o.fmin,o.fmax);
+        var q=clamp(Math.pow(2,x[1]),o.qmin,o.qmax);
+        var w=winIdx(f,fc,1.8);
+        var g=lsGainWin(ew,w,f,fc,q,o.gmin,o.gmax);
+        var s=0,i2,d;
+        for(i2=0;i2<ew.length;i2++){
+          d=ew[i2]+g*shape(f[i2],fc,q);
+          s+=d*d;
+        }
+        return s;
+      };
+    })(ew);
+    var x=nm2(F,[Math.log2(fl.f),Math.log2(fl.q)],90);
+    var fc=clamp(Math.pow(2,x[0]),o.fmin,o.fmax);
+    var q=clamp(Math.pow(2,x[1]),o.qmin,o.qmax);
+    var w2=winIdx(f,fc,1.8);
+    var g2=lsGainWin(ew,w2,f,fc,q,o.gmin,o.gmax);
+    var cand={f:fc,q:q,g:g2};
+    var others=fs.filter(function(_,j){return j!==k;});
+    if(!tooClose(others,cand.f,0.1)&&
+       fullSSE(e0,f,others.concat([cand]))<fullSSE(e0,f,fs)-1e-9){
+      fs[k]=cand;
+    }
+    if(performance.now()>tEnd)break;
+    await tick();
+  }
+  return fs;
+}
+function addRemove(e0,f,fs,o){
+  var k;
+  for(k=fs.length-1;k>=0;k--){
+    var rest=fs.filter(function(_,j){return j!==k;});
+    if(fullSSE(e0,f,rest)<=fullSSE(e0,f,fs)+1e-7)fs=rest;
+  }
+  var e=e0.slice();
+  fs.forEach(function(fl){respInto(e,f,fl,1);});
+  while(fs.length<o.count){
+    var bi=-1,bv=0,i;
+    for(i=0;i<e.length;i++){
+      var av=Math.abs(e[i]);
+      if(av>bv){bv=av;bi=i;}
+    }
+    if(bi<0||bv<0.15)break;
+    var best=bestAround(e,f,f[bi],o,1.6,qSet(o,5),31);
+    if(!best)break;
+    var cand={f:best.f,q:best.q,g:best.g};
+    if(tooClose(fs,cand.f,0.125))break;
+    if(fullSSE(e0,f,fs.concat([cand]))>=fullSSE(e0,f,fs)-1e-9)break;
+    fs.push(cand);
+    respInto(e,f,cand,1);
+  }
+  return fs.sort(function(a,b){return a.f-b.f;});
+}
+function jitter(fs,amt){
+  return fs.map(function(fl){
+    return{
+      f:fl.f*Math.pow(2,(Math.random()*2-1)*amt),
+      q:fl.q,g:fl.g
+    };
+  });
+}
+async function fitAsync(eFull,fFull,o,onProg){
   var idx=[],i;
   for(i=0;i<fFull.length;i++){
     if(fFull[i]>=o.fmin&&fFull[i]<=o.fmax)idx.push(i);
   }
   if(idx.length<10)return[];
   var f=idx.map(function(k){return fFull[k];});
-  var e=idx.map(function(k){return eFull[k];});
-  var Q=[o.qmin,clamp((o.qmin+o.qmax)/2,o.qmin,o.qmax),o.qmax];
-  var filters=[],banned=[];
-  function tooClose(fc){
-    var k;
-    for(k=0;k<filters.length;k++){
-      if(Math.abs(Math.log2(fc/filters[k].f))<0.25)return true;
+  var e0=idx.map(function(k){return eFull[k];});
+  var t0=performance.now();
+  var BUDGET=o.budget||12000;
+  var tEnd=t0+BUDGET;
+  var best=null,attempt=0;
+  while(attempt<12&&performance.now()-t0<BUDGET*0.85){
+    var fs;
+    if(attempt===0)fs=greedy(e0,f,o,qSet(o,5));
+    else if(attempt===1)fs=greedy(e0,f,o,qSet(o,9));
+    else fs=jitter(best?best.fs.slice():greedy(e0,f,o,qSet(o,5)),0.12);
+    fs=await anneal(e0,f,fs,o,tEnd,0);
+    fs=await nmPolish(e0,f,fs,o,tEnd);
+    fs=addRemove(e0,f,fs,o);
+    fs=await anneal(e0,f,fs,o,tEnd,3);
+    fs=await nmPolish(e0,f,fs,o,tEnd);
+    var sc=fullSSE(e0,f,fs);
+    if(!best||sc<best.sc-1e-9)best={fs:fs,sc:sc};
+    attempt++;
+    if(onProg){
+      onProg(attempt,Math.round((performance.now()-t0)/100)/10);
     }
-    return false;
+    await tick();
   }
-  var k,guard,bi,bv,base,best,placed;
-  for(k=0;k<o.count;k++){
-    placed=false;
-    for(guard=0;guard<12&&!placed;guard++){
-      bi=-1;bv=0;
-      for(i=0;i<e.length;i++){
-        if(banned.indexOf(i)>=0)continue;
-        if(Math.abs(e[i])>bv){bv=Math.abs(e[i]);bi=i;}
-      }
-      if(bi<0||bv<0.2)break;
-      base=sse(e);
-      best=bestAround(e,f,f[bi],o,1.5,Q);
-      if(best)best=bestAround(e,f,best.f,o,1.25,Q);
-      if(!best||best.s>=base-1e-9||tooClose(best.f)){
-        banned.push(bi);
-        continue;
-      }
-      filters.push({f:best.f,q:best.q,g:best.g});
-      for(i=0;i<e.length;i++){
-        e[i]+=best.g*shape(f[i],best.f,best.q);
-      }
-      placed=true;
-    }
-    if(!placed)break;
-  }
-  var round,changed,ew,Q2,best2,s2,dd;
-  function okF(fc,kk){
-    var j2;
-    for(j2=0;j2<filters.length;j2++){
-      if(j2===kk)continue;
-      if(Math.abs(Math.log2(fc/filters[j2].f))<0.2)return false;
-    }
-    return true;
-  }
-  for(round=0;round<2;round++){
-    changed=false;
-    for(k=0;k<filters.length;k++){
-      var fl=filters[k];
-      ew=e.slice();
-      for(i=0;i<e.length;i++){
-        ew[i]-=fl.g*shape(f[i],fl.f,fl.q);
-      }
-      base=sse(e);
-      Q2=[clamp(fl.q/1.5,o.qmin,o.qmax),fl.q,
-          clamp(fl.q*1.5,o.qmin,o.qmax)];
-      best2=bestAround(ew,f,fl.f,o,1.4,Q2);
-      if(best2)best2=bestAround(ew,f,best2.f,o,1.2,Q2);
-      if(best2&&okF(best2.f,k)){
-        s2=0;
-        for(i=0;i<f.length;i++){
-          dd=ew[i]+best2.g*shape(f[i],best2.f,best2.q);
-          s2+=dd*dd;
-        }
-        if(s2<base-1e-9){
-          filters[k]={f:best2.f,q:best2.q,g:best2.g};
-          for(i=0;i<e.length;i++){
-            e[i]=ew[i]+best2.g*shape(f[i],best2.f,best2.q);
-          }
-          changed=true;
-          continue;
-        }
-      }
-      for(i=0;i<e.length;i++){
-        e[i]=ew[i]+fl.g*shape(f[i],fl.f,fl.q);
-      }
-    }
-    if(!changed)break;
-  }
-  return filters.filter(function(x){
+  if(!best)return[];
+  return best.fs.filter(function(x){
     return Math.abs(x.g)>=0.1;
   }).sort(function(a,b){return a.f-b.f;});
 }
-return{fit:fit};
+function fit(e,f,o){
+  var fs=greedy(e,f,o,qSet(o,3));
+  return fs.filter(function(x){
+    return Math.abs(x.g)>=0.1;
+  }).sort(function(a,b){return a.f-b.f;});
+}
+return{fit:fit,fitAsync:fitAsync,fullSSE:fullSSE};
 })();
 </script>
 
 <script>
 "use strict";
-var BUILD="v20";
+var BUILD="v21";
 var RE_SPLIT=/[\s,;]+/;
 var RE_ABS=/^https?:\/\//i;
 var RE_ESC=/[&<>"]/g;
@@ -706,6 +867,7 @@ var state={
   normOn:true,normDb:60,normHz:500,smoothN:5,ySpan:30,
   aeq:{fmin:20,fmax:8000,gmin:-10,gmax:6,qmin:0.5,qmax:1.5},
   eq:{name:null,filters:[],preamp:0,curve:null},eqShow:true,
+  eqRunning:false,
   uploaded:[],remote:[],impTargets:[],
   zoom:null,inspect:false,palShift:0,mouse:null,
   demo:{ctx:null,srcNode:null,playing:false,t0:0,timer:null},
@@ -723,7 +885,6 @@ function flatToPairs(p){
   for(i=0;i+1<p.length;i+=2)out.push([p[i],p[i+1]]);
   return out;
 }
-/* fallback, если папки targets/ нет рядом */
 var FALLBACK_HARMAN=[
 20,7.62973,22.44924,7.68487,25.19842,7.71947,28.28427,7.72681,
 31.74802,7.69917,35.63595,7.60681,40,7.41131,44.89848,7.08692,
@@ -1342,10 +1503,11 @@ function eqLines(){
   return L;
 }
 function runAutoEq(){
-  if(!window.AutoEqFit||!window.AutoEqFit.fit){
+  if(!window.AutoEqFit||!window.AutoEqFit.fitAsync){
     toast("AutoEqFit не найден");
     return;
   }
+  if(state.eqRunning){toast("AutoEQ уже идёт");return;}
   var base=eqBase();
   if(!base){toast("Сначала выбери наушники");return;}
   var tr=targetRaw();
@@ -1355,22 +1517,48 @@ function runAutoEq(){
   for(i=0;i<GRID.length;i++)e[i]=hpN[i]-tN[i];
   var count=clamp(state.eq.filters.length||8,1,20);
   var a=state.aeq;
-  var fits=window.AutoEqFit.fit(e,GRID,{
-    fmin:a.fmin,fmax:a.fmax,gmin:a.gmin,gmax:a.gmax,
-    qmin:a.qmin,qmax:a.qmax,count:count
-  });
-  var filters=fits.map(function(x){
-    return{on:true,t:"PK",f:fmtF(x.f),g:r1(x.g),q:r2(x.q)};
-  });
-  while(filters.length<count){
-    filters.push({on:true,t:"PK",f:0,g:0,q:0});
+  state.eqRunning=true;
+  $("btnEq").disabled=true;
+  var ov=$("eqOverlay");
+  var msg=$("eqOverlayMsg");
+  if(ov)ov.hidden=false;
+  if(msg){
+    msg.textContent="AutoEQ is running, "+
+      "it could take 5–20 seconds or more.";
   }
-  state.eq.filters=filters;
-  renderEqRows();recomputeEq();
-  state.eqShow=true;$("eqShowChk").checked=true;
-  updateLegend();draw();
-  toast("AutoEQ "+BUILD+": фильтров "+fits.length+
-    ", pre-amp "+state.eq.preamp.toFixed(1)+" dB");
+  function finish(){
+    state.eqRunning=false;
+    $("btnEq").disabled=false;
+    if(ov)ov.hidden=true;
+  }
+  setTimeout(function(){
+    window.AutoEqFit.fitAsync(e,GRID,{
+      fmin:a.fmin,fmax:a.fmax,gmin:a.gmin,gmax:a.gmax,
+      qmin:a.qmin,qmax:a.qmax,count:count,budget:12000
+    },function(pass,secs){
+      if(msg){
+        msg.textContent="AutoEQ is running… pass "+pass+
+          " ("+secs+" s)";
+      }
+    }).then(function(fits){
+      var filters=fits.map(function(x){
+        return{on:true,t:"PK",f:fmtF(x.f),g:r1(x.g),q:r2(x.q)};
+      });
+      while(filters.length<count){
+        filters.push({on:true,t:"PK",f:0,g:0,q:0});
+      }
+      state.eq.filters=filters;
+      renderEqRows();recomputeEq();
+      state.eqShow=true;$("eqShowChk").checked=true;
+      updateLegend();draw();
+      finish();
+      toast("AutoEQ "+BUILD+": фильтров "+fits.length+
+        ", pre-amp "+state.eq.preamp.toFixed(1)+" dB");
+    }).catch(function(err){
+      finish();
+      toast("AutoEQ error: "+err.message);
+    });
+  },60);
 }
 function parseEqText(t){
   var fs=[],pre=null;
@@ -1523,7 +1711,6 @@ function importEqFile(f){
     toast("Импортировано фильтров: "+r.fs.length);
   }).catch(function(e){toast("Ошибка файла: "+e.message);});
 }
-/* добавление замера из модалки (URL / L+R / файл / текст) */
 function addMeasurement(){
   var err=$("mErr");err.textContent="";
   var name=$("mName").value.trim()||"Uploaded";
@@ -1673,7 +1860,6 @@ function screenshot(){
     setTimeout(function(){URL.revokeObjectURL(a.href);},5000);
   });
 }
-/* санация состояния: мусор из hash/ввода не может сломать UI */
 function sanState(){
   state.ySpan=clamp(state.ySpan,10,120);
   state.normDb=clamp(state.normDb,-20,140);

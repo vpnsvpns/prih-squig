@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prih EQ</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="errbar"></div>
+<div id="boot">Prih · loading…</div>
+<header id="top">
+  <div class="logo">Prih<span>EQ Playground · 711 · v33</span></div>
+  <div class="topbtns">
+    <button id="btnShot">Screenshot</button>
+    <button id="btnAvg">Average All</button>
+  </div>
+</header>
+<main>
+  <aside id="left">
+    <div class="tabs">
+      <button data-tab="brands">Brands</button>
+      <button data-tab="models" class="on">Models (<span id="modelCount">0</span>)</button>
+      <button data-tab="eq">Equalizer</button>
+    </div>
+    <input id="search" type="search" placeholder="SEARCH">
+    <div id="brandList" class="pane" hidden></div>
+    <div id="modelList" class="pane"></div>
+    <div id="eqPane" class="pane" hidden>
+      <h3>Uploading</h3>
+      <div class="row"><button id="btnUpFR">Upload FR</button><button id="btnUpTgt">Upload Target</button></div>
+      <input id="fileFR" type="file" accept=".csv,.txt" hidden>
+      <input id="fileTgt" type="file" accept=".csv,.txt" hidden>
+      <input id="fileEq" type="file" accept=".txt,.cfg" hidden>
+      <div class="muted">Uploaded data will not be persistent</div>
+      <h3>Parametric Equalizer</h3>
+      <select id="eqCurve"></select>
+      <div id="eqPreamp" class="preamp">Pre-amp: 0.0 dB</div>
+      <div id="eqRows"></div>
+      <div class="row"><button id="btnAddF">+</button><button id="btnDelF">-</button><button id="btnSort">Sort</button><button id="btnDisable">Disable</button><button id="btnSaveEq">Save EQ</button></div>
+      <div class="row"><button id="btnCopyEq">Copy</button></div>
+      <h3>AutoEQ</h3>
+      <div class="grid2">
+        <label>Freq min<input id="aeFmin" type="number" value="20"></label>
+        <label>Freq max<input id="aeFmax" type="number" value="8000"></label>
+        <label>Gain min<input id="aeGmin" type="number" value="-10"></label>
+        <label>Gain max<input id="aeGmax" type="number" value="6"></label>
+        <label>Q min<input id="aeQmin" type="number" value="0.5" step="0.1"></label>
+        <label>Q max<input id="aeQmax" type="number" value="1.5" step="0.1"></label>
+      </div>
+      <div class="row"><button id="btnEq" class="accent">AutoEQ</button><label class="chk"><input type="checkbox" id="eqShowChk" checked> Show EQ</label></div>
+      <div class="row"><button id="btnImportEq">Import EQ</button><button id="btnExportEq">Export Parametric EQ</button></div>
+      <div class="muted">Filters editable; curve and pre-amp update live.</div>
+    </div>
+  </aside>
+  <section id="center">
+    <div id="toolbar">
+      <label class="tb">Y-AXIS:<input id="ySpan" type="number" value="30" min="10" max="120" step="5"><span>dB</span></label>
+      <label class="tb">NORMALIZE:<button id="normOn" class="tchip on">dB</button><input id="normDb" type="number" value="60"><span class="unit">Hz</span><input id="normHz" type="number" value="500"></label>
+      <label class="tb">SMOOTH:<span>1/</span><input id="smoothN" type="number" value="5" min="0" max="48"><span>oct</span></label>
+      <span class="tb">ZOOM:<button id="zBass" class="tchip">Bass</button><button id="zMids" class="tchip">Mids</button><button id="zTreble" class="tchip">Treble</button></span>
+      <button id="btnInspect" class="tchip">Inspect</button>
+    </div>
+    <div id="graphWrap"><canvas id="graph"></canvas><div id="eqOverlay" hidden><div id="eqOverlayMsg">AutoEQ is running…</div></div></div>
+    <div id="bands"><span>Sub bass</span><span>Bass</span><span>Lower Mids</span><span>Midrange</span><span>Upper Mids</span><span>Presence</span><span>Treble</span></div>
+    <div id="targetsRow"><span class="lbl">Reference:</span><span id="refChips" class="chips"></span><span class="lbl">Preference:</span><span id="prefChips" class="chips"></span></div>
+    <div id="adjRow">
+      <span class="lbl">Preference adjustments:</span>
+      <label>Bass (dB)<input id="adjBass" type="number" step="0.5" value="0"></label>
+      <label>Bass Q<input id="adjBassQ" type="number" step="0.01" value="0.71"></label>
+      <label>Bass F (Hz)<input id="adjBassF" type="number" value="105"></label>
+      <label>Treble (dB)<input id="adjTreble" type="number" step="0.5" value="0"></label>
+      <label>Tilt (dB/Oct)<input id="adjTilt" type="number" step="0.05" value="0"></label>
+      <label>Ear Gain (dB)<input id="adjEar" type="number" step="0.5" value="0"></label>
+      <button id="adjReset">Remove Adjustments</button>
+      <span id="adjNote" class="muted"></span>
+    </div>
+    <div id="legendRows"></div>
+  </section>
+</main>
+<div id="modal" hidden>
+  <div class="box">
+    <h3>Add measurement (711)</h3>
+    <label>Name<input id="mName"></label>
+    <label>Source<input id="mSource" value="uploaded"></label>
+    <label>URL<input id="mUrl"></label>
+    <div class="row"><label style="flex:1">URL L<input id="mUrlL"></label><label style="flex:1">URL R<input id="mUrlR"></label></div>
+    <label>File<input id="mFile" type="file" accept=".csv,.txt"></label>
+    <label>Paste<textarea id="mPaste" rows="4"></textarea></label>
+    <div id="mPrev" class="muted prev"></div>
+    <div class="row"><button id="mOk" class="accent">Add</button><button id="mCancel">Cancel</button></div>
+    <div id="mErr" class="muted err"></div>
+  </div>
+</div>
+<div id="toast"></div>
+<script src="autoeq.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

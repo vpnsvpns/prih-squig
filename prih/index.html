@@ -116,6 +116,9 @@ padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
 letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
 font-family:ui-monospace,Menlo,monospace}
 .tb input{width:52px}
+.tb .unit{padding:3px 8px;background:var(--panel2);
+border:1px solid var(--line);border-radius:5px;color:var(--muted);
+font-size:10px;letter-spacing:.06em}
 .tchip{padding:3px 10px;border-radius:5px}
 .tchip.on{background:#fff;color:#111;border-color:#fff;font-weight:700}
 #graphWrap{flex:1;min-height:260px;position:relative}
@@ -135,23 +138,31 @@ color:var(--muted);flex:none}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .tchip.tgt{padding:4px 12px}
 #adjRow label{flex-direction:row;align-items:center;gap:5px}
-#adjRow input{width:64px}
+#adjRow input{width:70px}
+#adjBassQ{width:82px}
 #adjRow.disabled input,#adjRow.disabled button{opacity:.35;
 pointer-events:none}
 #legendRows{display:flex;flex-direction:column;gap:4px;padding:8px 12px;
 background:var(--panel);border-top:1px solid var(--line)}
 .crow{display:grid;align-items:center;gap:6px;font-size:12px;
-grid-template-columns:14px minmax(90px,1.1fr) 76px 54px 96px 24px 24px 44px 26px 26px 26px 22px}
+grid-template-columns:14px minmax(90px,1.1fr) 40px 76px 54px 44px 26px 26px 26px 22px}
 .crow .sw{width:12px;height:12px;border-radius:3px}
-.crow .cname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crow .cname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+display:flex;align-items:center;gap:4px}
 .crow .src{color:var(--muted);font-size:10px}
 .crow canvas.spark{width:72px;height:16px}
 .crow input[type=number]{padding:2px 4px;font-size:11px}
-.crow select{padding:2px 3px;font-size:11px}
 .crow button{padding:1px 4px;border:none;background:none;color:var(--muted);
 font-size:12px;cursor:pointer}
 .crow button:hover{color:var(--text)}
 .crow button.on{color:var(--text);background:var(--panel2);border-radius:4px}
+.chbtn{font-size:9px!important;padding:1px 4px!important;
+border:1px solid var(--line)!important;border-radius:4px!important;
+background:var(--panel2)!important;color:var(--muted)!important}
+.exp{font-size:11px!important;border:1px solid var(--line)!important;
+border-radius:50%!important;width:16px;height:16px;line-height:14px;
+padding:0!important;background:var(--panel2)!important}
+.crow.sub{opacity:.85}
 #modal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;
 align-items:center;justify-content:center;z-index:20}
 #modal .box{width:420px;max-width:92vw;background:var(--panel);
@@ -189,10 +200,11 @@ z-index:30}
  #adjRow{flex-wrap:nowrap;overflow-x:auto;gap:6px}
  #adjRow label{flex:none;white-space:nowrap}
  #adjRow input{width:56px}
+ #adjBassQ{width:64px}
  #legendRows{padding:6px 8px;gap:3px}
- .crow{grid-template-columns:14px 1fr 40px 24px 24px 24px 22px}
- .crow .spark,.crow .ccomp,.crow .csn,.crow .csm,
- .crow .cpin,.crow .ph{display:none}
+ .crow{grid-template-columns:14px 1fr 40px 24px 24px 22px}
+ .crow .spark,.crow .chbtn,.crow .cpin,.crow .ph,
+ .crow .cdev{display:none}
  .pane{max-height:none;overflow:visible;padding:0 8px 16px}
  .tabs button{font-size:12px;padding:8px 4px}
  #search{margin:6px 8px}
@@ -209,7 +221,7 @@ z-index:30}
 <div id="errbar"></div>
 <div id="boot">Prih · loading…</div>
 <header id="top">
-  <div class="logo">Prih<span>EQ Playground · 711 · v31</span></div>
+  <div class="logo">Prih<span>EQ Playground · 711 · v32</span></div>
   <div class="topbtns">
     <button id="btnShot">Screenshot</button>
     <button id="btnAvg">Average All</button>
@@ -277,8 +289,9 @@ z-index:30}
       <label class="tb">Y-AXIS SCALE:<input id="ySpan" type="number" value="30" min="10" max="120" step="5"><span>dB</span></label>
       <label class="tb">NORMALIZE:
         <button id="normOn" class="tchip on">dB</button>
-        <input id="normDb" type="number" value="60"><span>@</span>
-        <input id="normHz" type="number" value="500"><span>Hz</span>
+        <input id="normDb" type="number" value="60">
+        <span class="unit">Hz</span>
+        <input id="normHz" type="number" value="500">
       </label>
       <label class="tb">SMOOTH:<span>1/</span><input id="smoothN" type="number" value="5" min="0" max="48"><span>oct</span></label>
       <span class="tb">ZOOM:
@@ -309,7 +322,7 @@ z-index:30}
     <div id="adjRow">
       <span class="lbl">Preference adjustments:</span>
       <label>Bass (dB)<input id="adjBass" type="number" step="0.5" value="0"></label>
-      <label>Bass Q<input id="adjBassQ" type="number" step="0.001" value="0.707"></label>
+      <label>Bass Q<input id="adjBassQ" type="number" step="0.01" value="0.71"></label>
       <label>Bass F (Hz)<input id="adjBassF" type="number" value="105"></label>
       <label>Treble (dB)<input id="adjTreble" type="number" step="0.5" value="0"></label>
       <label>Tilt (dB/Oct)<input id="adjTilt" type="number" step="0.05" value="0"></label>
@@ -330,6 +343,8 @@ z-index:30}
       <label style="flex:1">URL L<input id="mUrlL" placeholder="...L.csv"></label>
       <label style="flex:1">URL R<input id="mUrlR" placeholder="...R.csv"></label>
     </div>
+    <div class="muted">If both L and R are set, channels are stored:
+    the row gets (+) expand and AVG/L/R switch.</div>
     <label>File<input id="mFile" type="file"
     accept=".csv,.txt,text/plain,text/csv"></label>
     <label>Or paste text<textarea id="mPaste" rows="4"
@@ -345,10 +360,8 @@ z-index:30}
 <div id="toast"></div>
 <script>
 "use strict";
-/* AutoEQ v31: coordinate descent with 3-param Nelder-Mead
-   (log2 f, log2 Q, gain) on FULL weighted SSE; greedy seeding by peak;
-   add/remove pass; two deterministic starts; mask zeroes above Fmax.
-   No ternary operators on purpose (copy-safe). */
+/* AutoEQ v31-core (unchanged): coordinate descent, 3-param Nelder-Mead
+   on full weighted SSE; greedy seeding; mask above Fmax; deterministic. */
 window.AutoEqFit=(function(){
 function T(c,a,b){if(c){return a;}return b;}
 function clamp(v,a,b){
@@ -642,7 +655,7 @@ return{fitAsync:fitAsync,mask:maskW};
 </script>
 <script>
 "use strict";
-var BUILD="v31";
+var BUILD="v32";
 function T(c,a,b){if(c){return a;}return b;}
 var RE_SPLIT=/[\s,;]+/;
 var RE_ABS=/^https?:\/\//i;
@@ -659,6 +672,8 @@ var RE_FILTER=new RegExp(
   "Gain\\s*([-+0-9.]+)\\s*dB\\s*"+
   "Q\\s*([0-9.]+)","gi");
 var RE_SAN=new RegExp("[^\\w\\d-]+","g");
+var SUF_L=" (L)";
+var SUF_R=" (R)";
 var CFG={
   name:"Prih",normRange:[500,2000],
   autoEqDefaults:{fmin:20,fmax:8000,gmin:-10,gmax:6,qmin:0.5,qmax:1.5},
@@ -862,7 +877,7 @@ function biquadDb(type,f0,Q,gain,f){
     b2=A*((A+1)+(A-1)*cw+2*sA*al);
     a0=(A+1)+(A-1)*cw-2*sA*al;
     a1=2*((A-1)+(A+1)*cw);
-    a2=(A+1)+(A-1)*cw+2*sA*al;
+    a2=(A+1)+(A-1)*cw-2*sA*al;
   }
   var c1=Math.cos(w),s1=Math.sin(w);
   var c2=Math.cos(2*w),s2=Math.sin(2*w);
@@ -877,8 +892,9 @@ function biquadDb(type,f0,Q,gain,f){
 }
 var state={
   selected:new Map(),hidden:new Set(),curves:new Map(),
+  chMode:new Map(),expanded:new Set(),
   target:null,brand:null,
-  adj:{bass:0,bassQ:0.707,bassF:105,treble:0,tilt:0,ear:0},
+  adj:{bass:0,bassQ:0.71,bassF:105,treble:0,tilt:0,ear:0},
   normOn:true,normDb:60,normHz:500,smoothN:5,ySpan:30,
   aeq:{fmin:20,fmax:8000,gmin:-10,gmax:6,qmin:0.5,qmax:1.5},
   eq:{name:null,filters:[],preamp:0,curve:null},
@@ -890,8 +906,7 @@ var state={
 var targets=new Map(),hpCache=new Map();
 function curveCfg(key){
   if(!state.curves.has(key)){
-    state.curves.set(key,{
-      comp:null,smOn:false,smN:null,off:0,pin:false});
+    state.curves.set(key,{off:0,pin:false});
   }
   return state.curves.get(key);
 }
@@ -1017,16 +1032,10 @@ function normalizeOnly(y){
   if(!state.normOn){return y;}
   return shift(y,state.normDb-anchorVal(y,state.normHz));
 }
-function processCurve(raw,cfg){
+/* isTarget=1: target never smoothed; else global SMOOTH applies */
+function processCurve(raw,cfg,isTarget){
   var y=raw;
-  if(cfg&&cfg.comp&&targets.has(cfg.comp)){
-    y=minusF(y,targets.get(cfg.comp).raw);
-  }
-  var n=0;
-  if(cfg&&cfg.smOn){
-    if(cfg.smN!=null){n=cfg.smN;}
-    else{n=state.smoothN;}
-  }
+  var n=isTarget?0:state.smoothN;
   if(n>0){y=smoothCurve(y,1/n);}
   if(state.normOn){
     y=shift(y,state.normDb-anchorVal(y,state.normHz));
@@ -1034,12 +1043,12 @@ function processCurve(raw,cfg){
   if(cfg&&cfg.off){y=shift(y,cfg.off);}
   return y;
 }
-function displayedY(raw,cfg){
-  var y=processCurve(raw,cfg);
+function displayedY(raw,cfg,isTarget){
+  var y=processCurve(raw,cfg,isTarget);
   if(state.devMode){
     var tr=targetRaw();
     if(tr){
-      y=minusF(y,processCurve(tr,curveCfg("__target")));
+      y=minusF(y,processCurve(tr,curveCfg("__target"),1));
     }
   }
   return y;
@@ -1055,13 +1064,33 @@ function hasActiveEq(){
     return f.on&&Math.abs(f.g)>=0.05;
   });
 }
+function channelRaw(s,name){
+  var mode=state.chMode.get(name)||"avg";
+  if(mode==="L"&&s.rawL){return s.rawL;}
+  if(mode==="R"&&s.rawR){return s.rawR;}
+  return s.raw;
+}
 function series(){
   var S=[];
   state.selected.forEach(function(s,name){
-    if(!s.raw||state.hidden.has(name)){return;}
+    if(!s.raw){return;}
     var cfg=curveCfg(name);
+    if(state.expanded.has(name)&&s.rawL&&s.rawR){
+      if(!state.hidden.has(name+SUF_L)){
+        S.push({name:name+SUF_L,color:s.color,w:2,
+          pin:curveCfg(name+SUF_L).pin,
+          y:displayedY(s.rawL,curveCfg(name+SUF_L),0)});
+      }
+      if(!state.hidden.has(name+SUF_R)){
+        S.push({name:name+SUF_R,color:s.colorR,w:2,
+          pin:curveCfg(name+SUF_R).pin,
+          y:displayedY(s.rawR,curveCfg(name+SUF_R),0)});
+      }
+      return;
+    }
+    if(state.hidden.has(name)){return;}
     S.push({name:name,color:s.color,pin:cfg.pin,
-      y:displayedY(s.raw,cfg)});
+      y:displayedY(channelRaw(s,name),cfg,0)});
   });
   var tr=targetRaw();
   if(tr&&!state.hidden.has("__target")){
@@ -1070,7 +1099,7 @@ function series(){
     if(state.devMode){
       ty=new Float64Array(GRID.length);
     }else{
-      ty=processCurve(tr,ct);
+      ty=processCurve(tr,ct,1);
     }
     S.push({name:state.target,color:css("--target"),
       dash:[6,4],w:2,pin:ct.pin,y:ty});
@@ -1078,7 +1107,7 @@ function series(){
   if(hasActiveEq()&&!state.hidden.has("__eq")){
     S.push({name:"EQ result",color:css("--eq"),w:2,
       pin:curveCfg("__eq").pin,
-      y:displayedY(state.eq.curve,curveCfg("__eq"))});
+      y:displayedY(state.eq.curve,curveCfg("__eq"),0)});
   }
   S.sort(function(a,b){return(a.pin?1:0)-(b.pin?1:0);});
   return S;
@@ -1113,6 +1142,26 @@ function doLoadHp(def){
   }
   return Promise.reject(new Error("no source"));
 }
+/* load with channels when L and R both present */
+function loadHpChannels(def){
+  function one(u){
+    return fetchAny(u).then(function(t){
+      return resample(parseTable(t));
+    });
+  }
+  if(def.rawL&&def.rawR){
+    return Promise.resolve({L:def.rawL,R:def.rawR});
+  }
+  if(def.urlL&&def.urlR){
+    return Promise.all([one(def.urlL),one(def.urlR)])
+      .then(function(p){return{L:p[0],R:p[1]};});
+  }
+  if(def.L&&def.R){
+    return Promise.all([one(def.L),one(def.R)])
+      .then(function(p){return{L:p[0],R:p[1]};});
+  }
+  return Promise.resolve(null);
+}
 function afterSelChange(){
   renderEqCurveSelect();
   recomputeEq();
@@ -1124,16 +1173,23 @@ function toggleHp(def){
   if(!def){return;}
   if(state.selected.has(def.name)){
     state.selected.delete(def.name);
+    state.expanded.delete(def.name);
     afterSelChange();
     return;
   }
-  var idx=state.selected.size+state.palShift;
-  var color=PALETTE[idx%PALETTE.length];
-  state.selected.set(def.name,{color:color,raw:null});
+  var i=state.selected.size+state.palShift;
+  var color=PALETTE[i%PALETTE.length];
+  var colorR=PALETTE[(i+1)%PALETTE.length];
+  state.selected.set(def.name,{
+    color:color,colorR:colorR,raw:null,rawL:null,rawR:null});
   loadHp(def).then(function(raw){
     var s=state.selected.get(def.name);
     if(s){s.raw=raw;}
-    afterSelChange();
+    return loadHpChannels(def).then(function(ch){
+      var s2=state.selected.get(def.name);
+      if(s2&&ch){s2.rawL=ch.L;s2.rawR=ch.R;}
+      afterSelChange();
+    });
   }).catch(function(){
     state.selected.delete(def.name);
     toast("Load failed: "+def.name);
@@ -1301,7 +1357,17 @@ function draw(){
     leg.push({c:css("--target"),t:state.target+" Target"});
   }
   state.selected.forEach(function(s,name){
-    if(s.raw&&!state.hidden.has(name)){
+    if(!s.raw){return;}
+    if(state.expanded.has(name)&&s.rawL&&s.rawR){
+      if(!state.hidden.has(name+SUF_L)){
+        leg.push({c:s.color,t:name+SUF_L});
+      }
+      if(!state.hidden.has(name+SUF_R)){
+        leg.push({c:s.colorR,t:name+SUF_R});
+      }
+      return;
+    }
+    if(!state.hidden.has(name)){
       leg.push({c:s.color,t:name});
     }
   });
@@ -1464,13 +1530,27 @@ function download(name,text){
 function curveYByKey(key){
   if(key==="__target"){
     if(state.devMode){return new Float64Array(GRID.length);}
-    return processCurve(targetRaw(),curveCfg(key));
+    return processCurve(targetRaw(),curveCfg(key),1);
   }
   if(key==="__eq"){
-    return displayedY(state.eq.curve,curveCfg(key));
+    return displayedY(state.eq.curve,curveCfg(key),0);
+  }
+  var isL=key.length>SUF_L.length&&
+    key.slice(-SUF_L.length)===SUF_L;
+  var isR=key.length>SUF_R.length&&
+    key.slice(-SUF_R.length)===SUF_R;
+  if(isL||isR){
+    var base=key.slice(0,isL?-SUF_L.length:-SUF_R.length);
+    var s2=state.selected.get(base);
+    if(!s2){return null;}
+    var raw2=isL?s2.rawL:s2.rawR;
+    if(!raw2){return null;}
+    return displayedY(raw2,curveCfg(key),0);
   }
   var s=state.selected.get(key);
-  if(s&&s.raw){return displayedY(s.raw,curveCfg(key));}
+  if(s&&s.raw){
+    return displayedY(channelRaw(s,key),curveCfg(key),0);
+  }
   return null;
 }
 function downloadCurveByKey(key){
@@ -1485,49 +1565,40 @@ function downloadCurveByKey(key){
 function updateLegend(){
   var lg=$("legendRows");
   lg.innerHTML="";
-  var compOpts="<option value=''><NO COMP></option>";
-  targets.forEach(function(v,k){
-    compOpts+="<option value='"+esc(k)+"'>"+esc(k)+"</option>";
-  });
-  function row(key,color,title,srcTxt,kind){
+  function row(key,color,title,srcTxt,kind,extra){
     var cfg=curveCfg(key);
     var d=document.createElement("div");
-    d.className="crow";
+    d.className="crow"+T(kind==="sub"," sub","");
     d.dataset.key=key;
-    var html="<span class='sw' style='background:"+
-      color+"'></span>"+
-      "<span class='cname'>"+esc(title);
-    if(srcTxt){
-      html+=" <span class='src'>"+esc(srcTxt)+"</span>";
+    var nameHtml="<span class='cname'>";
+    if(extra&&extra.hasCh){
+      nameHtml+="<button class='exp' title='Expand samples'>"+
+        T(extra.exp,"-","+")+"</button>";
     }
-    html+="</span>"+
-      "<canvas class='spark' width='72' height='16'>"+
-      "</canvas>"+
+    nameHtml+=esc(title);
+    if(srcTxt){
+      nameHtml+=" <span class='src'>"+esc(srcTxt)+"</span>";
+    }
+    nameHtml+="</span>";
+    var html="<span class='sw' style='background:"+
+      color+"'></span>"+nameHtml;
+    if(extra&&extra.hasCh){
+      var mode=state.chMode.get(key)||"avg";
+      html+="<button class='chbtn"+
+        T(mode!=="avg"," on","")+
+        "' title='Channel: avg / L / R'>"+
+        mode.toUpperCase()+"</button>";
+    }else{
+      html+="<span class='ph'></span>";
+    }
+    html+="<canvas class='spark' width='72' height='16'></canvas>"+
       "<input class='coff' type='number' step='0.5'"+
       " title='Offset, dB' value='"+cfg.off+"'>";
-    if(kind==="meas"){
-      html+="<select class='ccomp' title='Compensation'>"+
-        compOpts+"</select>"+
-        "<span class='ph'></span>"+
-        "<span class='ph'></span>"+
-        "<span class='ph'></span>";
-    }else if(kind==="target"){
-      html+="<span class='ph'></span>"+
-        "<button class='cdev"+T(state.devMode," on","")+
-        "' title='Deviation from target'>"+
-        T(state.devMode,"-","~")+"</button>"+
-        "<button class='csm"+T(cfg.smOn," on","")+
-        "' title='Smoothing on/off'>~</button>"+
-        "<input class='csn' type='number' min='0' max='48'"+
-        " title='Smooth 1/N oct' value='";
-      if(cfg.smN!=null){html+=cfg.smN;}
-      else{html+=state.smoothN;}
-      html+="'>";
+    if(kind==="target"){
+      html+="<button class='cdev"+T(state.devMode," on","")+
+        "' title='Deviation from target'>DEV</button>";
     }else{
-      html+="<span class='ph'></span>"+
-        "<span class='ph'></span>"+
-        "<span class='ph'></span>"+
-        "<span class='ph'></span>";
+      html+="<span class='ph'></span>";
     }
     html+="<button class='ceye' title='Hide/show'>"+
       T(state.hidden.has(key),"H","")+"</button>"+
@@ -1536,9 +1607,6 @@ function updateLegend(){
       "<button class='cdl' title='Download CSV'>D</button>"+
       "<button class='cx' title='Remove'>X</button>";
     d.innerHTML=html;
-    if(kind==="meas"&&cfg.comp){
-      d.querySelector(".ccomp").value=cfg.comp;
-    }
     lg.appendChild(d);
     var y=curveYByKey(key);
     if(y){drawSpark(d.querySelector(".spark"),y,color);}
@@ -1546,7 +1614,7 @@ function updateLegend(){
   }
   if(state.target){
     row("__target",css("--target"),
-      "Target: "+state.target,"","target");
+      "Target: "+state.target,"","target",null);
   }
   state.selected.forEach(function(s,name){
     if(!s.raw){return;}
@@ -1554,12 +1622,17 @@ function updateLegend(){
     for(i=0;i<all.length;i++){
       if(all[i].name===name){def=all[i];}
     }
-    var src="";
-    if(def){src=def.source||"";}
-    row(name,s.color,name,src,"meas");
+    var hasCh=!!(s.rawL&&s.rawR);
+    var exp=state.expanded.has(name);
+    row(name,s.color,name,def?def.source||"":"",
+      "meas",{hasCh:hasCh,exp:exp});
+    if(hasCh&&exp){
+      row(name+SUF_L,s.color,name+SUF_L,"","sub",null);
+      row(name+SUF_R,s.colorR,name+SUF_R,"","sub",null);
+    }
   });
   if(hasActiveEq()){
-    row("__eq",css("--eq"),"EQ result","","eq");
+    row("__eq",css("--eq"),"EQ result","","eq",null);
   }
 }
 function eqBase(){
@@ -1748,7 +1821,10 @@ function parseEqText(t){
 function saveUploaded(){
   try{
     var arr=state.uploaded.map(function(u){
-      return{name:u.name,source:u.source,pts:u.pts};
+      var o={name:u.name,source:u.source,pts:u.pts};
+      if(u.ptsL){o.ptsL=u.ptsL;}
+      if(u.ptsR){o.ptsR=u.ptsR;}
+      return o;
     });
     localStorage.setItem("prih-uploaded",
       JSON.stringify(arr));
@@ -1759,8 +1835,13 @@ function loadUploaded(){
     var a=JSON.parse(
       localStorage.getItem("prih-uploaded")||"[]");
     state.uploaded=a.map(function(u){
-      return{name:u.name,source:u.source||"uploaded",
+      var d={name:u.name,source:u.source||"uploaded",
         pts:u.pts,raw:resample(u.pts)};
+      if(u.ptsL&&u.ptsR){
+        d.rawL=resample(u.ptsL);
+        d.rawR=resample(u.ptsR);
+      }
+      return d;
     });
     var seen={},i;
     for(i=0;i<state.uploaded.length;i++){
@@ -1775,19 +1856,29 @@ function loadUploaded(){
   }catch(e){state.uploaded=[];}
 }
 function baseName(fn){return fn.replace(/\.[^.]+$/,"")||"Uploaded";}
-function pushUploaded(name,source,pts,raw){
-  var uname=uniqueName(name);
-  var keep=pts.filter(function(_,i){
+function decim(pts){
+  return pts.filter(function(_,i){
     var st=Math.max(1,Math.floor(pts.length/400));
     return i%st===0;
   });
-  state.uploaded.push({
-    name:uname,source:source,pts:keep,raw:raw});
+}
+function pushUploaded(name,source,pts,raw,ptsL,rawL,ptsR,rawR){
+  var uname=uniqueName(name);
+  var def={name:uname,source:source,
+    pts:decim(pts),raw:raw};
+  if(rawL&&rawR){
+    def.ptsL=decim(ptsL);
+    def.ptsR=decim(ptsR);
+    def.rawL=rawL;
+    def.rawR=rawR;
+  }
+  state.uploaded.push(def);
   saveUploaded();
-  var def=state.uploaded[state.uploaded.length-1];
-  var ci=state.selected.size+state.palShift;
-  state.selected.set(def.name,{
-    color:PALETTE[ci%PALETTE.length],raw:def.raw});
+  var i=state.selected.size+state.palShift;
+  state.selected.set(uname,{
+    color:PALETTE[i%PALETTE.length],
+    colorR:PALETTE[(i+1)%PALETTE.length],
+    raw:raw,rawL:rawL||null,rawR:rawR||null});
   return uname;
 }
 function importFRFile(f){
@@ -1798,7 +1889,8 @@ function importFRFile(f){
       return;
     }
     var name=pushUploaded(baseName(f.name),
-      "uploaded",pts,resample(pts));
+      "uploaded",pts,resample(pts),
+      null,null,null,null);
     afterSelChange();
     toast("Measurement added: "+name);
   }).catch(function(e){
@@ -1851,17 +1943,25 @@ function addMeasurement(){
   err.textContent="";
   var name=$("mName").value.trim()||"Uploaded";
   var source=$("mSource").value.trim()||"uploaded";
-  grabPts().then(function(pts){
-    if(!pts){
+  grabPts().then(function(res){
+    if(!res){
       err.textContent="Provide URL, file or text";
       return;
     }
-    if(pts.length<20){
+    if(res.avg.length<20){
       err.textContent="Not a measurement: few points ("+
-        pts.length+")";
+        res.avg.length+")";
       return;
     }
-    var uname=pushUploaded(name,source,pts,resample(pts));
+    var uname;
+    if(res.L&&res.R){
+      uname=pushUploaded(name,source,res.avg,
+        resample(res.avg),res.L,resample(res.L),
+        res.R,resample(res.R));
+    }else{
+      uname=pushUploaded(name,source,res.avg,
+        resample(res.avg),null,null,null,null);
+    }
     afterSelChange();
     closeModal();
     toast("Measurement added: "+uname);
@@ -1908,46 +2008,57 @@ function fetchPtsFromUrl(u){
     if(R){
       return Promise.all([fetchAny(L),fetchAny(R)])
       .then(function(p){
-        var la=resample(parseTable(p[0]));
-        var lb=resample(parseTable(p[1]));
-        var pts=[],j;
-        for(j=0;j<GRID.length;j++){
-          pts.push([GRID[j],(la[j]+lb[j])/2]);
-        }
-        return pts;
+        return{
+          avgL:parseTable(p[0]),
+          avgR:parseTable(p[1])};
       });
     }
     return fetchAny(links[0]).then(function(t2){
-      return parseTable(t2);
+      return{avg:parseTable(t2)};
     });
   });
 }
+/* returns {avg} or {avg,L,R} */
 function grabPts(){
   if($("mFile").files[0]){
     return $("mFile").files[0].text().then(function(t){
-      return parseTable(t);
+      return{avg:parseTable(t)};
     });
   }
   if($("mPaste").value.trim()){
-    return Promise.resolve(parseTable($("mPaste").value));
+    return Promise.resolve({avg:parseTable($("mPaste").value)});
   }
   if($("mUrlL").value.trim()&&$("mUrlR").value.trim()){
     return Promise.all([
       fetchPtsFromUrl($("mUrlL").value.trim()),
       fetchPtsFromUrl($("mUrlR").value.trim())
     ]).then(function(p){
-      var la=resample(p[0]),lb=resample(p[1]);
-      var pts=[],j;
-      for(j=0;j<GRID.length;j++){
-        pts.push([GRID[j],(la[j]+lb[j])/2]);
-      }
-      return pts;
+      return{avg:null,L:p[0].avg||p[0].avgL,
+        R:p[1].avg||p[1].avgR};
+    }).then(function(r){
+      r.avg=mergeLR(r.L,r.R);
+      return r;
     });
   }
   if($("mUrl").value.trim()){
-    return fetchPtsFromUrl($("mUrl").value.trim());
+    return fetchPtsFromUrl($("mUrl").value.trim())
+      .then(function(r){
+        if(r.avgL&&r.avgR){
+          return{avg:mergeLR(r.avgL,r.avgR),
+            L:r.avgL,R:r.avgR};
+        }
+        return{avg:r.avg};
+      });
   }
   return Promise.resolve(null);
+}
+function mergeLR(L,R){
+  var la=resample(L),lb=resample(R);
+  var pts=[],j;
+  for(j=0;j<GRID.length;j++){
+    pts.push([GRID[j],(la[j]+lb[j])/2]);
+  }
+  return pts;
 }
 var prevTimer=null;
 function queuePreview(){
@@ -1957,12 +2068,15 @@ function queuePreview(){
 function doPreview(){
   var el=$("mPrev");
   el.textContent="";
-  return grabPts().then(function(pts){
+  return grabPts().then(function(res){
+    if(!res){return;}
+    var pts=res.avg;
     if(!pts){return;}
     if(pts.length>=20){
       el.textContent="OK "+pts.length+" points, "+
         Math.round(pts[0][0])+"-"+
-        Math.round(pts[pts.length-1][0])+" Hz";
+        Math.round(pts[pts.length-1][0])+" Hz"+
+        T(res.L&&res.R," (L+R stored)":"");
     }else{
       el.textContent="Few points: "+pts.length;
     }
@@ -1988,7 +2102,8 @@ function averageAll(){
           pairs.push([GRID[k],sum[k]]);
         }
         var name=pushUploaded("Average ("+n+")",
-          "avg",pairs,Float64Array.from(sum));
+          "avg",pairs,Float64Array.from(sum),
+          null,null,null,null);
         afterSelChange();
         toast("Average of "+n+" -> "+name);
       }
@@ -2137,7 +2252,7 @@ function init(){
     var eb=$("errbar");
     if(eb){
       eb.style.display="block";
-      eb.textContent="AutoEQ block failed to parse; rest of site works, AutoEQ disabled.";
+      eb.textContent="AutoEQ block failed; site works, AutoEQ disabled.";
     }
   }
   loadUploaded();
@@ -2204,19 +2319,6 @@ function init(){
     if(e.target.classList.contains("coff")){
       cfg.off=num(e.target,0);
       draw();
-    }else if(e.target.classList.contains("csn")){
-      cfg.smN=clamp(num(e.target,0),0,48);
-      draw();
-    }
-  });
-  lg.addEventListener("change",function(e){
-    var row=e.target.closest(".crow");
-    if(!row){return;}
-    var key=row.dataset.key,cfg=curveCfg(key);
-    if(e.target.classList.contains("ccomp")){
-      cfg.comp=e.target.value||null;
-      updateLegend();
-      draw();
     }
   });
   lg.addEventListener("click",function(e){
@@ -2228,8 +2330,20 @@ function init(){
       state.devMode=!state.devMode;
       updateLegend();
       draw();
-    }else if(c.contains("csm")){
-      cfg.smOn=!cfg.smOn;
+    }else if(c.contains("chbtn")){
+      var mode=state.chMode.get(key)||"avg";
+      if(mode==="avg"){mode="L";}
+      else if(mode==="L"){mode="R";}
+      else{mode="avg";}
+      state.chMode.set(key,mode);
+      updateLegend();
+      draw();
+    }else if(c.contains("exp")){
+      if(state.expanded.has(key)){
+        state.expanded.delete(key);
+      }else{
+        state.expanded.add(key);
+      }
       updateLegend();
       draw();
     }else if(c.contains("ceye")){
@@ -2251,8 +2365,13 @@ function init(){
       }else if(key==="__eq"){
         state.eqShow=false;
         $("eqShowChk").checked=false;
+      }else if(key.slice(-SUF_L.length)===SUF_L||
+         key.slice(-SUF_R.length)===SUF_R){
+        var parent=key.slice(0,-SUF_L.length);
+        state.expanded.delete(parent);
       }else{
         state.selected.delete(key);
+        state.expanded.delete(key);
         renderEqCurveSelect();
         recomputeEq();
         renderModels();
@@ -2267,7 +2386,7 @@ function init(){
     on(id,"change",function(){
       state.adj={
         bass:clamp(num($("adjBass"),0),-12,12),
-        bassQ:clamp(num($("adjBassQ"),0.707),0.3,2),
+        bassQ:clamp(num($("adjBassQ"),0.71),0.3,2),
         bassF:clamp(num($("adjBassF"),105),30,300),
         treble:clamp(num($("adjTreble"),0),-12,12),
         tilt:clamp(num($("adjTilt"),0),-3,3),
@@ -2276,7 +2395,7 @@ function init(){
     });
   });
   on("adjReset","click",function(){
-    state.adj={bass:0,bassQ:0.707,bassF:105,
+    state.adj={bass:0,bassQ:0.71,bassF:105,
       treble:0,tilt:0,ear:0};
     syncAdj();
     draw();
@@ -2463,7 +2582,7 @@ function init(){
   }
 }
 init();
-/*EOF v31*/
+/*EOF v32*/
 </script>
 </body>
 </html>

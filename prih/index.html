@@ -12,7 +12,7 @@ body.light{--bg:#f1f0f4;--panel:#e7e6ec;--panel2:#dfdfe6;--line:#c9c8d4;--text:#
 html,body{height:100%}
 body{margin:0;display:flex;flex-direction:column;background:var(--bg);color:var(--text);font:13px/1.45 system-ui,"Segoe UI",Roboto,sans-serif}
 #errbar{display:none;background:#8a1f1f;color:#fff;padding:8px 14px;font:12px/1.4 ui-monospace,Menlo,monospace;white-space:pre-wrap}
-#boot{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--muted);font:14px system-ui;z-index:50;letter-spacing:.05em}
+#boot{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--muted);font:14px system-ui;z-index:50}
 header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 14px;background:var(--panel);border-bottom:1px solid var(--line)}
 .logo{font-size:20px;font-weight:800;font-style:italic}
 .logo span{margin-left:10px;font-size:11px;font-weight:400;font-style:normal;color:var(--muted)}
@@ -118,7 +118,7 @@ details.adjdet #adjRow{border-top:none;padding:8px 12px}
 <div id="errbar"></div>
 <div id="boot">Prih · загрузка…</div>
 <header id="top">
-  <div class="logo">Prih<span>EQ Playground · 711</span></div>
+  <div class="logo">Prih<span>EQ Playground · 711 · v12</span></div>
   <div class="topbtns">
     <button id="btnAdd" class="accent">+ Add measurement</button>
     <button id="btnUrl">Copy URL</button>
@@ -220,77 +220,75 @@ details.adjdet #adjRow{border-top:none;padding:8px 12px}
 
 <script>
 "use strict";
-/* ============ AutoEQ (порт autoeq.py: greedy + Nelder-Mead + coord descent) ============ */
+/* ==== AutoEQ v12: greedy по пику ошибки + аналитический LS-gain + сеточная доводка f/Q
+      + полировка по полному SSE с откатом. Монотонно сходится, не обрывается на 1 фильтре. ==== */
 window.AutoEqFit=(()=>{
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const shape=(f,f0,q)=>{const x=f/f0-f0/f;return 1/(1+q*q*x*x);};
-function lsGain(e,w,f,fc,q,ga,gb){let n=0,d=0;for(let k=0;k<w.length;k++){const i=w[k],m=shape(f[i],fc,q);n+=e[i]*m;d+=m*m;}return d>1e-9?clamp(-n/d,ga,gb):0;}
-function winScore(e,w,f,fc,q,g){let s=0;for(let k=0;k<w.length;k++){const i=w[k],d=e[i]+g*shape(f[i],fc,q);s+=d*d;}return w.length?s/w.length:1e9;}
-function bandScore(e,f,fl,inR){let s=0;for(let i=0;i<f.length;i++)if(inR[i]){const d=e[i]+fl.g*shape(f[i],fl.f,fl.q);s+=d*d;}return s;}
-function nelderMead(F,x0,iters){
-  const S=[{x:[x0[0],x0[1]]},{x:[x0[0]+0.35,x0[1]]},{x:[x0[0],x0[1]+0.35]}];
-  for(const p of S)p.f=F(p.x);
-  for(let it=0;it<iters;it++){
-    S.sort((a,b)=>a.f-b.f);
-    if(Math.abs(S[2].x[0]-S[0].x[0])<1e-3&&Math.abs(S[2].x[1]-S[0].x[1])<1e-3)break;
-    const cx=(S[0].x[0]+S[1].x[0])/2,cy=(S[0].x[1]+S[1].x[1])/2;
-    const rx=2*cx-S[2].x[0],ry=2*cy-S[2].x[1],fr=F([rx,ry]);
-    if(fr<S[0].f){const ex=cx+2*(cx-S[2].x[0]),ey=cy+2*(cy-S[2].x[1]),fe=F([ex,ey]);S[2]=fe<fr?{x:[ex,ey],f:fe}:{x:[rx,ry],f:fr};}
-    else if(fr<S[1].f){S[2]={x:[rx,ry],f:fr};}
-    else{const kx=(cx+S[2].x[0])/2,ky=(cy+S[2].x[1])/2,fk=F([kx,ky]);
-      if(fk<S[2].f)S[2]={x:[kx,ky],f:fk};
-      else for(let j=1;j<3;j++){S[j].x=[S[0].x[0]+0.5*(S[j].x[0]-S[0].x[0]),S[0].x[1]+0.5*(S[j].x[1]-S[0].x[1])];S[j].f=F(S[j].x);}}
-  }
-  S.sort((a,b)=>a.f-b.f);return S[0].x;
+const sse=e=>{let s=0;for(let i=0;i<e.length;i++)s+=e[i]*e[i];return s;};
+function addResp(e,f,fl){const o=e.slice();for(let i=0;i<e.length;i++)o[i]+=fl.g*shape(f[i],fl.f,fl.q);return o;}
+function lsGain(e,w,f,f0,q,ga,gb){let n=0,d=0;for(let k=0;k<w.length;k++){const i=w[k],m=shape(f[i],f0,q);n+=e[i]*m;d+=m*m;}return d>1e-9?clamp(-n/d,ga,gb):0;}
+function winIdx(f,fc){const a=fc/2.38,b=fc*2.38,w=[];for(let i=0;i<f.length;i++)if(f[i]>=a&&f[i]<=b)w.push(i);return w;}
+function optAt(e,f,w,f0,q,ga,gb){
+  const g=lsGain(e,w,f,f0,q,ga,gb);
+  let s=0;for(let k=0;k<w.length;k++){const i=w[k],d=e[i]+g*shape(f[i],f0,q);s+=d*d;}
+  return{f:f0,q,g,s};
 }
-function fitLocal(e,f,i,o,lo,hi){
-  const w=[],a=f[i]/2.5,b=f[i]*2.5;
-  for(let k=0;k<f.length;k++)if(f[k]>=a&&f[k]<=b)w.push(k);
-  const L0=Math.log2(lo),L1=Math.log2(hi),Q0=Math.log2(o.qmin),Q1=Math.log2(o.qmax);
-  const F=x=>{let p=0;
-    if(x[0]<L0)p+=(L0-x[0])*30;if(x[0]>L1)p+=(x[0]-L1)*30;
-    if(x[1]<Q0)p+=(Q0-x[1])*30;if(x[1]>Q1)p+=(x[1]-Q1)*30;
-    const fc=Math.pow(2,x[0]),q=Math.pow(2,x[1]);
-    return winScore(e,w,f,fc,q,lsGain(e,w,f,fc,q,o.gmin,o.gmax))+p;};
+function qCandidates(o){
+  return[...new Set([o.qmin,clamp(o.qmin*1.4,o.qmin,o.qmax),Math.sqrt(o.qmin*o.qmax),clamp(o.qmax/1.4,o.qmin,o.qmax),o.qmax])];
+}
+function localFit(e,f,i,o,qs){
   let best=null;
-  for(const q0 of[1,o.qmin,o.qmax]){
-    const x=nelderMead(F,[clamp(Math.log2(f[i]),L0,L1),Math.log2(clamp(q0,o.qmin,o.qmax))],70);
-    const fc=clamp(Math.pow(2,x[0]),lo,hi),q=clamp(Math.pow(2,x[1]),o.qmin,o.qmax);
-    const g=lsGain(e,w,f,fc,q,o.gmin,o.gmax),s=winScore(e,w,f,fc,q,g);
-    if(!best||s<best.s)best={f:fc,q,g,s};
+  for(const q of qs){const c=optAt(e,f,winIdx(f,f[i]),f[i],q,o.gmin,o.gmax);if(!best||c.s<best.s)best=c;}
+  for(let round=0;round<2;round++){
+    const flo=clamp(best.f/1.5,o.fmin,o.fmax),fhi=clamp(best.f*1.5,o.fmin,o.fmax);
+    for(let t=0;t<9;t++){
+      const ff=flo*Math.pow(fhi/flo,t/8);
+      const w=winIdx(f,ff);
+      for(const q of qs){const c=optAt(e,f,w,ff,q,o.gmin,o.gmax);if(c.s<best.s-1e-9)best=c;}
+    }
   }
   return best;
 }
-function addRes(e,f,fl,sgn){for(let i=0;i<f.length;i++)e[i]+=sgn*fl.g*shape(f[i],fl.f,fl.q);}
-function fit(e,f,o){
-  const inR=f.map(v=>v>=o.fmin&&v<=o.fmax);
-  let res=e.slice();const filters=[];
+function fit(eFull,fFull,o){
+  const idx=[];for(let i=0;i<fFull.length;i++)if(fFull[i]>=o.fmin&&fFull[i]<=o.fmax)idx.push(i);
+  if(idx.length<10)return[];
+  const f=idx.map(i=>fFull[i]);
+  let e=idx.map(i=>eFull[i]);
+  const qs=qCandidates(o);
+  const filters=[];
   for(let k=0;k<o.count;k++){
-    let bi=-1,bv=0;
-    for(let i=0;i<f.length;i++)if(inR[i]&&Math.abs(res[i])>bv){bv=Math.abs(res[i]);bi=i;}
-    if(bi<0||bv<0.05)break;
-    let best=null;
-    for(let off=-2;off<=2;off++){
-      const i=bi+off;if(i<0||i>=f.length||!inR[i])continue;
-      const c=fitLocal(res,f,i,o,clamp(f[i]/1.6,o.fmin,o.fmax),clamp(f[i]*1.6,o.fmin,o.fmax));
-      const imp=bandScore(res,f,{f:1,q:1,g:0},inR)-bandScore(res,f,c,inR);
-      if(!best||imp>best.imp)best={c,imp};
-    }
-    if(!best||best.imp<=1e-6)break;
-    filters.push(best.c);addRes(res,f,best.c,1);
+    let bi=0;for(let i=1;i<e.length;i++)if(Math.abs(e[i])>Math.abs(e[bi]))bi=i;
+    if(Math.abs(e[bi])<0.1)break;
+    const c=localFit(e,f,bi,o,qs);
+    if(!c||!isFinite(c.g)||!isFinite(c.f)||Math.abs(c.g)<0.05)break;
+    filters.push({f:c.f,q:c.q,g:c.g});
+    e=addResp(e,f,{f:c.f,q:c.q,g:c.g});
   }
-  for(let r=0;r<3;r++){
-    let ch=false;
+  for(let round=0;round<2;round++){
+    let changed=false;
     for(let k=0;k<filters.length;k++){
-      const wo=res.slice();addRes(wo,f,filters[k],-1);
-      let ni=0,bd=1e9;
-      for(let i=0;i<f.length;i++){const d=Math.abs(Math.log2(f[i]/filters[k].f));if(d<bd){bd=d;ni=i;}}
-      const c=fitLocal(wo,f,ni,o,clamp(filters[k].f/1.5,o.fmin,o.fmax),clamp(filters[k].f*1.5,o.fmin,o.fmax));
-      if(bandScore(wo,f,c,inR)+1e-7<bandScore(wo,f,filters[k],inR)){filters[k]=c;res=wo;addRes(res,f,c,1);ch=true;}
+      const fl=filters[k];
+      const ew=e.slice();
+      for(let i=0;i<e.length;i++)ew[i]-=fl.g*shape(f[i],fl.f,fl.q);
+      const baseSse=sse(e);
+      const qs2=[...new Set([clamp(fl.q/1.5,o.qmin,o.qmax),fl.q,clamp(fl.q*1.5,o.qmin,o.qmax)])];
+      let best=null;
+      const flo=clamp(fl.f/1.6,o.fmin,o.fmax),fhi=clamp(fl.f*1.6,o.fmin,o.fmax);
+      for(let t=0;t<11;t++){
+        const ff=flo*Math.pow(fhi/flo,t/10);
+        const w=winIdx(f,ff);
+        for(const q of qs2){const c=optAt(ew,f,w,ff,q,o.gmin,o.gmax);if(!best||c.s<best.s)best=c;}
+      }
+      if(best){
+        const cand={f:best.f,q:best.q,g:best.g};
+        const cs=sse(addResp(ew,f,cand));
+        if(cs<baseSse-1e-9){filters[k]=cand;e=addResp(ew,f,cand);changed=true;}
+      }
     }
-    if(!ch)break;
+    if(!changed)break;
   }
-  return filters.filter(x=>Math.abs(x.g)>=0.08).sort((a,b)=>a.f-b.f);
+  return filters.filter(x=>Math.abs(x.g)>=0.1).sort((a,b)=>a.f-b.f);
 }
 return{fit};
 })();
@@ -298,12 +296,12 @@ return{fit};
 
 <script>
 "use strict";
-window.addEventListener("error",e=>{
+const BUILD="v12";
+window.addEventListener("error",ev=>{
   const b=document.getElementById("errbar");if(!b)return;
   b.style.display="block";
-  b.textContent="JS ERROR: "+(e.message||e)+" @ "+((e.filename||"").split("/").pop()||"inline")+":"+(e.lineno||"?");
+  b.textContent="JS ERROR "+BUILD+": "+(ev.message||ev)+" @ "+(ev.lineno||"?");
 });
-/* ===== конфиг встроен: таргеты читаются из targets/, при отсутствии — встроенный fallback ===== */
 const CFG={
   name:"Prih",normRange:[500,2000],
   autoEqDefaults:{fmin:20,fmax:8000,gmin:-12,gmax:12,qmin:0.5,qmax:2},
@@ -318,9 +316,7 @@ const CFG={
   ],
   hps:[]
 };
-/* fallback-таргет (Harman IE 2019 v2, decimated) — если targets/ нет рядом */
 const FALLBACK={"Harman IE 2019 v2":[20,7.62973,22.44924,7.68487,25.19842,7.71947,28.28427,7.72681,31.74802,7.69917,35.63595,7.60681,40,7.41131,44.89848,7.08692,50.39684,6.63857,56.56854,6.10753,63.49604,5.50985,71.2719,4.85848,80,4.18831,89.79696,3.50032,100.79368,2.77975,113.13708,2.0519,126.99208,1.33947,142.54379,0.6872,160,0.09838,179.59393,-0.47266,201.58737,-0.98818,226.27417,-1.37155,253.98417,-1.60032,285.08759,-1.70023,320,-1.70974,359.18786,-1.6662,403.17474,-1.59545,452.54834,-1.50398,507.96834,-1.38436,570.17518,-1.24699,640,-1.07811,718.37571,-0.86396,806.34947,-0.62243,905.09668,-0.33051,1015.93667,0.05512,1140.35036,0.58276,1280,1.32076,1436.75142,2.21175,1612.69894,3.21386,1810.19336,4.49772,2031.87335,5.98719,2280.70072,7.3739,2560,8.4983,2873.50284,9.17476,3225.39789,9.41864,3620.38672,9.24472,4063.74669,8.8162,4561.40144,8.24556,5120,7.6048,5747.00569,6.99762,6450.79578,6.18873,7240.77344,4.97312,8127.49339,3.32921,9122.80287,1.21727,10240,-1.25957,11494.01137,-3.68367,12901.59155,-5.99103,14481.54688,-8.09968,16254.98677,-10.65092,18245.60575,-15.25816,20186.38231,-20.68071]};
-
 const NR=CFG.normRange;
 const PALETTE=["#38c5f4","#ff8a65","#aed581","#ba68c8","#ffd54f","#4db6ac","#f06292","#7986cb","#a1887f","#e57373"];
 const FMIN=20,FMAX=20000,SPO=96;
@@ -402,11 +398,11 @@ const targets=new Map(),hpCache=new Map();
 function flatToPairs(p){const out=[];for(let i=0;i+1<p.length;i+=2)out.push([p[i],p[i+1]]);return out;}
 async function loadTargets(){
   await Promise.allSettled(CFG.targets.map(async t=>{
-    for(const u of [t.file,t.alt]){
+    for(const u of[t.file,t.alt]){
       if(!u)continue;
       try{const pts=parseTable(await fetchLocal(u));if(pts.length>10){targets.set(t.name,{def:t,raw:resample(pts)});return;}}catch(e){}
     }
-    if(FALLBACK[t.name]){targets.set(t.name,{def:t,raw:resample(flatToPairs(FALLBACK[t.name]))});}
+    if(FALLBACK[t.name])targets.set(t.name,{def:t,raw:resample(flatToPairs(FALLBACK[t.name]))});
   }));
   if(!state.target||!targets.has(state.target)){
     const d=CFG.targets.find(t=>t.default&&targets.has(t.name));
@@ -418,7 +414,7 @@ async function loadRemoteDb(){
     const r=await fetchWithTimeout("data/squig-db.json",8000);
     if(!r.ok)return;
     const j=await r.json();
-    for(const rec of (j.hps||[])){
+    for(const rec of(j.hps||[])){
       const pairs=flatToPairs(rec.pts||[]);
       if(pairs.length<20)continue;
       state.remote.push({name:rec.name,source:rec.src,raw:resample(pairs),remote:true});
@@ -548,7 +544,7 @@ function draw(){
   let ly=H-m.b-(narrow?8:14)-(leg.length-1)*lstep;
   for(const L of leg){ctx.fillStyle=L.c;ctx.fillText(L.t,m.l+(narrow?6:10),ly);ly+=lstep;}
   ctx.fillStyle=css("--muted");ctx.font=(narrow?"8px":"10px")+" ui-monospace,Menlo,monospace";ctx.textAlign="right";
-  ctx.fillText("Measured on: IEC 60318-4 (711) · Prih",W-m.r-4,m.t-(narrow?6:9));
+  ctx.fillText("Measured on: IEC 60318-4 (711) · Prih "+BUILD,W-m.r-4,m.t-(narrow?6:9));
   if(!narrow){ctx.save();ctx.translate(12,m.t+18);ctx.rotate(-Math.PI/2);ctx.textAlign="right";ctx.fillText("dB",0,0);ctx.restore();}
   }catch(e){const b=$("errbar");if(b){b.style.display="block";b.textContent="DRAW ERROR: "+e.message;}}
 }
@@ -672,7 +668,7 @@ function runAutoEq(){
   renderEqRows();recomputeEq();
   state.eqShow=true;$("eqShowChk").checked=true;
   updateLegend();draw();
-  toast("AutoEQ: фильтров "+fits.length+", pre-amp "+state.eq.preamp.toFixed(1)+" dB");
+  toast("AutoEQ "+BUILD+": фильтров "+fits.length+", pre-amp "+state.eq.preamp.toFixed(1)+" dB");
 }
 function download(name,text){
   const b=new Blob([text],{type:"text/plain"});
@@ -760,7 +756,7 @@ function screenshot(){
   $("graph").toBlob(b=>{const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="prih-playground.png";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);});
 }
 function hashFromState(){
-  return"#"+encodeURIComponent(JSON.stringify({v:11,sel:[...state.selected.keys()],tgt:state.target,adj:state.adj,nrm:state.normOn,ndb:state.normDb,nhz:state.normHz,sm:state.smoothN,ys:state.ySpan,aeq:state.aeq}));
+  return"#"+encodeURIComponent(JSON.stringify({v:12,sel:[...state.selected.keys()],tgt:state.target,adj:state.adj,nrm:state.normOn,ndb:state.normDb,nhz:state.normHz,sm:state.smoothN,ys:state.ySpan,aeq:state.aeq}));
 }
 async function copyUrl(){
   const u=location.origin+location.pathname+hashFromState();
@@ -810,6 +806,7 @@ let toastTimer;
 function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove("show"),2500);}
 async function init(){
   try{
+  console.info("Prih build "+BUILD);
   if(localStorage.getItem("prih-theme")==="light")document.body.classList.add("light");
   loadUploaded();
   for(const b of document.querySelectorAll(".tabs button"))b.onclick=()=>switchTab(b.dataset.tab);
@@ -852,8 +849,8 @@ async function init(){
   $("btnDelF").onclick=()=>{state.eq.filters.pop();renderEqRows();recomputeEq();updateLegend();draw();};
   $("btnSort").onclick=()=>{state.eq.filters.sort((a,b)=>a.f-b.f);renderEqRows();recomputeEq();draw();};
   $("btnDisable").onclick=()=>{const allOn=state.eq.filters.every(f=>f.on);state.eq.filters.forEach(f=>f.on=!allOn);renderEqRows();recomputeEq();updateLegend();draw();};
-  $("btnSaveEq").onclick=()=>{if(!state.eq.filters.length)return toast("Нет фильтров");download("prih-eq-apo.txt",["# Prih EQ Playground","Device: all"].concat(eqLines()).join("\n"));toast("EQ сохранён");};
-  $("btnApo").onclick=()=>{if(!state.eq.filters.length)return toast("Нет фильтров");download("prih-eq-apo.txt",["# Prih EQ Playground","Device: all"].concat(eqLines()).join("\n"));};
+  $("btnSaveEq").onclick=()=>{if(!state.eq.filters.length)return toast("Нет фильтров");download("prih-eq-apo.txt",["# Prih EQ Playground "+BUILD,"Device: all"].concat(eqLines()).join("\n"));toast("EQ сохранён");};
+  $("btnApo").onclick=()=>{if(!state.eq.filters.length)return toast("Нет фильтров");download("prih-eq-apo.txt",["# Prih EQ Playground "+BUILD,"Device: all"].concat(eqLines()).join("\n"));};
   $("btnWavelet").onclick=()=>{if(!state.eq.filters.length)return toast("Нет фильтров");download("prih-eq-wavelet.txt",eqLines().join("\n"));};
   $("btnCopyEq").onclick=()=>{if(state.eq.filters.length)navigator.clipboard.writeText(eqLines().join("\n")).then(()=>toast("PEQ скопирован"));};
   $("eqShowChk").onchange=e=>{state.eqShow=e.target.checked;draw();};
@@ -881,7 +878,7 @@ async function init(){
   new ResizeObserver(()=>draw()).observe($("graphWrap"));
   const boot=$("boot");if(boot)boot.remove();
   }catch(e){
-    const b=$("errbar");if(b){b.style.display="block";b.textContent="INIT ERROR: "+e.message;}
+    const b=$("errbar");if(b){b.style.display="block";b.textContent="INIT ERROR "+BUILD+": "+e.message;}
     const boot=$("boot");if(boot)boot.textContent="Ошибка запуска: "+e.message;
   }
 }

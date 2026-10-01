@@ -22,11 +22,6 @@ window.addEventListener("error",function(e){
 :root{--bg:#1b1a20;--plot:#26242c;--panel:#211f27;--panel2:#2a2831;
 --line:#3a3742;--text:#e8e6ea;--muted:#9b97a4;--target:#c9c2b4;
 --eq:#d9c223;--grid:#383542}
-body.light{--bg:#f1f0f4;--plot:#ffffff;--panel:#e7e6ec;--panel2:#dfdfe6;
---line:#c9c8d4;--text:#1c1b22;--muted:#66646f;--grid:#d4d3dc}
-body.contrast{--bg:#000;--plot:#0a0a0a;--panel:#0b0b0b;--panel2:#161616;
---line:#4a4a4a;--text:#fff;--muted:#c9c9c9;--target:#fff;--eq:#ffe14a;
---grid:#333}
 [hidden]{display:none!important}
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -145,7 +140,7 @@ pointer-events:none}
 #legendRows{display:flex;flex-direction:column;gap:4px;padding:8px 12px;
 background:var(--panel);border-top:1px solid var(--line)}
 .crow{display:grid;align-items:center;gap:6px;font-size:12px;
-grid-template-columns:14px minmax(90px,1.1fr) 76px 54px 96px 24px 44px 26px 26px 26px 26px 22px}
+grid-template-columns:14px minmax(90px,1.1fr) 76px 54px 96px 24px 24px 44px 26px 26px 26px 22px}
 .crow .sw{width:12px;height:12px;border-radius:3px}
 .crow .cname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .crow .src{color:var(--muted);font-size:10px}
@@ -195,7 +190,8 @@ z-index:30}
  #adjRow input{width:56px}
  #legendRows{padding:6px 8px;gap:3px}
  .crow{grid-template-columns:14px 1fr 40px 24px 24px 24px 22px}
- .crow .spark,.crow .ccomp,.crow .csn,.crow .csm,.crow .cpin{display:none}
+ .crow .spark,.crow .ccomp,.crow .csn,.crow .csm,
+ .crow .cpin,.crow .ph{display:none}
  .pane{max-height:none;overflow:visible;padding:0 8px 16px}
  .tabs button{font-size:12px;padding:8px 4px}
  #search{margin:6px 8px}
@@ -212,7 +208,7 @@ z-index:30}
 <div id="errbar"></div>
 <div id="boot">Prih · загрузка…</div>
 <header id="top">
-  <div class="logo">Prih<span>EQ Playground · 711 · v27</span></div>
+  <div class="logo">Prih<span>EQ Playground · 711 · v28</span></div>
   <div class="topbtns">
     <button id="btnShot">Screenshot</button>
     <button id="btnAvg">Average All</button>
@@ -348,45 +344,51 @@ z-index:30}
 <div id="toast"></div>
 <script>
 "use strict";
-/* AutoEQ v25-core: детерминированный, маска до Freq max */
+/* AutoEQ v28: координатный спуск с 3-параметрическим Nelder-Mead
+   (log2 f, log2 Q, gain) по ПОЛНОЙ взвешенной SSE, greedy-посев по пику,
+   добор/отсев фильтров, 2 детерминированных старта, маска выше Freq max.
+   Аналог схемы jaakkopasanen/AutoEQ (SLSQP-подобная пофильтровая оптимизация). */
 window.AutoEqFit=(function(){
-var clamp=function(v,a,b){return v<a?a:v>b?b:v;};
+var clamp=function(v,a,b){
+  return v<a?a:v>b?b:v;
+};
 var shape=function(f,f0,q){
   var x=f/f0-f0/f;
   return 1/(1+q*q*x*x);
 };
+function pow2(x){return Math.pow(2,x);}
 function maskW(f,fmax){
   var f1=fmax*0.85;
   if(f<=f1)return 1;
   if(f>=fmax)return 0;
   return 0.5*(1+Math.cos(Math.PI*(f-f1)/(fmax-f1)));
 }
-function respAll(f,fs,i){
-  var d=0,k;
-  for(k=0;k<fs.length;k++){
-    if(fs[k].g)d+=fs[k].g*shape(f[i],fs[k].f,fs[k].q);
-  }
-  return d;
-}
 function fullSSE(e0,f,fs,W){
-  var s=0,i,d;
+  var s=0,i,k,d;
   for(i=0;i<f.length;i++){
-    d=e0[i]+respAll(f,fs,i);
+    d=e0[i];
+    for(k=0;k<fs.length;k++){
+      if(fs[k].g)d+=fs[k].g*shape(f[i],fs[k].f,fs[k].q);
+    }
     s+=W[i]*d*d;
   }
   return s;
 }
 function residFull(e0,f,fs){
-  var e=new Array(f.length),i;
+  var e=new Array(f.length),i,k,d;
   for(i=0;i<f.length;i++){
-    e[i]=e0[i]+respAll(f,fs,i);
+    d=e0[i];
+    for(k=0;k<fs.length;k++){
+      if(fs[k].g)d+=fs[k].g*shape(f[i],fs[k].f,fs[k].q);
+    }
+    e[i]=d;
   }
   return e;
 }
 function residWithout(e0,f,fs,k){
-  var e=new Array(f.length),i,j;
+  var e=new Array(f.length),i,j,d;
   for(i=0;i<f.length;i++){
-    var d=e0[i];
+    d=e0[i];
     for(j=0;j<fs.length;j++){
       if(j===k)continue;
       if(fs[j].g)d+=fs[j].g*shape(f[i],fs[j].f,fs[j].q);
@@ -395,169 +397,64 @@ function residWithout(e0,f,fs,k){
   }
   return e;
 }
-function winOf(f,fc,span){
-  var a=fc/span,b=fc*span,w=[],i;
-  for(i=0;i<f.length;i++){
-    if(f[i]>=a&&f[i]<=b)w.push(i);
-  }
-  return w;
-}
-function lsGain(e,w,f,fc,q,ga,gb,W){
-  var n=0,d=0,k,i,m;
-  for(k=0;k<w.length;k++){
-    i=w[k];
-    m=shape(f[i],fc,q);
-    n+=W[i]*e[i]*m;
-    d+=W[i]*m*m;
-  }
-  return d>1e-9?clamp(-n/d,ga,gb):0;
-}
-function qSet(o,n){
-  var out=[],i;
-  for(i=0;i<n;i++){
-    out.push(clamp(o.qmin*Math.pow(o.qmax/o.qmin,i/(n-1)),
-      o.qmin,o.qmax));
-  }
-  return out;
-}
-function evalCand(e,f,fc,q,o,W){
-  var w=winOf(f,fc,1.55);
-  var g=lsGain(e,w,f,fc,q,o.gmin,o.gmax,W);
-  var s=0,k,i,d;
-  for(k=0;k<w.length;k++){
-    i=w[k];
-    d=e[i]+g*shape(f[i],fc,q);
-    s+=W[i]*d*d;
-  }
-  return{f:fc,q:q,g:g,s:s};
-}
-function bestAround(e,f,fc0,o,span,Q,np,W){
-  var lo=clamp(fc0/span,o.fmin,o.fmax);
-  var hi=clamp(fc0*span,o.fmin,o.fmax);
-  var best=null,t,i,c;
-  for(t=0;t<np;t++){
-    var ff=lo*Math.pow(hi/lo,t/(np-1));
-    for(i=0;i<Q.length;i++){
-      c=evalCand(e,f,ff,Q[i],o,W);
-      if(!best||c.s<best.s-1e-9)best=c;
+function makeF(ew,f,W,o){
+  return function(x){
+    var fc=clamp(pow2(x[0]),o.fmin,o.fmax);
+    var q=clamp(pow2(x[1]),o.qmin,o.qmax);
+    var g=clamp(x[2],o.gmin,o.gmax);
+    var s=0,i,d;
+    for(i=0;i<f.length;i++){
+      d=ew[i]+g*shape(f[i],fc,q);
+      s+=W[i]*d*d;
     }
-  }
-  return best;
+    return s;
+  };
 }
-function tooClose(fs,fc,minD){
-  var i;
-  for(i=0;i<fs.length;i++){
-    if(Math.abs(Math.log2(fc/fs[i].f))<minD)return true;
-  }
-  return false;
-}
-function clampF(fl,o){
-  fl.f=clamp(fl.f,o.fmin,o.fmax);
-  fl.q=clamp(fl.q,o.qmin,o.qmax);
-  return fl;
-}
-function respInto(e,f,fl,sgn){
-  var i;
-  for(i=0;i<e.length;i++){
-    e[i]+=sgn*fl.g*shape(f[i],fl.f,fl.q);
-  }
-}
-function greedy(e0,f,o,Q,W){
-  var e=e0.slice(),fs=[],banned=[],k,guard,i;
-  for(k=0;k<o.count;k++){
-    var placed=false;
-    for(guard=0;guard<12&&!placed;guard++){
-      var bi=-1,bv=0;
-      for(i=0;i<e.length;i++){
-        if(banned.indexOf(i)>=0)continue;
-        var av=W[i]*Math.abs(e[i]);
-        if(av>bv){bv=av;bi=i;}
-      }
-      if(bi<0||bv<0.15)break;
-      var base=fullSSE(e0,f,fs,W);
-      var best=bestAround(e,f,f[bi],o,1.5,Q,9,W);
-      if(best)best=bestAround(e,f,best.f,o,1.25,Q,9,W);
-      if(!best||best.s>=base-1e-9||
-         tooClose(fs,best.f,0.25)){
-        banned.push(bi);
-        continue;
-      }
-      var cand=clampF({f:best.f,q:best.q,g:best.g},o);
-      fs.push(cand);
-      respInto(e,f,cand,1);
-      placed=true;
-    }
-    if(!placed)break;
-  }
-  return fs;
-}
-function tick(){
-  return new Promise(function(r){setTimeout(r,0);});
-}
-async function anneal(e0,f,fs,o,W,tEnd,rStart){
-  var radii=[1.5,1.3,1.15,1.06,1.02];
-  var ri=rStart||0;
-  fs.forEach(function(fl){clampF(fl,o);});
-  while(ri<radii.length){
-    var changed=false,k;
-    for(k=0;k<fs.length;k++){
-      var ew=residWithout(e0,f,fs,k);
-      var base=fullSSE(e0,f,fs,W);
-      var fl=fs[k];
-      var Q2=[
-        clamp(fl.q/1.6,o.qmin,o.qmax),
-        clamp(fl.q/1.25,o.qmin,o.qmax),
-        fl.q,
-        clamp(fl.q*1.25,o.qmin,o.qmax),
-        clamp(fl.q*1.6,o.qmin,o.qmax)
-      ];
-      var best=bestAround(ew,f,fl.f,o,radii[ri],Q2,41,W);
-      if(best){
-        var cand=clampF({f:best.f,q:best.q,g:best.g},o);
-        var others=fs.filter(function(_,j){return j!==k;});
-        if(!tooClose(others,cand.f,0.1)){
-          var after=fullSSE(e0,f,others.concat([cand]),W);
-          if(after<base-1e-9){fs[k]=cand;changed=true;}
-        }
-      }
-    }
-    if(!changed)ri++;
-    if(performance.now()>tEnd)break;
-    await tick();
-  }
-  return fs;
-}
-function nm2(F,x0,iters){
-  var S=[{x:[x0[0],x0[1]]},
-         {x:[x0[0]+0.25,x0[1]]},
-         {x:[x0[0],x0[1]+0.25]}],i,j;
-  for(i=0;i<3;i++)S[i].f=F(S[i].x);
+function nm3(F,x0,iters){
+  var S=[],i,j,q2;
+  S[0]={x:x0.slice()};
+  S[1]={x:x0.slice()};S[1].x[0]+=0.25;
+  S[2]={x:x0.slice()};S[2].x[1]+=0.25;
+  S[3]={x:x0.slice()};S[3].x[2]+=0.5;
+  for(i=0;i<4;i++)S[i].f=F(S[i].x);
   for(i=0;i<iters;i++){
     S.sort(function(a,b){return a.f-b.f;});
-    if(Math.abs(S[2].x[0]-S[0].x[0])<1e-4&&
-       Math.abs(S[2].x[1]-S[0].x[1])<1e-4)break;
-    var cx=(S[0].x[0]+S[1].x[0])/2;
-    var cy=(S[0].x[1]+S[1].x[1])/2;
-    var rx=2*cx-S[2].x[0],ry=2*cy-S[2].x[1];
-    var fr=F([rx,ry]);
+    var conv=true;
+    for(j=1;j<4;j++){
+      if(Math.abs(S[j].x[0]-S[0].x[0])>1e-4||
+         Math.abs(S[j].x[1]-S[0].x[1])>1e-4||
+         Math.abs(S[j].x[2]-S[0].x[2])>1e-3){
+        conv=false;
+        break;
+      }
+    }
+    if(conv)break;
+    var c=[0,0,0],r=[0,0,0];
+    for(j=0;j<3;j++){
+      c[j]=(S[0].x[j]+S[1].x[j]+S[2].x[j])/3;
+      r[j]=2*c[j]-S[3].x[j];
+    }
+    var fr=F(r);
     if(fr<S[0].f){
-      var ex=cx+2*(cx-S[2].x[0]);
-      var ey=cy+2*(cy-S[2].x[1]);
-      var fe=F([ex,ey]);
-      S[2]=fe<fr?{x:[ex,ey],f:fe}:{x:[rx,ry],f:fr};
-    }else if(fr<S[1].f){
-      S[2]={x:[rx,ry],f:fr};
+      var ex=[0,0,0];
+      for(j=0;j<3;j++)ex[j]=c[j]+2*(c[j]-S[3].x[j]);
+      var fe=F(ex);
+      S[3]=fe<fr?{x:ex,f:fe}:{x:r,f:fr};
+    }else if(fr<S[2].f){
+      S[3]={x:r,f:fr};
     }else{
-      var kx=(cx+S[2].x[0])/2,ky=(cy+S[2].x[1])/2;
-      var fk=F([kx,ky]);
-      if(fk<S[2].f){
-        S[2]={x:[kx,ky],f:fk};
+      var kc=[0,0,0];
+      for(j=0;j<3;j++)kc[j]=(c[j]+S[3].x[j])/2;
+      var fk=F(kc);
+      if(fk<S[3].f){
+        S[3]={x:kc,f:fk};
       }else{
-        for(j=1;j<3;j++){
-          S[j].x=[
-            S[0].x[0]+0.5*(S[j].x[0]-S[0].x[0]),
-            S[0].x[1]+0.5*(S[j].x[1]-S[0].x[1])];
-          S[j].f=F(S[j].x);
+        for(j=1;j<4;j++){
+          var nx=[0,0,0];
+          for(q2=0;q2<3;q2++){
+            nx[q2]=S[0].x[q2]+0.5*(S[j].x[q2]-S[0].x[q2]);
+          }
+          S[j]={x:nx,f:F(nx)};
         }
       }
     }
@@ -565,46 +462,92 @@ function nm2(F,x0,iters){
   S.sort(function(a,b){return a.f-b.f;});
   return S[0].x;
 }
-async function nmPolish(e0,f,fs,o,W,tEnd){
-  var k;
-  fs.forEach(function(fl){clampF(fl,o);});
-  for(k=0;k<fs.length;k++){
-    var ew=residWithout(e0,f,fs,k);
-    var fl=fs[k];
-    var F=(function(ew){
-      return function(x){
-        var fc=clamp(Math.pow(2,x[0]),o.fmin,o.fmax);
-        var q=clamp(Math.pow(2,x[1]),o.qmin,o.qmax);
-        var w=winOf(f,fc,1.8);
-        var g=lsGain(ew,w,f,fc,q,o.gmin,o.gmax,W);
-        var s=0,i2,d;
-        for(i2=0;i2<ew.length;i2++){
-          d=ew[i2]+g*shape(f[i2],fc,q);
-          s+=W[i2]*d*d;
-        }
-        return s;
-      };
-    })(ew);
-    var x0=[Math.log2(clamp(fl.f,o.fmin,o.fmax)),
-      Math.log2(fl.q)];
-    var x=nm2(F,x0,90);
-    var fc=clamp(Math.pow(2,x[0]),o.fmin,o.fmax);
-    var q=clamp(Math.pow(2,x[1]),o.qmin,o.qmax);
-    var w2=winOf(f,fc,1.8);
-    var g2=lsGain(ew,w2,f,fc,q,o.gmin,o.gmax,W);
-    var cand={f:fc,q:q,g:g2};
-    var others=fs.filter(function(_,j){return j!==k;});
-    if(!tooClose(others,cand.f,0.1)&&
-       fullSSE(e0,f,others.concat([cand]),W)<
-       fullSSE(e0,f,fs,W)-1e-9){
-      fs[k]=cand;
+function clampCand(x,o){
+  return{
+    f:clamp(pow2(x[0]),o.fmin,o.fmax),
+    q:clamp(pow2(x[1]),o.qmin,o.qmax),
+    g:clamp(x[2],o.gmin,o.gmax)
+  };
+}
+function seedFit(e,f,o,W,bi,iters){
+  var F=makeF(e,f,W,o);
+  var x0=[
+    Math.log2(clamp(f[bi],o.fmin,o.fmax)),
+    Math.log2(clamp(1,o.qmin,o.qmax)),
+    -e[bi]
+  ];
+  return clampCand(nm3(F,x0,iters),o);
+}
+function refine(e0,f,fs,k,o,W,iters){
+  var ew=residWithout(e0,f,fs,k);
+  var F=makeF(ew,f,W,o);
+  var cur=fs[k];
+  var x0=[
+    Math.log2(clamp(cur.f,o.fmin,o.fmax)),
+    Math.log2(clamp(cur.q,o.qmin,o.qmax)),
+    cur.g
+  ];
+  var cand=clampCand(nm3(F,x0,iters),o);
+  var trial=fs.slice();
+  trial[k]=cand;
+  if(fullSSE(e0,f,trial,W)<fullSSE(e0,f,fs,W)-1e-9){
+    fs[k]=cand;
+    return true;
+  }
+  return false;
+}
+async function rounds(e0,f,fs,o,W,tEnd,iters,maxG){
+  var guard=0,changed=true,k;
+  while(changed&&guard<maxG&&performance.now()<tEnd){
+    changed=false;
+    for(k=0;k<fs.length;k++){
+      if(refine(e0,f,fs,k,o,W,iters))changed=true;
     }
-    if(performance.now()>tEnd)break;
+    guard++;
     await tick();
   }
   return fs;
 }
-function addRemove(e0,f,fs,o,W){
+function tick(){
+  return new Promise(function(r){setTimeout(r,0);});
+}
+function greedySeed(e0,f,o,W,count,tEnd){
+  var fs=[],e=e0.slice(),i;
+  while(fs.length<count&&performance.now()<tEnd){
+    var bi=-1,bv=0;
+    for(i=0;i<e.length;i++){
+      var av=W[i]*Math.abs(e[i]);
+      if(av>bv){bv=av;bi=i;}
+    }
+    if(bi<0||bv<0.15)break;
+    var cand=seedFit(e,f,o,W,bi,120);
+    if(Math.abs(cand.g)<0.05)break;
+    var before=0,after=0;
+    for(i=0;i<e.length;i++){
+      before+=W[i]*e[i]*e[i];
+      var d=e[i]+cand.g*shape(f[i],cand.f,cand.q);
+      after+=W[i]*d*d;
+    }
+    if(after>=before-1e-9)break;
+    fs.push(cand);
+    for(i=0;i<e.length;i++){
+      e[i]+=cand.g*shape(f[i],cand.f,cand.q);
+    }
+  }
+  return fs;
+}
+function logSeed(o,count){
+  var fs=[],i;
+  for(i=0;i<count;i++){
+    var t=count>1?i/(count-1):0;
+    fs.push({
+      f:o.fmin*Math.pow(o.fmax/o.fmin,t),
+      q:clamp(1,o.qmin,o.qmax),
+      g:0});
+  }
+  return fs;
+}
+function pruneAdd(e0,f,fs,o,W,tEnd){
   var k,i;
   for(k=fs.length-1;k>=0;k--){
     var rest=fs.filter(function(_,j){return j!==k;});
@@ -612,30 +555,21 @@ function addRemove(e0,f,fs,o,W){
       fs=rest;
     }
   }
-  var e=residFull(e0,f,fs);
-  while(fs.length<o.count){
+  while(fs.length<o.count&&performance.now()<tEnd){
+    var e=residFull(e0,f,fs);
     var bi=-1,bv=0;
     for(i=0;i<e.length;i++){
       var av=W[i]*Math.abs(e[i]);
       if(av>bv){bv=av;bi=i;}
     }
     if(bi<0||bv<0.15)break;
-    var best=bestAround(e,f,f[bi],o,1.6,qSet(o,5),31,W);
-    if(!best)break;
-    var cand=clampF({f:best.f,q:best.q,g:best.g},o);
-    if(tooClose(fs,cand.f,0.125))break;
+    var cand=seedFit(e,f,o,W,bi,120);
+    if(Math.abs(cand.g)<0.05)break;
     if(fullSSE(e0,f,fs.concat([cand]),W)>=
        fullSSE(e0,f,fs,W)-1e-9)break;
     fs.push(cand);
-    e=residFull(e0,f,fs);
   }
   return fs;
-}
-var JIT=[1.06,0.94,1.12,0.88,1.03,0.97,1.09,0.91,1.05,0.95];
-function perturb(fs,o){
-  return fs.map(function(fl,i){
-    return clampF({f:fl.f*JIT[i%JIT.length],q:fl.q,g:fl.g},o);
-  });
 }
 function mergeClose(fs,minD){
   fs.sort(function(a,b){return a.f-b.f;});
@@ -664,49 +598,44 @@ async function fitAsync(eFull,fFull,o,onProg){
   var t0=performance.now();
   var BUDGET=o.budget||12000;
   var tEnd=t0+BUDGET;
-  var best=null,attempt=0;
-  while(attempt<6&&performance.now()-t0<BUDGET*0.85){
-    var fs;
-    if(attempt===0)fs=greedy(e0,f,o,qSet(o,5),W);
-    else if(attempt===1)fs=greedy(e0,f,o,qSet(o,9),W);
-    else fs=perturb(best?best.fs.slice():fs,o);
-    fs=await anneal(e0,f,fs,o,W,tEnd,0);
-    fs=await nmPolish(e0,f,fs,o,W,tEnd);
-    fs=addRemove(e0,f,fs,o,W);
-    fs=await anneal(e0,f,fs,o,W,tEnd,3);
-    fs=await nmPolish(e0,f,fs,o,W,tEnd);
-    fs.forEach(function(fl){clampF(fl,o);});
+  var starts=[
+    greedySeed(e0,f,o,W,o.count,tEnd),
+    logSeed(o,o.count)
+  ];
+  var best=null,si;
+  for(si=0;si<starts.length;si++){
+    var fs=starts[si];
+    fs=await rounds(e0,f,fs,o,W,tEnd,140,6);
+    fs=pruneAdd(e0,f,fs,o,W,tEnd);
+    fs=await rounds(e0,f,fs,o,W,tEnd,90,4);
     var sc=fullSSE(e0,f,fs,W);
     if(!best||sc<best.sc-1e-9)best={fs:fs,sc:sc};
-    attempt++;
     if(onProg){
-      onProg(attempt,
-        Math.round((performance.now()-t0)/100)/10);
+      onProg(si+1,Math.round((performance.now()-t0)/100)/10);
     }
     await tick();
+    if(performance.now()>tEnd)break;
   }
   if(!best)return[];
-  best.fs.forEach(function(fl){clampF(fl,o);});
-  best.fs=mergeClose(best.fs,0.05);
-  return best.fs.filter(function(x){
+  var out=mergeClose(best.fs,0.05);
+  return out.filter(function(x){
     return Math.abs(x.g)>=0.1;
   });
 }
 function fit(e,f,o){
   var W=f.map(function(ff){return maskW(ff,o.fmax);});
-  var fs=greedy(e,f,o,qSet(o,3),W);
-  fs.forEach(function(fl){clampF(fl,o);});
+  var fs=greedySeed(e,f,o,W,o.count||8,performance.now()+2000);
   return fs.filter(function(x){
     return Math.abs(x.g)>=0.1;
   }).sort(function(a,b){return a.f-b.f;});
 }
 return{fit:fit,fitAsync:fitAsync,mask:maskW};
 })();
-/*EOF-AUTOEQ v27*/
+/*EOF-AUTOEQ v28*/
 </script>
 <script>
 "use strict";
-var BUILD="v27";
+var BUILD="v28";
 var RE_SPLIT=/[\s,;]+/;
 var RE_ABS=/^https?:\/\//i;
 var RE_ESC=/[&<>"]/g;
@@ -1078,7 +1007,6 @@ function normalizeOnly(y){
   if(!state.normOn)return y;
   return shift(y,state.normDb-anchorVal(y,state.normHz));
 }
-/* сглаживание только если включено кнопкой ~ (по умолчанию выкл) */
 function processCurve(raw,cfg){
   var y=raw;
   if(cfg&&cfg.comp&&targets.has(cfg.comp)){
@@ -1523,7 +1451,9 @@ function curveYByKey(key){
     if(state.devMode)return new Float64Array(GRID.length);
     return processCurve(targetRaw(),curveCfg(key));
   }
-  if(key==="__eq")return displayedY(state.eq.curve,curveCfg(key));
+  if(key==="__eq"){
+    return displayedY(state.eq.curve,curveCfg(key));
+  }
   var s=state.selected.get(key);
   return s&&s.raw?displayedY(s.raw,curveCfg(key)):null;
 }
@@ -1536,6 +1466,7 @@ function downloadCurveByKey(key){
   }
   download(key.replace(RE_SAN,"_")+".csv",lines.join("\n"));
 }
+/* строки кривых: 12 слотов у всех типов для ровной сетки */
 function updateLegend(){
   var lg=$("legendRows");
   lg.innerHTML="";
@@ -1558,19 +1489,26 @@ function updateLegend(){
       "<input class='coff' type='number' step='0.5'"+
       " title='Offset, dB' value='"+cfg.off+"'>";
     if(kind==="meas"){
-      html+="<select class='ccomp'"+
-        " title='Compensation'>"+compOpts+"</select>"+
-        "<span></span><span></span>";
+      html+="<select class='ccomp' title='Compensation'>"+
+        compOpts+"</select>"+
+        "<span class='ph'></span>"+
+        "<span class='ph'></span>"+
+        "<span class='ph'></span>";
     }else if(kind==="target"){
-      html+="<span></span>"+
+      html+="<span class='ph'></span>"+
         "<button class='cdev"+(state.devMode?" on":"")+
         "' title='Отклонение от таргета'>"+
         (state.devMode?"—":"~")+"</button>"+
+        "<button class='csm"+(cfg.smOn?" on":"")+
+        "' title='Smoothing on/off'>~</button>"+
         "<input class='csn' type='number' min='0' max='48'"+
         " title='Smooth 1/N oct' value='"+
         (cfg.smN!=null?cfg.smN:state.smoothN)+"'>";
     }else{
-      html+="<span></span><span></span><span></span>";
+      html+="<span class='ph'></span>"+
+        "<span class='ph'></span>"+
+        "<span class='ph'></span>"+
+        "<span class='ph'></span>";
     }
     html+="<button class='ceye' title='Hide/show'>"+
       (state.hidden.has(key)?"🚫":"")+"</button>"+
@@ -1581,11 +1519,6 @@ function updateLegend(){
     d.innerHTML=html;
     if(kind==="meas"&&cfg.comp){
       d.querySelector(".ccomp").value=cfg.comp;
-    }
-    if(kind==="target"){
-      d.querySelector(".csm")||null;
-      var cs=d.querySelector(".csn");
-      if(cs&&cfg.smOn===false)cs.disabled=false;
     }
     lg.appendChild(d);
     var y=curveYByKey(key);
@@ -1602,7 +1535,7 @@ function updateLegend(){
     for(i=0;i<all.length;i++){
       if(all[i].name===name)def=all[i];
     }
-    row(name,s.color,name,def?def.source||"":"","meas");
+    row(name,s.color,name,def?def.source||"","meas");
   });
   if(hasActiveEq()){
     row("__eq",css("--eq"),"EQ result","","eq");
@@ -2016,7 +1949,6 @@ function doPreview(){
     el.textContent="Ошибка: "+e.message;
   });
 }
-/* Average All = обычный замер "Average (N)" в списке Models */
 function averageAll(){
   var list=allHps();
   if(!list.length){
@@ -2502,7 +2434,7 @@ function init(){
   }
 }
 init();
-/*EOF v27*/
+/*EOF v28*/
 </script>
 </body>
 </html>

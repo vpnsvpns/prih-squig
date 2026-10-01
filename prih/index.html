@@ -347,12 +347,8 @@ z-index:30;max-width:90vw;text-align:center}
     <h3>Add measurement (711 only)</h3>
     <label>Name<input id="mName" placeholder="Headphone name"></label>
     <label>Source<input id="mSource" placeholder="pw / boizoff / gudkov / own"></label>
-    <label>URL<input id="mUrl" placeholder="https://gudkov.squig.link/..."></label>
-    <div class="row">
-      <label style="flex:1">URL L<input id="mUrlL" placeholder="...L.csv"></label>
-      <label style="flex:1">URL R<input id="mUrlR" placeholder="...R.csv"></label>
-    </div>
-    <div class="muted">L and R are averaged into one curve.</div>
+    <label>Page URL<input id="mUrl" placeholder="https://gudkov.squig.link/..."></label>
+    <div class="muted">Paste a squig page URL: L/R links are found and averaged automatically.</div>
     <label>File<input id="mFile" type="file"
     accept=".csv,.txt,text/plain,text/csv"></label>
     <label>Or paste text<textarea id="mPaste" rows="4"
@@ -370,7 +366,7 @@ z-index:30;max-width:90vw;text-align:center}
 "use strict";
 /* AutoEQ core: coordinate descent + 3-param Nelder-Mead on FULL weighted
    SSE; greedy seeding by peak; add/remove; two deterministic starts;
-   mask zeroes everything above Freq max. NO question marks in code. */
+   mask zeroes everything above Freq max. No regex, no question marks. */
 window.AutoEqFit=(function(){
 function clamp(v,a,b){
   if(v<a){return a;}
@@ -664,42 +660,17 @@ return{fitAsync:fitAsync,mask:maskW};
 "use strict";
 var BUILD="v38";
 function T(c,a,b){if(c){return a;}return b;}
-var QM=String.fromCharCode(63);
-var RE_SPLIT=/[\s,;]+/;
-var RE_ABS=/^https{0,1}:\/\//i;
-var RE_ESC=/[&<>"]/g;
-var RE_HTML=new RegExp("^\\s*(<|<!DOCTYPE)","i");
-var RE_HREF=new RegExp('href="([^"]+\\.(csv|txt))"',"gi");
-var RE_L=new RegExp("[._\\- ]L([._\\- \\d]|\\.csv|\\.txt)","i");
-var RE_R=new RegExp("[._\\- ]R([._\\- \\d]|\\.csv|\\.txt)","i");
-var RE_PRE=new RegExp("Preamp:\\s*([-+0-9.]+)","i");
-var RE_FILTER=new RegExp(
-  "Filter\\s*\\d*\\s*:\\s*ON\\s*"+
-  "([A-Za-z]{0,4})\\s*"+
-  "Fc\\s*([0-9.]+)\\s*Hz\\s*"+
-  "Gain\\s*([-+0-9.]+)\\s*dB\\s*"+
-  "Q\\s*([0-9.]+)","gi");
-var RE_SAN=new RegExp("[^\\w\\d-]+","g");
-var RE_NL=new RegExp("\\r{0,1}\\n");
+/* NO RegExp anywhere: parse EQ text with split/indexOf instead. */
 var CFG={
   name:"Prih",normRange:[500,2000],
   autoEqDefaults:{fmin:20,fmax:8000,gmin:-10,gmax:6,qmin:0.5,qmax:1.5},
   targets:[
-    {group:"Reference",name:"ISO 11904-1 DF",
-     file:"targets/∆ ISO 11904-1 DF Target.txt",
-     alt:"targets/ISO 11904-1 DF Target.txt",adjustable:true},
-    {group:"Reference",name:"ISO DF Harman Bass",
-     file:"targets/ISO DF Harman Bass 711.txt",adjustable:true},
-    {group:"Reference",name:"PEQdB Diamond β",
-     file:"targets/PEQdB Diamond β.txt"},
-    {group:"Reference",name:"Harman IE 2019 v2",
-     file:"targets/Harman IE 2019v2 Target Target.txt",
-     alt:"targets/Harman IE 2019v2 Target.txt",
-     adjustable:true},
-    {group:"Reference",name:"Prih Target",
-     file:"targets/Prih Target.txt",default:true},
-    {group:"Preference",name:"JM1",
-     file:"targets/JM1.txt",adjustable:true},
+    {group:"Reference",name:"ISO 11904-1 DF",embedded:"DF",adjustable:true},
+    {group:"Reference",name:"ISO DF Harman Bass",embedded:"BASS",adjustable:true},
+    {group:"Reference",name:"PEQdB Diamond β",embedded:"DIAMOND"},
+    {group:"Reference",name:"Harman IE 2019 v2",embedded:"HARMAN",adjustable:true},
+    {group:"Reference",name:"Prih Target",embedded:"PRIH",default:true},
+    {group:"Preference",name:"JM1",file:"targets/JM1.txt",adjustable:true},
     {group:"Preference",name:"Harman IE 2017",
      file:"targets/Harman IE 2017.txt",adjustable:true}
   ],
@@ -717,18 +688,70 @@ var GRID=(function(){
   return g;
 })();
 var ZOOMS={bass:[20,500],mids:[500,5000],treble:[5000,20000]};
+/* Embedded target curves (decimated from your files). */
+var EMB={
+HARMAN:[20,7.62973,25.19842,7.71947,31.74802,7.69917,40,7.41131,
+50.39684,6.63857,63.49604,5.50985,80,4.18831,100.79368,2.77975,
+126.99208,1.33947,160,0.09838,201.58737,-0.98818,253.98417,-1.60032,
+320,-1.70974,403.17474,-1.59545,507.96834,-1.38436,640,-1.07811,
+806.34947,-0.62243,1015.93667,0.05512,1280,1.32076,1612.69894,3.21386,
+2031.87335,5.98719,2560,8.4983,3225.39789,9.41864,4063.74669,8.8162,
+5120,7.6048,6450.79578,6.18873,8127.49339,3.32921,10240,-1.25957,
+12901.59155,-5.99103,16254.98677,-10.65092,20186.38231,-20.68071],
+PRIH:[20,91.37418,25.19842,91.66893,31.74802,91.67118,40,91.27509,
+50.39684,90.60897,63.49604,89.6245,80,88.40643,100.79368,86.99965,
+126.99208,85.5614,160,84.17881,201.58737,83.16447,253.98417,82.64093,
+320,82.29975,403.17474,82.10811,507.96834,82.19372,640,82.63009,
+806.34947,83.19581,1015.93667,84.08967,1280,85.75336,1612.69894,87.68411,
+2031.87335,90.18778,2560,92.46738,3225.39789,93.49084,4063.74669,92.71503,
+5120,91.37558,6450.79578,88.91316,8127.49339,94.19198,10240,82.92889,
+12901.59155,80.1133,16254.98677,83.35526,20186.38231,70.7191],
+BASS:[20,8.26018,25.19842,8.18535,31.74802,8.04353,40,7.72928,
+50.39684,7.03533,63.49604,5.83392,80,4.50082,100.79368,3.0923,
+126.99208,1.60615,160,0.47754,201.58737,-0.62428,253.98417,-1.17676,
+320,-1.32462,403.17474,-1.25668,507.96834,-1.04911,640,-0.75605,
+806.34947,-0.31603,1015.93667,0.38029,1280,1.36716,1612.69894,3.06053,
+2031.87335,6.30715,2560,10.40396,3225.39789,10.31949,4063.74669,7.34672,
+5120,4.67465,6450.79578,3.2384,8127.49339,3.19021,10240,-0.09049,
+12901.59155,-3.24742,16254.98677,-5.0942,20186.38231,-8.3437],
+DIAMOND:[20,82.981,25.19842,82.853,31.74802,82.686,40,82.326,
+50.39684,81.801,63.49604,80.805,80,79.551,100.79368,77.848,
+126.99208,76.142,160,74.535,201.58737,73.836,253.98417,73.294,
+320,73.052,403.17474,73.009,507.96834,73.587,640,74.131,
+806.34947,74.65,1015.93667,75.066,1280,76.309,1612.69894,77.96,
+2031.87335,80.389,2560,83.498,3225.39789,84.138,4063.74669,83.535,
+5120,82.655,6450.79578,82.715,8127.49339,82.732,10240,80.673,
+12901.59155,77.731,16254.98677,74.68,20186.38231,72.027],
+DF:[20,-0.96696,25.19842,-0.89459,31.74802,-0.80792,40,-0.7292,
+50.39684,-0.65911,63.49604,-0.59686,80,-0.5424,100.79368,-0.50612,
+126.99208,-0.45907,160,-0.4781,201.58737,-0.4751,253.98417,-0.39489,
+320,-0.09571,403.17474,0.30712,507.96834,0.38417,640,0.05548,
+806.34947,-0.36296,1015.93667,0.21809,1280,1.72063,1612.69894,3.65044,
+2031.87335,6.97731,2560,11.0726,3225.39789,11.03534,4063.74669,8.04213,
+5120,5.27252,6450.79578,3.88351,8127.49339,3.74844,10240,0.55366,
+12901.59155,-2.80791,16254.98677,-4.48233,20186.38231,-3.59892]
+};
+function flatToPairs(p){
+  var out=[],i;
+  for(i=0;i+1<p.length;i+=2){out.push([p[i],p[i+1]]);}
+  return out;
+}
 function clamp(v,a,b){
   if(v<a){return a;}
   if(v>b){return b;}
   return v;
 }
 function esc(s){
-  return String(s).replace(RE_ESC,function(c){
-    if(c==="\""){return"&quot;";}
-    if(c==="&"){return"&amp;";}
-    if(c==="<"){return"&lt;";}
-    return"&gt;";
-  });
+  var out="",i,c;
+  for(i=0;i<s.length;i++){
+    c=s.charAt(i);
+    if(c==="&"){out+="&amp;";}
+    else if(c==="<"){out+="&lt;";}
+    else if(c===">"){out+="&gt;";}
+    else if(c==="\""){out+="&quot;";}
+    else{out+=c;}
+  }
+  return out;
 }
 function css(v){
   return getComputedStyle(document.body)
@@ -747,44 +770,27 @@ function num(el,fb){
 function r1(v){return Math.round(v*10)/10;}
 function r2(v){return Math.round(v*100)/100;}
 function fmtF(f){return Math.round(f);}
-function isAbs(u){return RE_ABS.test(u);}
-function fetchWithTimeout(u,ms){
-  var c=new AbortController();
-  var t=setTimeout(function(){c.abort();},ms);
-  return fetch(u,{signal:c.signal}).finally(function(){
-    clearTimeout(t);
-  });
+function isAbs(u){
+  return u.indexOf("http")===0;
 }
 function fetchLocal(u){
-  return fetchWithTimeout(u,8000).then(function(r){
+  return fetch(u).then(function(r){
     if(!r.ok){throw new Error("HTTP "+r.status);}
     return r.text();
   });
 }
-function fetchRemote(u){
-  var p1="https://api.allorigins.win/raw"+QM+"url=";
-  var p2="https://corsproxy.io/"+QM+"url=";
-  var urls=[u,p1+encodeURIComponent(u),p2+encodeURIComponent(u)];
-  var chain=Promise.reject(new Error("fetch failed"));
-  urls.forEach(function(uu){
-    chain=chain.catch(function(){
-      return fetchWithTimeout(uu,7000).then(function(r){
-        if(!r.ok){throw new Error("http");}
-        return r.text();
-      }).then(function(t){
-        if(!t||!t.trim()){throw new Error("empty");}
-        return t;
-      });
-    });
+function fetchAny(u){
+  return fetch(u).then(function(r){
+    if(!r.ok){throw new Error("HTTP "+r.status);}
+    return r.text();
   });
-  return chain;
 }
-function fetchAny(u){return isAbs(u)?fetchRemote(u):fetchLocal(u);}
 function parseTable(text){
-  var rows=[],lines=text.split(RE_NL),i;
+  var rows=[],lines=text.split("\n"),i;
   for(i=0;i<lines.length;i++){
-    var toks=lines[i].trim().split(RE_SPLIT)
-      .filter(function(t){return t.length;});
+    var line=lines[i].replace("\r","").trim();
+    if(!line){continue;}
+    var toks=line.split(/[\s,;]+/).filter(function(t){return t.length;});
     if(toks.length<2){continue;}
     var n=toks.map(Number);
     if(!isFinite(n[0])||n[0]<=0||!isFinite(n[1])){continue;}
@@ -884,7 +890,7 @@ function biquadDb(type,f0,Q,gain,f){
     b2=A*((A+1)+(A-1)*cw+2*sA*al);
     a0=(A+1)+(A-1)*cw-2*sA*al;
     a1=2*((A-1)+(A+1)*cw);
-    a2=(A+1)+(A-1)*cw+2*sA*al;
+    a2=(A+1)+(A-1)*cw-2*sA*al;
   }
   var c1=Math.cos(w),s1=Math.sin(w);
   var c2=Math.cos(2*w),s2=Math.sin(2*w);
@@ -916,30 +922,6 @@ function curveCfg(key){
   }
   return state.curves.get(key);
 }
-function flatToPairs(p){
-  var out=[],i;
-  for(i=0;i+1<p.length;i+=2){out.push([p[i],p[i+1]]);}
-  return out;
-}
-var FALLBACK_HARMAN=[
-20,7.62973,22.44924,7.68487,25.19842,7.71947,28.28427,7.72681,
-31.74802,7.69917,35.63595,7.60681,40,7.41131,44.89848,7.08692,
-50.39684,6.63857,56.56854,6.10753,63.49604,5.50985,71.2719,4.85848,
-80,4.18831,89.79696,3.50032,100.79368,2.77975,113.13708,2.0519,
-126.99208,1.33947,142.54379,0.6872,160,0.09838,179.59393,-0.47266,
-201.58737,-0.98818,226.27417,-1.37155,253.98417,-1.60032,
-285.08759,-1.70023,320,-1.70974,359.18786,-1.6662,403.17474,-1.59545,
-452.54834,-1.50398,507.96834,-1.38436,570.17518,-1.24699,
-640,-1.07811,718.37571,-0.86396,806.34947,-0.62243,905.09668,-0.33051,
-1015.93667,0.05512,1140.35036,0.58276,1280,1.32076,
-1436.75142,2.21175,1612.69894,3.21386,1810.19336,4.49772,
-2031.87335,5.98719,2280.70072,7.3739,2560,8.4983,
-2873.50284,9.17476,3225.39789,9.41864,3620.38672,9.24472,
-4063.74669,8.8162,4561.40144,8.24556,5120,7.6048,
-5747.00569,6.99762,6450.79578,6.18873,7240.77344,4.97312,
-8127.49339,3.32921,9122.80287,1.21727,10240,-1.25957,
-11494.01137,-3.68367,12901.59155,-5.99103,14481.54688,-8.09968,
-16254.98677,-10.65092,18245.60575,-15.25816,20186.38231,-20.68071];
 function allHps(){return CFG.hps.concat(state.uploaded,state.remote);}
 function nameTaken(x){
   if(targets.has(x)){return true;}
@@ -959,28 +941,16 @@ function uniqueName(base){
 }
 function loadTargets(){
   var jobs=CFG.targets.map(function(t){
-    var urls=[t.file,t.alt].filter(Boolean);
-    var chain=Promise.reject(new Error("no file"));
-    urls.forEach(function(u){
-      chain=chain.catch(function(){
-        return fetchLocal(u).then(function(txt){
-          var pts=parseTable(txt);
-          if(pts.length>10){
-            targets.set(t.name,{def:t,raw:resample(pts)});
-          }else{
-            throw new Error("short");
-          }
-        });
-      });
-    });
-    return chain.catch(function(){
-      if(t.name==="Harman IE 2019 v2"&&
-         !targets.has(t.name)){
-        targets.set(t.name,{
-          def:t,
-          raw:resample(flatToPairs(FALLBACK_HARMAN))});
+    if(t.embedded&&EMB[t.embedded]){
+      targets.set(t.name,{def:t,raw:resample(flatToPairs(EMB[t.embedded]))});
+      return Promise.resolve();
+    }
+    return fetchLocal(t.file).then(function(txt){
+      var pts=parseTable(txt);
+      if(pts.length>10){
+        targets.set(t.name,{def:t,raw:resample(pts)});
       }
-    });
+    }).catch(function(){});
   });
   return Promise.all(jobs).then(function(){
     if(!state.target||!targets.has(state.target)){
@@ -995,11 +965,9 @@ function loadTargets(){
   });
 }
 function loadRemoteDb(){
-  return fetchWithTimeout("data/squig-db.json",8000)
-  .then(function(r){
-    if(!r.ok){throw new Error("http");}
-    return r.json();
-  }).then(function(j){
+  return fetchLocal("data/squig-db.json")
+  .then(function(t){
+    var j=JSON.parse(t);
     (j.hps||[]).forEach(function(rec){
       var pairs=flatToPairs(rec.pts||[]);
       if(pairs.length<20){return;}
@@ -1415,7 +1383,7 @@ function renderModels(){
   if(!list.length){
     box.innerHTML=
       "<div class='muted' style='padding:8px'>Empty. "+
-      "Use data/squig-db.json or Upload FR</div>";
+      "Use Upload FR to add measurements.</div>";
   }
   list.forEach(function(hp){
     var sel=state.selected.has(hp.name);
@@ -1494,7 +1462,7 @@ function downloadCurveByKey(key){
   for(i=0;i<GRID.length;i+=4){
     lines.push(GRID[i].toFixed(2)+","+y[i].toFixed(3));
   }
-  download(key.replace(RE_SAN,"_")+".csv",lines.join("\n"));
+  download(key.replace(/[^\w\d-]+/g,"_")+".csv",lines.join("\n"));
 }
 function updateLegend(){
   var lg=$("legendRows");
@@ -1714,20 +1682,41 @@ function runAutoEq(){
     });
   },60);
 }
+/* Parse AutoEQ/APO text WITHOUT regex (split + indexOf). */
 function parseEqText(t){
   var fs=[],pre=null;
-  var pm=t.match(RE_PRE);
-  if(pm){pre=parseFloat(pm[1]);}
-  var m;
-  RE_FILTER.lastIndex=0;
-  while((m=RE_FILTER.exec(t))!==null){
-    var ty=(m[1]||"PK").toUpperCase();
-    var tt="PK";
-    if(ty.indexOf("LS")===0){tt="LS";}
-    if(ty.indexOf("HS")===0){tt="HS";}
-    fs.push({on:true,t:tt,f:parseFloat(m[2]),
-      g:parseFloat(m[3]),
-      q:Math.max(0.05,parseFloat(m[4]))});
+  var lines=t.split("\n"),i;
+  for(i=0;i<lines.length;i++){
+    var ln=lines[i].trim();
+    if(ln.indexOf("Preamp:")===0){
+      var pv=parseFloat(ln.substring(7));
+      if(isFinite(pv)){pre=pv;}
+      continue;
+    }
+    if(ln.indexOf("Filter")===-1){continue;}
+    if(ln.indexOf("ON")===-1){continue;}
+    var fc=-1,gain=0,q=1,tt="PK";
+    var pFc=ln.indexOf("Fc");
+    var pHz=ln.indexOf("Hz");
+    var pGain=ln.indexOf("Gain");
+    var pDb=ln.indexOf("dB");
+    var pQ=ln.indexOf(" Q ");
+    if(pFc>=0&&pHz>pFc){
+      fc=parseFloat(ln.substring(pFc+2,pHz));
+    }
+    if(pGain>=0&&pDb>pGain){
+      gain=parseFloat(ln.substring(pGain+4,pDb));
+    }
+    if(pQ>=0){
+      q=parseFloat(ln.substring(pQ+3));
+    }
+    var pOn=ln.indexOf("ON");
+    var typeTok=ln.substring(pOn+2,pFc>=0?pFc:ln.length).trim();
+    if(typeTok.indexOf("LS")===0){tt="LS";}
+    else if(typeTok.indexOf("HS")===0){tt="HS";}
+    if(fc>0&&isFinite(gain)&&isFinite(q)){
+      fs.push({on:true,t:tt,f:fc,g:gain,q:Math.max(0.05,q)});
+    }
   }
   return{fs:fs,pre:pre};
 }
@@ -1863,34 +1852,54 @@ function closeModal(){
   $("mPrev").textContent="";
   $("mName").value="";
   $("mUrl").value="";
-  $("mUrlL").value="";
-  $("mUrlR").value="";
   $("mFile").value="";
   $("mPaste").value="";
 }
-function absUrl(base,rel){
-  try{return new URL(rel,base).href;}
-  catch(e){return rel;}
+/* Find L/R csv links on a squig page using plain string search. */
+function findCsvLinks(html,base){
+  var links=[],i,idx;
+  var searchFrom=0;
+  while(links.length<8){
+    idx=html.indexOf(".csv",searchFrom);
+    if(idx<0){break;}
+    var start=idx;
+    while(start>0){
+      var ch=html.charAt(start-1);
+      if(ch==="\""||ch==="'"||ch==="<"||ch===" "){break;}
+      start--;
+    }
+    var url=html.substring(start,idx+4);
+    if(url.indexOf("http")!==0){
+      try{url=new URL(url,base).href;}catch(e){}
+    }
+    var dup=false;
+    for(i=0;i<links.length;i++){
+      if(links[i]===url){dup=true;break;}
+    }
+    if(!dup){links.push(url);}
+    searchFrom=idx+4;
+  }
+  return links;
 }
 function fetchPtsFromUrl(u){
   return fetchAny(u).then(function(t){
-    if(!RE_HTML.test(t)){return{avg:parseTable(t)};}
-    var links=[],mm;
-    RE_HREF.lastIndex=0;
-    while((mm=RE_HREF.exec(t))!==null&&links.length<6){
-      links.push(absUrl(u,mm[1]));
+    if(t.indexOf("<!DOCTYPE")===-1&&t.indexOf("<html")===-1){
+      return{avg:parseTable(t)};
     }
+    var links=findCsvLinks(t,u);
     if(!links.length){
-      throw new Error("no CSV/TXT links on page");
+      throw new Error("no CSV links on page");
     }
     var L=links[0],R=null,i;
     for(i=0;i<links.length;i++){
-      if(RE_L.test(links[i])){L=links[i];break;}
+      if(links[i].indexOf("L.csv")>=0||links[i].indexOf("_L")>=0){
+        L=links[i];break;
+      }
     }
     for(i=0;i<links.length;i++){
-      if(RE_R.test(links[i])&&links[i]!==L){
-        R=links[i];
-        break;
+      if((links[i].indexOf("R.csv")>=0||links[i].indexOf("_R")>=0)&&
+         links[i]!==L){
+        R=links[i];break;
       }
     }
     if(R){
@@ -1918,19 +1927,6 @@ function grabPts(){
   }
   if($("mPaste").value.trim()){
     return Promise.resolve({avg:parseTable($("mPaste").value)});
-  }
-  if($("mUrlL").value.trim()&&$("mUrlR").value.trim()){
-    return Promise.all([
-      fetchPtsFromUrl($("mUrlL").value.trim()),
-      fetchPtsFromUrl($("mUrlR").value.trim())
-    ]).then(function(p){
-      var la=resample(p[0].avg),lb=resample(p[1].avg);
-      var pts=[],j;
-      for(j=0;j<GRID.length;j++){
-        pts.push([GRID[j],(la[j]+lb[j])/2]);
-      }
-      return{avg:pts};
-    });
   }
   if($("mUrl").value.trim()){
     return fetchPtsFromUrl($("mUrl").value.trim());
@@ -2391,8 +2387,6 @@ function init(){
   on("mFile","change",doPreview);
   on("mPaste","input",queuePreview);
   on("mUrl","input",queuePreview);
-  on("mUrlL","input",queuePreview);
-  on("mUrlR","input",queuePreview);
   on("modal","click",function(e){
     if(e.target.id==="modal"){$("modal").hidden=true;}
   });

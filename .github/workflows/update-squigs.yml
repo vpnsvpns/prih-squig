@@ -1,0 +1,22 @@
+name: Update Squig Database
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Каждое воскресенье
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - run: python parse_squigs.py
+      - run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add data/squig-db.json
+          git commit -m "Auto-update squig database" || exit 0
+          git push

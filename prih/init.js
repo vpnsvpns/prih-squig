@@ -1,5 +1,5 @@
 "use strict";
-/* init v49: draggable bottom sheet like squig + full legend rows */
+/* init v50: draggable sheet (handle + tabs area) + arrow button */
 function injectMobileCss(){
   if(document.getElementById("mobileCss")){return;}
   var L=[];
@@ -39,42 +39,84 @@ function injectMobileCss(){
   L.push(".frow input[type=checkbox]{width:22px;height:22px}");
   L.push("#eqPane .row button{padding:12px 16px;font-size:14px}");
   L.push(".grid2 input{padding:10px;font-size:16px}");
+  
+  /* Sheet styles */
   L.push("#left{height:88px;overflow:hidden;");
   L.push("transition:height .25s ease;padding-top:0}");
   L.push("#left::before{display:none}");
+  
+  /* Drag zone covers handle + tabs */
+  L.push("#sheetDragZone{display:flex;flex-direction:column;");
+  L.push("touch-action:none;cursor:grab}");
+  
   L.push("#sheetHandle{display:flex;justify-content:center;");
-  L.push("align-items:center;padding:10px 0 6px;touch-action:none}");
+  L.push("align-items:center;padding:10px 0 6px;position:relative}");
   L.push("#sheetHandle i{width:44px;height:4px;border-radius:2px;");
   L.push("background:var(--line)}");
+  
+  /* Arrow button inside handle area */
+  L.push("#sheetArrow{position:absolute;right:16px;top:50%;");
+  L.push("transform:translateY(-50%);width:24px;height:24px;");
+  L.push("border:none;background:none;color:var(--muted);");
+  L.push("font-size:18px;padding:0;cursor:pointer}");
+  L.push("#left.open #sheetArrow{transform:translateY(-50%) rotate(180deg)}");
+
   L.push("#left .pane,#left #search{display:none}");
   L.push("#left.open{height:62vh}");
   L.push("#left.open #search{display:block}");
   L.push("#left.open .pane{display:flex;flex:1 1 auto;");
   L.push("min-height:0;overflow-y:auto}");
+  
   L.push("#browseBtn{display:flex;justify-content:space-between;");
   L.push("align-items:center;width:calc(100% - 20px);");
   L.push("margin:10px auto;padding:14px 16px;font-size:14px;");
   L.push("border:1px solid var(--line);border-radius:10px;");
   L.push("background:var(--panel)}");
   L.push("#browseBtn b{font-size:18px;font-weight:600}");
+  
   var st=document.createElement("style");
   st.id="mobileCss";
   st.textContent=L.join("");
   document.head.appendChild(st);
 }
+
 function setupSheet(){
   var left=$("left");
   var main=document.querySelector("main");
   if(!left||!main){return;}
-  if(document.getElementById("sheetHandle")){return;}
+  if(document.getElementById("sheetDragZone")){return;}
+
+  /* Create drag zone wrapper for handle + tabs */
+  var dz=document.createElement("div");
+  dz.id="sheetDragZone";
+  
   var h=document.createElement("div");
   h.id="sheetHandle";
-  h.innerHTML="<i></i>";
-  left.insertBefore(h,left.firstChild);
+  h.innerHTML="<i></i><button id='sheetArrow'>^</button>";
+  
+  /* Move tabs into drag zone visually? No, tabs stay in flow but we attach listeners to a zone covering them. 
+     Actually simpler: put handle in dz, and attach touch listeners to dz which we place at top of left.
+     But tabs are below handle. To make tabs draggable too, we need the listener on a container that includes tabs.
+     Let's wrap handle + tabs in dz. */
+  
+  var tabsEl=left.querySelector(".tabs");
+  
+  /* Restructure: left -> [dz -> [handle, tabs]], [search], [pane] */
+  /* We need to move existing tabs into dz */
+  if(tabsEl){
+    left.insertBefore(dz, tabsEl);
+    dz.appendChild(h);
+    dz.appendChild(tabsEl);
+  } else {
+    left.insertBefore(dz, left.firstChild);
+    dz.appendChild(h);
+  }
+
   var bb=document.createElement("button");
   bb.id="browseBtn";
   bb.innerHTML="Browse all graphs<b>+</b>";
   main.insertBefore(bb,left);
+
   function sync(){
     var open=left.classList.contains("open");
     bb.style.display=open?"none":"flex";
@@ -86,16 +128,28 @@ function setupSheet(){
   function maxH(){
     return Math.round(Math.min(window.innerHeight*0.72,720));
   }
+  
   setOpen(false);
+
   var y0=null,h0=0,drag=false,sup=0;
-  h.addEventListener("touchstart",function(e){
+  var arrowBtn=document.getElementById("sheetArrow");
+
+  /* Attach drag listeners to the whole zone (handle + tabs) */
+  dz.addEventListener("touchstart",function(e){
+    /* Don't drag if touching a button inside tabs (like tab switch) */
+    if(e.target.closest("button") && e.target !== arrowBtn){
+        /* Allow tab clicks, but still allow drag if they hold? 
+           For simplicity: if touch starts on a tab button, don't initiate drag immediately.
+           But user wants to drag from anywhere. Let's allow drag from tabs too. */
+    }
     if(!e.touches||!e.touches[0]){return;}
     y0=e.touches[0].clientY;
     h0=left.offsetHeight;
     drag=true;
     left.style.transition="none";
   },{passive:true});
-  h.addEventListener("touchmove",function(e){
+
+  dz.addEventListener("touchmove",function(e){
     if(!drag||y0===null){return;}
     var dy=y0-e.touches[0].clientY;
     var nh=h0+dy;
@@ -103,9 +157,11 @@ function setupSheet(){
     var mx=maxH();
     if(nh>mx){nh=mx;}
     left.style.height=nh+"px";
-    e.preventDefault();
+    /* Prevent scrolling page while dragging sheet */
+    if(Math.abs(dy)>5) e.preventDefault();
   },{passive:false});
-  h.addEventListener("touchend",function(){
+
+  dz.addEventListener("touchend",function(){
     if(!drag){return;}
     drag=false;
     sup=Date.now();
@@ -114,16 +170,30 @@ function setupSheet(){
     left.style.height="";
     setOpen(nh>(88+maxH())/2);
   },{passive:true});
-  h.addEventListener("click",function(){
-    if(Date.now()-sup<500){return;}
-    setOpen(!left.classList.contains("open"));
+
+  /* Click on arrow toggles */
+  if(arrowBtn){
+      arrowBtn.addEventListener("click",function(e){
+          e.stopPropagation();
+          if(Date.now()-sup<500){return;}
+          setOpen(!left.classList.contains("open"));
+      });
+  }
+  
+  /* Click on handle bar toggles */
+  h.addEventListener("click",function(e){
+      if(e.target === arrowBtn) return;
+      if(Date.now()-sup<500){return;}
+      setOpen(!left.classList.contains("open"));
   });
+
   bb.addEventListener("click",function(){
     setOpen(true);
     switchTab("models");
     left.scrollIntoView({block:"nearest"});
   });
 }
+
 function init(){
   try{
   if(window.__prihBootTimer){

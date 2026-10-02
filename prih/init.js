@@ -1,5 +1,5 @@
 "use strict";
-/* init v51: simple tap-to-toggle sheet, huge height when open */
+/* init v52: Dumb simple toggle. Handle button only. No wrappers. */
 function injectMobileCss(){
   if(document.getElementById("mobileCss")){return;}
   var L=[];
@@ -10,9 +10,7 @@ function injectMobileCss(){
   L.push(".mrow{padding:14px 12px;font-size:14px}");
   L.push(".mrow .add{padding:8px 14px;font-size:16px}");
   L.push(".tchip.tgt{padding:10px 16px;font-size:13px}");
-  L.push("#adjRow label{border:1px solid var(--line);");
-  L.push("border-radius:8px;background:var(--panel2);");
-  L.push("padding:8px 10px;gap:8px;font-size:12px}");
+  L.push("#adjRow label{border:1px solid var(--line);border-radius:8px;background:var(--panel2);padding:8px 10px;gap:8px;font-size:12px}");
   L.push("#adjRow input{width:64px;background:var(--bg)}");
   L.push("#adjRow button{padding:12px 14px;font-size:13px}");
   L.push("#legendRows{gap:12px;padding:10px}");
@@ -32,23 +30,20 @@ function injectMobileCss(){
   L.push("#eqPane .row button{padding:12px 16px;font-size:14px}");
   L.push(".grid2 input{padding:10px;font-size:16px}");
   
-  /* Sheet: closed = small, open = huge */
-  L.push("#left{height:90px;overflow:hidden;transition:height .3s ease;padding-top:0}");
+  /* Sheet Logic */
+  L.push("#left{height:100px;overflow:hidden;transition:height .3s ease;padding-top:0;background:var(--panel);border-top:1px solid var(--line)}");
   L.push("#left::before{display:none}");
   
-  /* The whole header area is the button */
-  L.push("#sheetHeader{display:flex;flex-direction:column;cursor:pointer;-webkit-tap-highlight-color:transparent}");
-  L.push("#sheetHandle{display:flex;justify-content:center;align-items:center;padding:8px 0 4px}");
-  L.push("#sheetHandle i{width:40px;height:4px;border-radius:2px;background:var(--line)}");
-  L.push("#sheetArrow{font-size:12px;color:var(--muted);margin-left:8px}");
+  /* The Handle Button - Big and obvious */
+  L.push("#sheetToggleBtn{display:flex;justify-content:center;align-items:center;width:100%;height:40px;background:transparent;border:none;cursor:pointer;padding:0}");
+  L.push("#sheetToggleBtn i{width:50px;height:5px;border-radius:3px;background:var(--muted);opacity:0.5}");
   
   L.push("#left .pane,#left #search{display:none}");
   
   /* OPEN STATE */
-  L.push("#left.open{height:85vh}"); /* Almost full screen */
+  L.push("#left.open{height:85vh}");
   L.push("#left.open #search{display:block}");
   L.push("#left.open .pane{display:flex;flex:1 1 auto;min-height:0;overflow-y:auto}");
-  L.push("#left.open #sheetArrow{transform:rotate(180deg)}");
   
   L.push("#browseBtn{display:flex;justify-content:space-between;align-items:center;width:calc(100% - 20px);margin:10px auto;padding:14px 16px;font-size:14px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}");
   L.push("#browseBtn b{font-size:18px;font-weight:600}");
@@ -63,64 +58,41 @@ function setupSheet(){
   var left=$("left");
   var main=document.querySelector("main");
   if(!left||!main){return;}
-  if(document.getElementById("sheetHeader")){return;}
+  if(document.getElementById("sheetToggleBtn")){return;}
 
-  /* Create a wrapper for Handle + Tabs to make them one big click target */
-  var header=document.createElement("div");
-  header.id="sheetHeader";
+  /* 1. Create the Handle Button */
+  var btn=document.createElement("button");
+  btn.id="sheetToggleBtn";
+  btn.innerHTML="<i></i>";
   
-  var handle=document.createElement("div");
-  handle.id="sheetHandle";
-  handle.innerHTML="<i></i><span id='sheetArrow'>v</span>";
-  
-  var tabsEl=left.querySelector(".tabs");
-  
-  /* Structure: Left -> [ Header -> [Handle, Tabs] ], [Search], [Pane] */
-  if(tabsEl){
-    left.insertBefore(header, tabsEl);
-    header.appendChild(handle);
-    header.appendChild(tabsEl);
-  } else {
-    left.insertBefore(header, left.firstChild);
-    header.appendChild(handle);
-  }
+  /* Insert at the very top of the sidebar */
+  left.insertBefore(btn, left.firstChild);
 
+  /* 2. Create Browse Button (visible when closed) */
   var bb=document.createElement("button");
   bb.id="browseBtn";
   bb.innerHTML="Browse all graphs<b>+</b>";
   main.insertBefore(bb,left);
 
   function sync(){
-    var open=left.classList.contains("open");
-    bb.style.display=open?"none":"flex";
+    var isOpen=left.classList.contains("open");
+    bb.style.display=isOpen?"none":"flex";
   }
-  function toggle(){
+
+  /* 3. Simple Click Handler */
+  btn.addEventListener("click", function(e){
+    e.preventDefault();
+    e.stopPropagation();
     left.classList.toggle("open");
     sync();
-  }
-
-  /* ONE simple click handler on the whole header area */
-  header.addEventListener("click", function(e){
-    /* If we clicked a tab button specifically, let the tab switch happen, 
-       but ALSO toggle the sheet if it was closed? 
-       Actually, usually tapping a tab in a collapsed sheet opens it.
-       Tapping a tab in an open sheet switches tab.
-       Let's keep it simple: Tap header area = Toggle sheet.
-       Tab buttons inside will still fire their own onclick (switchTab) due to bubbling,
-       which is fine (it switches tab AND opens sheet). */
-    toggle();
-  });
-
-  bb.addEventListener("click",function(){
-    if(!left.classList.contains("open")){
-        left.classList.add("open");
-        sync();
-    }
-    switchTab("models");
-    left.scrollIntoView({block:"nearest"});
   });
   
-  /* Initial state */
+  bb.addEventListener("click", function(){
+    left.classList.add("open");
+    sync();
+    switchTab("models");
+  });
+
   sync();
 }
 

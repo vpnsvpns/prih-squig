@@ -1,5 +1,5 @@
 "use strict";
-/* init v52: Dumb simple toggle. Handle button only. No wrappers. */
+/* init v53: sheet with tap + pointer drag + load marker toast */
 function injectMobileCss(){
   if(document.getElementById("mobileCss")){return;}
   var L=[];
@@ -10,92 +10,135 @@ function injectMobileCss(){
   L.push(".mrow{padding:14px 12px;font-size:14px}");
   L.push(".mrow .add{padding:8px 14px;font-size:16px}");
   L.push(".tchip.tgt{padding:10px 16px;font-size:13px}");
-  L.push("#adjRow label{border:1px solid var(--line);border-radius:8px;background:var(--panel2);padding:8px 10px;gap:8px;font-size:12px}");
+  L.push("#adjRow label{border:1px solid var(--line);");
+  L.push("border-radius:8px;background:var(--panel2);");
+  L.push("padding:8px 10px;gap:8px;font-size:12px}");
   L.push("#adjRow input{width:64px;background:var(--bg)}");
   L.push("#adjRow button{padding:12px 14px;font-size:13px}");
   L.push("#legendRows{gap:12px;padding:10px}");
-  L.push(".crow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}");
+  L.push(".crow{display:flex;flex-wrap:wrap;gap:8px;");
+  L.push("align-items:center}");
   L.push(".crow .cname{flex:1 1 100%;order:0;font-size:15px}");
   L.push(".crow .sw{order:1;flex:0 0 14px;margin-top:0}");
-  L.push(".crow .spark{order:2;display:block;flex:1 1 120px;width:auto;height:16px}");
-  L.push(".crow .coff{order:3;flex:0 0 76px;width:76px;font-size:16px;padding:8px}");
+  L.push(".crow .spark{order:2;display:block;flex:1 1 120px;");
+  L.push("width:auto;height:16px}");
+  L.push(".crow .coff{order:3;flex:0 0 76px;width:76px;");
+  L.push("font-size:16px;padding:8px}");
   L.push(".crow .ph{display:none}");
   L.push(".crow .cdev{display:inline-block;order:4}");
-  L.push(".crow .ceye{order:5}.crow .cpin{display:inline-block;order:6}");
-  L.push(".crow .cdl{order:7}.crow .cx{order:8}");
-  L.push(".crow button{min-width:44px;min-height:44px;flex:0 0 44px;font-size:16px;border:1px solid var(--line);border-radius:8px;background:var(--panel2)}");
+  L.push(".crow .ceye{order:5}");
+  L.push(".crow .cpin{display:inline-block;order:6}");
+  L.push(".crow .cdl{order:7}");
+  L.push(".crow .cx{order:8}");
+  L.push(".crow button{min-width:44px;min-height:44px;");
+  L.push("flex:0 0 44px;font-size:16px;");
+  L.push("border:1px solid var(--line);border-radius:8px;");
+  L.push("background:var(--panel2)}");
   L.push(".crow button:first-of-type{margin-left:auto}");
   L.push(".frow{gap:6px}");
   L.push(".frow input[type=checkbox]{width:22px;height:22px}");
   L.push("#eqPane .row button{padding:12px 16px;font-size:14px}");
   L.push(".grid2 input{padding:10px;font-size:16px}");
-  
-  /* Sheet Logic */
-  L.push("#left{height:100px;overflow:hidden;transition:height .3s ease;padding-top:0;background:var(--panel);border-top:1px solid var(--line)}");
+  L.push("#left{height:104px;overflow:hidden;");
+  L.push("transition:height .3s ease;padding-top:0}");
   L.push("#left::before{display:none}");
-  
-  /* The Handle Button - Big and obvious */
-  L.push("#sheetToggleBtn{display:flex;justify-content:center;align-items:center;width:100%;height:40px;background:transparent;border:none;cursor:pointer;padding:0}");
-  L.push("#sheetToggleBtn i{width:50px;height:5px;border-radius:3px;background:var(--muted);opacity:0.5}");
-  
+  L.push("#sheetToggleBtn{display:flex;justify-content:center;");
+  L.push("align-items:center;width:100%;height:44px;");
+  L.push("background:none;border:none;padding:0;");
+  L.push("touch-action:none;cursor:grab}");
+  L.push("#sheetToggleBtn i{width:50px;height:5px;");
+  L.push("border-radius:3px;background:var(--muted);opacity:.6}");
   L.push("#left .pane,#left #search{display:none}");
-  
-  /* OPEN STATE */
   L.push("#left.open{height:85vh}");
   L.push("#left.open #search{display:block}");
-  L.push("#left.open .pane{display:flex;flex:1 1 auto;min-height:0;overflow-y:auto}");
-  
-  L.push("#browseBtn{display:flex;justify-content:space-between;align-items:center;width:calc(100% - 20px);margin:10px auto;padding:14px 16px;font-size:14px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}");
+  L.push("#left.open .pane{display:flex;flex:1 1 auto;");
+  L.push("min-height:0;overflow-y:auto}");
+  L.push("#browseBtn{display:flex;justify-content:space-between;");
+  L.push("align-items:center;width:calc(100% - 20px);");
+  L.push("margin:10px auto;padding:14px 16px;font-size:14px;");
+  L.push("border:1px solid var(--line);border-radius:10px;");
+  L.push("background:var(--panel)}");
   L.push("#browseBtn b{font-size:18px;font-weight:600}");
-  
   var st=document.createElement("style");
   st.id="mobileCss";
   st.textContent=L.join("");
   document.head.appendChild(st);
 }
-
 function setupSheet(){
   var left=$("left");
   var main=document.querySelector("main");
   if(!left||!main){return;}
   if(document.getElementById("sheetToggleBtn")){return;}
-
-  /* 1. Create the Handle Button */
   var btn=document.createElement("button");
   btn.id="sheetToggleBtn";
+  btn.type="button";
   btn.innerHTML="<i></i>";
-  
-  /* Insert at the very top of the sidebar */
-  left.insertBefore(btn, left.firstChild);
-
-  /* 2. Create Browse Button (visible when closed) */
+  left.insertBefore(btn,left.firstChild);
   var bb=document.createElement("button");
   bb.id="browseBtn";
+  bb.type="button";
   bb.innerHTML="Browse all graphs<b>+</b>";
+  bb.style.order="1.5";
   main.insertBefore(bb,left);
-
-  function sync(){
-    var isOpen=left.classList.contains("open");
-    bb.style.display=isOpen?"none":"flex";
+  function isOpen(){
+    return left.classList.contains("open");
   }
-
-  /* 3. Simple Click Handler */
-  btn.addEventListener("click", function(e){
-    e.preventDefault();
-    e.stopPropagation();
-    left.classList.toggle("open");
+  function sync(){
+    bb.style.display=isOpen()?"none":"flex";
+  }
+  function setOpen(v){
+    left.classList.toggle("open",v);
     sync();
+  }
+  function maxH(){
+    return Math.round(window.innerHeight*0.85);
+  }
+  setOpen(false);
+  var suppress=0;
+  btn.addEventListener("click",function(){
+    if(Date.now()-suppress<400){return;}
+    setOpen(!isOpen());
   });
-  
-  bb.addEventListener("click", function(){
-    left.classList.add("open");
-    sync();
+  bb.addEventListener("click",function(){
+    setOpen(true);
     switchTab("models");
+    left.scrollIntoView({block:"nearest"});
   });
-
-  sync();
+  var dragging=false,y0=0,h0=0;
+  btn.addEventListener("pointerdown",function(e){
+    dragging=true;
+    y0=e.clientY;
+    h0=left.offsetHeight;
+    left.style.transition="none";
+    if(btn.setPointerCapture){
+      btn.setPointerCapture(e.pointerId);
+    }
+  });
+  btn.addEventListener("pointermove",function(e){
+    if(!dragging){return;}
+    var nh=h0+(y0-e.clientY);
+    if(nh<104){nh=104;}
+    var mx=maxH();
+    if(nh>mx){nh=mx;}
+    left.style.height=nh+"px";
+    if(e.cancelable){e.preventDefault();}
+  });
+  btn.addEventListener("pointerup",function(){
+    if(!dragging){return;}
+    dragging=false;
+    suppress=Date.now();
+    var nh=left.offsetHeight;
+    left.style.transition="";
+    left.style.height="";
+    setOpen(nh>(104+maxH())/2);
+  });
+  btn.addEventListener("pointercancel",function(){
+    dragging=false;
+    left.style.transition="";
+    left.style.height="";
+    sync();
+  });
 }
-
 function init(){
   try{
   if(window.__prihBootTimer){
@@ -118,7 +161,7 @@ function init(){
       eb.textContent="core.js failed; AutoEQ disabled.";
     }
   }
-  console.info("Prih build "+BUILD);
+  console.info("Prih build "+BUILD+" init v53");
   loadUploaded();
   var tabs=document.querySelectorAll(".tabs button"),ti;
   for(ti=0;ti<tabs.length;ti++){
@@ -402,6 +445,9 @@ function init(){
     wrapDetails($("toolbar"),"Graph settings");
     injectMobileCss();
     setupSheet();
+    setTimeout(function(){
+      toast("Mobile init v53 loaded");
+    },800);
   }
   sanState();
   renderBrands();

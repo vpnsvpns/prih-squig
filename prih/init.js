@@ -1,5 +1,20 @@
 "use strict";
-/* init: all event wiring + boot */
+/* init: wiring + boot (v45 mobile layout reorder) */
+function mobileLayout(){
+  var gw=$("graphWrap");
+  if(gw){gw.style.height="42vh";}
+  var main=document.querySelector("main");
+  var left=$("left");
+  if(!main||!left){return;}
+  if(document.getElementById("bottomRows")){return;}
+  var br=document.createElement("div");
+  br.id="bottomRows";
+  br.style.order="3";
+  br.appendChild($("targetsRow"));
+  br.appendChild($("adjRow"));
+  br.appendChild($("legendRows"));
+  main.appendChild(br);
+}
 function init(){
   try{
   if(window.__prihBootTimer){
@@ -304,6 +319,7 @@ function init(){
   if(window.matchMedia&&
      window.matchMedia("(max-width:900px)").matches){
     wrapDetails($("toolbar"),"Graph settings");
+    mobileLayout();
   }
   sanState();
   renderBrands();

@@ -1,5 +1,5 @@
 "use strict";
-/* init v48: mobile sheet like squig + full legend rows on mobile */
+/* init v49: draggable bottom sheet like squig + full legend rows */
 function injectMobileCss(){
   if(document.getElementById("mobileCss")){return;}
   var L=[];
@@ -39,17 +39,18 @@ function injectMobileCss(){
   L.push(".frow input[type=checkbox]{width:22px;height:22px}");
   L.push("#eqPane .row button{padding:12px 16px;font-size:14px}");
   L.push(".grid2 input{padding:10px;font-size:16px}");
-  L.push("#left{max-height:60vh;overflow:hidden;");
-  L.push("transition:max-height .25s ease;padding-top:0}");
+  L.push("#left{height:88px;overflow:hidden;");
+  L.push("transition:height .25s ease;padding-top:0}");
   L.push("#left::before{display:none}");
   L.push("#sheetHandle{display:flex;justify-content:center;");
   L.push("align-items:center;padding:10px 0 6px;touch-action:none}");
   L.push("#sheetHandle i{width:44px;height:4px;border-radius:2px;");
   L.push("background:var(--line)}");
-  L.push("#left.collapsed{max-height:88px}");
-  L.push("#left.collapsed .pane,#left.collapsed #search{");
-  L.push("display:none}");
-  L.push(".pane{overflow-y:auto;min-height:0}");
+  L.push("#left .pane,#left #search{display:none}");
+  L.push("#left.open{height:62vh}");
+  L.push("#left.open #search{display:block}");
+  L.push("#left.open .pane{display:flex;flex:1 1 auto;");
+  L.push("min-height:0;overflow-y:auto}");
   L.push("#browseBtn{display:flex;justify-content:space-between;");
   L.push("align-items:center;width:calc(100% - 20px);");
   L.push("margin:10px auto;padding:14px 16px;font-size:14px;");
@@ -75,37 +76,50 @@ function setupSheet(){
   bb.innerHTML="Browse all graphs<b>+</b>";
   main.insertBefore(bb,left);
   function sync(){
-    var col=left.classList.contains("collapsed");
-    bb.style.display=col?"flex":"none";
+    var open=left.classList.contains("open");
+    bb.style.display=open?"none":"flex";
   }
-  function setCol(v){
-    left.classList.toggle("collapsed",v);
+  function setOpen(v){
+    left.classList.toggle("open",v);
     sync();
   }
-  setCol(true);
-  var y0=null;
-  var sup=0;
+  function maxH(){
+    return Math.round(Math.min(window.innerHeight*0.72,720));
+  }
+  setOpen(false);
+  var y0=null,h0=0,drag=false,sup=0;
   h.addEventListener("touchstart",function(e){
-    y0=null;
-    if(e.touches&&e.touches[0]){
-      y0=e.touches[0].clientY;
-    }
+    if(!e.touches||!e.touches[0]){return;}
+    y0=e.touches[0].clientY;
+    h0=left.offsetHeight;
+    drag=true;
+    left.style.transition="none";
   },{passive:true});
-  h.addEventListener("touchend",function(e){
-    if(y0===null){return;}
-    var dy=e.changedTouches[0].clientY-y0;
-    y0=null;
+  h.addEventListener("touchmove",function(e){
+    if(!drag||y0===null){return;}
+    var dy=y0-e.touches[0].clientY;
+    var nh=h0+dy;
+    if(nh<88){nh=88;}
+    var mx=maxH();
+    if(nh>mx){nh=mx;}
+    left.style.height=nh+"px";
+    e.preventDefault();
+  },{passive:false});
+  h.addEventListener("touchend",function(){
+    if(!drag){return;}
+    drag=false;
     sup=Date.now();
-    if(dy>30){setCol(true);return;}
-    if(dy<-30){setCol(false);return;}
-    setCol(!left.classList.contains("collapsed"));
+    var nh=left.offsetHeight;
+    left.style.transition="";
+    left.style.height="";
+    setOpen(nh>(88+maxH())/2);
   },{passive:true});
   h.addEventListener("click",function(){
     if(Date.now()-sup<500){return;}
-    setCol(!left.classList.contains("collapsed"));
+    setOpen(!left.classList.contains("open"));
   });
   bb.addEventListener("click",function(){
-    setCol(false);
+    setOpen(true);
     switchTab("models");
     left.scrollIntoView({block:"nearest"});
   });

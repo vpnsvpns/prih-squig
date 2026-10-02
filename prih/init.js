@@ -1,19 +1,39 @@
 "use strict";
-/* init: wiring + boot (v45 mobile layout reorder) */
-function mobileLayout(){
-  var gw=$("graphWrap");
-  if(gw){gw.style.height="42vh";}
-  var main=document.querySelector("main");
-  var left=$("left");
-  if(!main||!left){return;}
-  if(document.getElementById("bottomRows")){return;}
-  var br=document.createElement("div");
-  br.id="bottomRows";
-  br.style.order="3";
-  br.appendChild($("targetsRow"));
-  br.appendChild($("adjRow"));
-  br.appendChild($("legendRows"));
-  main.appendChild(br);
+/* init v46: wiring + boot + mobile comfort CSS injected from JS */
+function injectMobileCss(){
+  if(document.getElementById("mobileCss")){return;}
+  var L=[];
+  L.push("#graphWrap{height:40vh;min-height:230px}");
+  L.push("header .topbtns button{padding:10px 14px;font-size:13px}");
+  L.push(".tabs button{font-size:15px;padding:14px 4px}");
+  L.push("#search{padding:12px 14px;font-size:16px}");
+  L.push(".mrow{padding:14px 12px;font-size:14px}");
+  L.push(".mrow .add{padding:8px 14px;font-size:16px}");
+  L.push(".tchip.tgt{padding:10px 16px;font-size:13px}");
+  L.push("#adjRow label{border:1px solid var(--line);");
+  L.push("border-radius:8px;background:var(--panel2);");
+  L.push("padding:8px 10px;gap:8px;font-size:12px}");
+  L.push("#adjRow input{width:64px;background:var(--bg)}");
+  L.push("#adjRow button{padding:12px 14px;font-size:13px}");
+  L.push("#legendRows{gap:10px;padding:10px}");
+  L.push(".crow{display:flex;flex-wrap:wrap;gap:8px}");
+  L.push(".crow .sw{margin-top:6px}");
+  L.push(".crow .cname{flex:1 1 60%;font-size:14px}");
+  L.push(".crow .spark,.crow .ph{display:none}");
+  L.push(".crow .coff{width:76px;flex:0 0 76px;");
+  L.push("font-size:16px;padding:8px}");
+  L.push(".crow button{min-width:44px;min-height:44px;");
+  L.push("font-size:16px;padding:10px 12px;");
+  L.push("border:1px solid var(--line);border-radius:8px;");
+  L.push("background:var(--panel2)}");
+  L.push(".frow{gap:6px}");
+  L.push(".frow input[type=checkbox]{width:22px;height:22px}");
+  L.push("#eqPane .row button{padding:12px 16px;font-size:14px}");
+  L.push(".grid2 input{padding:10px;font-size:16px}");
+  var st=document.createElement("style");
+  st.id="mobileCss";
+  st.textContent=L.join("");
+  document.head.appendChild(st);
 }
 function init(){
   try{
@@ -319,7 +339,7 @@ function init(){
   if(window.matchMedia&&
      window.matchMedia("(max-width:900px)").matches){
     wrapDetails($("toolbar"),"Graph settings");
-    mobileLayout();
+    injectMobileCss();
   }
   sanState();
   renderBrands();

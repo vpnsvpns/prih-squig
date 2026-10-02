@@ -1,5 +1,5 @@
 "use strict";
-/* init v46: wiring + boot + mobile comfort CSS injected from JS */
+/* init v47: wiring + boot + mobile sheet collapse (like squig) */
 function injectMobileCss(){
   if(document.getElementById("mobileCss")){return;}
   var L=[];
@@ -30,10 +30,57 @@ function injectMobileCss(){
   L.push(".frow input[type=checkbox]{width:22px;height:22px}");
   L.push("#eqPane .row button{padding:12px 16px;font-size:14px}");
   L.push(".grid2 input{padding:10px;font-size:16px}");
+  L.push("#left{max-height:60vh;overflow:hidden;");
+  L.push("transition:max-height .25s ease;padding-top:0}");
+  L.push("#left::before{display:none}");
+  L.push("#sheetHandle{display:flex;justify-content:center;");
+  L.push("align-items:center;padding:10px 0 6px;touch-action:none}");
+  L.push("#sheetHandle i{width:44px;height:4px;border-radius:2px;");
+  L.push("background:var(--line)}");
+  L.push("#left.collapsed{max-height:32px}");
+  L.push("#left.collapsed .tabs,#left.collapsed .pane,");
+  L.push("#left.collapsed #search{display:none}");
+  L.push(".pane{overflow-y:auto;min-height:0}");
   var st=document.createElement("style");
   st.id="mobileCss";
   st.textContent=L.join("");
   document.head.appendChild(st);
+}
+function setupSheet(){
+  var left=$("left");
+  if(!left){return;}
+  if(document.getElementById("sheetHandle")){return;}
+  var h=document.createElement("div");
+  h.id="sheetHandle";
+  h.innerHTML="<i></i>";
+  left.insertBefore(h,left.firstChild);
+  var y0=null;
+  var sup=0;
+  h.addEventListener("touchstart",function(e){
+    y0=null;
+    if(e.touches&&e.touches[0]){
+      y0=e.touches[0].clientY;
+    }
+  },{passive:true});
+  h.addEventListener("touchend",function(e){
+    if(y0===null){return;}
+    var dy=e.changedTouches[0].clientY-y0;
+    y0=null;
+    sup=Date.now();
+    if(dy>30){
+      left.classList.add("collapsed");
+      return;
+    }
+    if(dy<-30){
+      left.classList.remove("collapsed");
+      return;
+    }
+    left.classList.toggle("collapsed");
+  },{passive:true});
+  h.addEventListener("click",function(){
+    if(Date.now()-sup<500){return;}
+    left.classList.toggle("collapsed");
+  });
 }
 function init(){
   try{
@@ -340,6 +387,7 @@ function init(){
      window.matchMedia("(max-width:900px)").matches){
     wrapDetails($("toolbar"),"Graph settings");
     injectMobileCss();
+    setupSheet();
   }
   sanState();
   renderBrands();

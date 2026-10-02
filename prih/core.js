@@ -1,5 +1,5 @@
 "use strict";
-/* core: math + DSP + AutoEQ optimizer. No DOM. No ternary, no regex ?. */
+/* core v60: math, DSP, fetch, parse, AutoEQ optimizer. No DOM state. */
 function T(c,a,b){
   if(c){return a;}
   return b;
@@ -13,9 +13,18 @@ function shape(f,f0,q){
   var x=f/f0-f0/f;
   return 1/(1+q*q*x*x);
 }
+var FMIN=20,FMAX=20000,SPO=96;
+var GRID=(function(){
+  var n=Math.round(Math.log2(FMAX/FMIN)*SPO);
+  var g=new Float64Array(n+1),i;
+  for(i=0;i<=n;i++){
+    g[i]=FMIN*Math.pow(2,i/SPO);
+  }
+  return g;
+})();
+var ZOOMS={bass:[20,500],mids:[500,5000],treble:[5000,20000]};
 function smoothCurve(y,oct){
   if(!oct){return y;}
-  var SPO=96;
   var sigma=oct*SPO/2.355;
   var r=Math.max(1,Math.ceil(sigma*3));
   var out=new Float64Array(y.length),i,k;
@@ -97,12 +106,11 @@ function biquadDb(type,f0,Q,gain,f){
   return 10*Math.log10(hR*hR+hI*hI+1e-12);
 }
 var RE_SPLIT=/[\s,;]+/;
+var RE_NL=new RegExp("\\r{0,1}\\n");
 function parseTable(text){
-  var rows=[],lines=text.split("\n"),i;
+  var rows=[],lines=text.split(RE_NL),i;
   for(i=0;i<lines.length;i++){
-    var line=lines[i].split("\r").join("").trim();
-    if(!line){continue;}
-    var toks=line.split(RE_SPLIT)
+    var toks=lines[i].trim().split(RE_SPLIT)
       .filter(function(t){return t.length;});
     if(toks.length<2){continue;}
     var n=toks.map(Number);

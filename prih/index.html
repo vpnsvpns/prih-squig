@@ -1,137 +1,382 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport"
+content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Prih — EQ Playground</title>
-<link rel="stylesheet" href="style.css">
+<script>
+window.__missing=[];
+function M(n){window.__missing.push(n);}
+window.__prihBootTimer=setTimeout(function(){
+  var b=document.getElementById("errbar");
+  if(b&&document.getElementById("boot")){
+    b.style.display="block";
+    b.textContent="SCRIPT NOT STARTED 15s: missing files: "+
+      (window.__missing.join(", ")||"cache").toString();
+  }
+},15000);
+window.addEventListener("error",function(e){
+  var b=document.getElementById("errbar");
+  if(!b)return;
+  b.style.display="block";
+  var f=(e.filename||"").split("/").pop();
+  b.textContent="JS ERROR in "+f+" line "+(e.lineno||0)+
+    ": "+(e.message||e);
+},true);
+</script>
+<style>
+:root{--bg:#1b1a20;--plot:#26242c;--panel:#211f27;--panel2:#2a2831;
+--line:#3a3742;--text:#e8e6ea;--muted:#9b97a4;--target:#c9c2b4;
+--eq:#d9c223;--grid:#383542}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;display:flex;flex-direction:column;background:var(--bg);
+color:var(--text);font:13px/1.45 system-ui,"Segoe UI",Roboto,sans-serif}
+#errbar{display:none;background:#8a1f1f;color:#fff;padding:8px 14px;
+font:12px/1.4 ui-monospace,Menlo,monospace;white-space:pre-wrap;
+position:relative;z-index:100}
+#boot{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);
+background:none;color:var(--muted);font:13px system-ui;z-index:40;
+pointer-events:none}
+header{display:flex;justify-content:space-between;align-items:center;
+gap:12px;padding:8px 14px;background:var(--panel);
+border-bottom:1px solid var(--line)}
+.logo{font-size:20px;font-weight:800;font-style:italic}
+.logo span{margin-left:10px;font-size:11px;font-weight:400;
+font-style:normal;color:var(--muted)}
+button{background:var(--panel2);border:1px solid var(--line);
+color:var(--text);border-radius:6px;padding:5px 12px;cursor:pointer;
+font-size:12px}
+button:hover{border-color:var(--muted)}
+button.accent{background:#fff;color:#111;border-color:#fff;font-weight:600}
+button:disabled{opacity:.4;cursor:default}
+main{flex:1;display:flex;min-height:0}
+aside{width:320px;flex:none;background:var(--panel);
+border-right:1px solid var(--line);display:flex;flex-direction:column;
+min-height:0}
+.tabs{display:flex;gap:4px;padding:8px 8px 0}
+.tabs button{flex:1;padding:6px 4px;font-size:12px}
+.tabs button.on{background:#fff;color:#111;border-color:#fff;font-weight:600}
+#search{margin:8px;background:var(--panel2);border:1px solid var(--line);
+color:var(--text);border-radius:6px;padding:7px 10px;font-size:12px}
+.pane{flex:1;overflow-y:auto;padding:0 8px 8px;display:flex;
+flex-direction:column;gap:6px}
+.brand,.mrow{display:flex;align-items:center;
+justify-content:space-between;gap:8px;padding:6px 9px;
+border-radius:6px;cursor:pointer;font-size:12.5px}
+.brand:hover,.mrow:hover{background:var(--panel2)}
+.brand.sel{background:#fff;color:#111}
+.mrow.sel{background:rgba(255,255,255,.12);outline:1px solid var(--muted)}
+.mrow .nm{flex:1;min-width:0;overflow:hidden;
+text-overflow:ellipsis;white-space:nowrap}
+.mrow .src,.brand .cnt{color:var(--muted);font-size:10.5px;flex:none}
+.brand.sel .cnt{color:#333}
+.mrow .add{padding:1px 8px;border-radius:5px}
+#eqPane h3{margin:6px 0 0;font-size:10px;letter-spacing:.1em;
+text-transform:uppercase;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+label{display:flex;flex-direction:column;gap:3px;font-size:11px;
+color:var(--muted)}
+label.chk{flex-direction:row;align-items:center;gap:7px;
+color:var(--text);font-size:12px}
+input[type=number],input[type=search],input[type=text],select{
+background:var(--bg);border:1px solid var(--line);color:var(--text);
+border-radius:5px;padding:5px 7px;font-size:12px;width:100%}
+textarea{background:var(--bg);border:1px solid var(--line);
+color:var(--text);border-radius:5px;padding:6px 8px;
+font:11px/1.4 monospace;width:100%;resize:vertical}
+.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.row button{padding:4px 9px}
+.preamp{font-weight:700;font-size:12px;cursor:pointer}
+#eqRows{display:flex;flex-direction:column;gap:4px}
+.frow{display:grid;align-items:center;gap:4px;
+grid-template-columns:20px 50px 1fr 1fr 1fr 22px}
+.frow.head span{font-size:9.5px;color:var(--muted);
+text-transform:uppercase;letter-spacing:.05em}
+.frow input[type=number]{padding:3px 4px;font-size:11px}
+.frow select{background:var(--bg);border:1px solid var(--line);
+color:var(--text);border-radius:4px;font-size:11px;padding:3px 2px}
+.frow .fx{padding:0 4px;border:none;background:none;color:var(--muted)}
+.frow .fx:hover{color:#ff8a8a}
+.inwrap{position:relative;display:block}
+.inwrap i{position:absolute;right:6px;top:50%;
+transform:translateY(-50%);font-style:normal;font-size:9px;
+color:var(--muted);pointer-events:none}
+.inwrap input{padding-right:24px}
+#toolbar:empty{display:none}
+details.gdet{background:var(--panel);border-top:1px solid var(--line)}
+details.gdet>summary{cursor:pointer;padding:7px 12px;font-size:10px;
+letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+list-style:none}
+details.gdet>summary::-webkit-details-marker{display:none}
+details.gdet[open]>summary{border-bottom:1px solid var(--line)}
+details.gdet>#toolbar{border-bottom:none}
+#center{flex:1;display:flex;flex-direction:column;min-width:0}
+#toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+padding:7px 12px;background:var(--panel);
+border-bottom:1px solid var(--line)}
+.tb{flex-direction:row;align-items:center;gap:5px;font-size:10px;
+letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+font-family:ui-monospace,Menlo,monospace}
+.tb input{width:52px}
+.tchip{padding:3px 10px;border-radius:5px}
+.tchip.on{background:#fff;color:#111;border-color:#fff;font-weight:700}
+#graphWrap{flex:1;min-height:260px;position:relative}
+#graph{position:absolute;inset:0;width:100%;height:100%}
+#graph.inspect{cursor:crosshair}
+#eqOverlay{position:absolute;inset:0;display:flex;align-items:center;
+justify-content:center;background:rgba(0,0,0,.55);z-index:6}
+#eqOverlayMsg{color:#fff;font-weight:700;font-size:14px;
+text-shadow:0 1px 4px #000;padding:0 16px;text-align:center}
+#bands{display:flex;justify-content:space-between;padding:4px 60px 6px;
+color:var(--muted);font-size:10.5px;border-top:1px solid var(--line);
+background:var(--panel)}
+#targetsRow,#adjRow{display:flex;flex-wrap:wrap;gap:8px;
+align-items:center;padding:7px 12px;
+border-top:1px solid var(--line);background:var(--panel)}
+.lbl{font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+color:var(--muted);flex:none}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.tchip.tgt{padding:4px 12px}
+#adjRow label{flex-direction:row;align-items:center;gap:5px}
+#adjRow input{width:64px}
+#adjRow.disabled input,#adjRow.disabled button{opacity:.35;
+pointer-events:none}
+#legendRows{display:flex;flex-direction:column;gap:4px;padding:8px 12px;
+background:var(--panel);border-top:1px solid var(--line)}
+.crow{display:grid;align-items:center;gap:6px;font-size:12px;
+grid-template-columns:14px minmax(90px,1.1fr) 76px 54px 44px 26px 26px 26px 22px}
+.crow .sw{width:12px;height:12px;border-radius:3px}
+.crow .cname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crow .src{color:var(--muted);font-size:10px}
+.crow canvas.spark{width:72px;height:16px}
+.crow input[type=number]{padding:2px 4px;font-size:11px}
+.crow button{padding:1px 4px;border:none;background:none;
+color:var(--muted);font-size:12px;cursor:pointer}
+.crow button:hover{color:var(--text)}
+.crow button.on{color:var(--text);background:var(--panel2);
+border-radius:4px}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;
+align-items:center;justify-content:center;z-index:20}
+#modal .box{width:420px;max-width:92vw;background:var(--panel);
+border:1px solid var(--line);border-radius:10px;padding:18px;
+display:flex;flex-direction:column;gap:10px}
+#modal h3{margin:0;font-size:14px;color:var(--text)}
+.muted{color:var(--muted);font-size:11px}
+.err{color:#ff8a8a}
+.prev{color:#8af0a0}
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);
+background:#2c2a37;color:#fff;padding:9px 16px;border-radius:8px;
+font-size:12.5px;opacity:0;transition:opacity .25s;pointer-events:none;
+z-index:30;max-width:90vw;text-align:center}
+#toast.show{opacity:1}
+::-webkit-scrollbar{width:9px}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:6px}
+@media (max-width:900px){
+ html,body{height:auto;min-height:100%}
+ body{touch-action:manipulation}
+ header{flex-wrap:nowrap;overflow-x:auto;padding:6px 10px;gap:8px;
+  padding-top:calc(6px + env(safe-area-inset-top))}
+ .logo{font-size:16px;white-space:nowrap;flex:none}
+ .logo span{display:none}
+ .topbtns{flex:none;display:flex;gap:6px}
+ .topbtns button{padding:8px 12px;font-size:12px;white-space:nowrap}
+ main{flex:none;flex-direction:column}
+ #center{order:1;flex:none}
+ #left{order:2;width:100%;flex:none;border-right:none;
+  border-radius:16px 16px 0 0;margin-top:-12px;padding-top:10px;
+  position:relative;z-index:4}
+ #graphWrap{flex:none;height:44vh;min-height:240px}
+ #bands{display:none}
+ details.gdet>summary{padding:10px 12px;font-size:11px}
+ #toolbar{border-bottom:none;gap:8px;padding:8px 10px}
+ .tb input{width:64px}
+ .tchip{padding:6px 12px;font-size:12px}
+ #targetsRow{flex-wrap:nowrap;overflow-x:auto;padding:8px 10px;gap:6px;
+  -webkit-overflow-scrolling:touch}
+ #targetsRow .chips{flex-wrap:nowrap}
+ .tchip.tgt{padding:8px 14px;font-size:12px;white-space:nowrap}
+ #adjRow{flex-wrap:nowrap;overflow-x:auto;gap:8px;padding:8px 10px;
+  -webkit-overflow-scrolling:touch}
+ #adjRow label{flex:none;white-space:nowrap;font-size:12px}
+ #adjRow input{width:56px}
+ #adjRow button{padding:8px 12px;flex:none}
+ #legendRows{padding:8px 10px;gap:6px}
+ .crow{grid-template-columns:14px 1fr 46px 34px 34px 34px 30px;gap:4px}
+ .crow .spark,.crow .cpin,.crow .ph{display:none}
+ .crow button{font-size:14px;padding:4px 6px}
+ .crow input[type=number]{padding:4px;font-size:16px}
+ .pane{max-height:none;overflow:visible;padding:0 10px 20px}
+ .tabs{padding:10px 10px 0}
+ .tabs button{font-size:13px;padding:10px 4px}
+ #search{margin:8px 10px;padding:10px;font-size:14px}
+ .mrow{padding:10px}
+ .mrow .add{padding:4px 12px}
+ .frow{grid-template-columns:26px 56px 1fr 1fr 1fr}
+ .frow .fx,.frow.head span:last-child{display:none}
+ .frow input[type=number]{padding:8px 4px;font-size:16px}
+ .frow select{font-size:13px;padding:6px 2px}
+ .inwrap input{padding-right:22px;font-size:16px}
+ #eqPane .row button{padding:9px 14px;font-size:13px}
+ .grid2 label{font-size:12px}
+ .grid2 input{padding:8px;font-size:16px}
+ input[type=number],input[type=search],input[type=text],
+ select,textarea{font-size:16px!important}
+ #modal .box{width:100%;max-width:100vw;min-height:100vh;
+  border-radius:0;padding:16px;
+  padding-bottom:calc(16px + env(safe-area-inset-bottom));
+  overflow-y:auto}
+ #toast{bottom:calc(22px + env(safe-area-inset-bottom))}
+}
+</style>
 </head>
 <body>
-<header id="topbar">
-  <div class="logo">Prih</div>
-  <div class="sub">EQ Playground · 711 · v31.1</div>
-  <div class="spacer"></div>
-  <button id="btnScreenshot">Screenshot</button>
-  <button id="btnAvg">Average All</button>
+<div id="errbar"></div>
+<div id="boot">Prih · loading…</div>
+<header id="top">
+  <div class="logo">Prih<span>EQ Playground · 711 · v60</span></div>
+  <div class="topbtns">
+    <button id="btnShot">Screenshot</button>
+    <button id="btnAvg">Average All</button>
+  </div>
 </header>
-
-<div id="layout">
-  <aside id="panel">
-    <div id="tabs">
-      <button data-tab="brands">Brands</button>
-      <button data-tab="models">Models (<span id="modelCount">0</span>)</button>
-      <button data-tab="eq" class="active">Equalizer</button>
+<main>
+  <aside id="left">
+    <div class="tabs">
+      <button id="tabBrands" data-tab="brands">Brands</button>
+      <button id="tabModels" data-tab="models" class="on">Models (<span id="modelCount">0</span>)</button>
+      <button id="tabEq" data-tab="eq">Equalizer</button>
     </div>
-
-    <div id="tab-brands" class="tabpage hidden"><div id="brandList" class="list"></div></div>
-    <div id="tab-models" class="tabpage hidden"><div id="modelList" class="list"></div></div>
-
-    <div id="tab-eq" class="tabpage">
-      <h4>Uploading</h4>
+    <input id="search" type="search" placeholder="SEARCH">
+    <div id="brandList" class="pane" hidden></div>
+    <div id="modelList" class="pane"></div>
+    <div id="eqPane" class="pane" hidden>
+      <h3>Uploading</h3>
       <div class="row">
-        <button id="btnUploadFR">Upload FR</button>
-        <button id="btnUploadTarget">Upload Target</button>
-        <button id="btnAddMeas">Add measurement</button>
-        <input type="file" id="fileFR" hidden>
-        <input type="file" id="fileTarget" hidden>
+        <button id="btnUpFR">Upload FR</button>
+        <button id="btnUpTgt">Upload Target</button>
       </div>
-      <p class="note">Uploaded data will not be persistent</p>
-
-      <h4>Parametric Equalizer</h4>
-      <select id="eqModel"></select>
-      <div class="pre">Pre-amp: <b id="preampVal">0.0 dB</b>
-        <button id="prePlus">+</button><button id="preMinus">−</button>
-      </div>
-      <div id="filterHead">
-        <span class="c"><button id="fAdd">+</button><button id="fRem">−</button></span>
-        <span class="c">TYPE</span><span class="c">FREQUENCY</span><span class="c">GAIN</span><span class="c">Q</span>
-      </div>
-      <div id="filterRows"></div>
+      <input id="fileFR" type="file"
+      accept=".csv,.txt,text/plain,text/csv" hidden>
+      <input id="fileTgt" type="file"
+      accept=".csv,.txt,text/plain,text/csv" hidden>
+      <input id="fileEq" type="file"
+      accept=".txt,.cfg,text/plain" hidden>
+      <div class="muted">Uploaded data will not be persistent</div>
+      <h3>Parametric Equalizer</h3>
+      <select id="eqCurve"></select>
+      <div id="eqPreamp" class="preamp"
+      title="Double-click: back to auto pre-amp">Pre-amp: 0.0 dB</div>
+      <div id="eqRows"></div>
       <div class="row">
+        <button id="btnAddF">+</button>
+        <button id="btnDelF">-</button>
         <button id="btnSort">Sort</button>
         <button id="btnDisable">Disable</button>
-        <button id="btnSaveEQ">Save EQ</button>
-        <button id="btnCopy">Copy</button>
+        <button id="btnSaveEq">Save EQ</button>
       </div>
-
-      <h4>AutoEQ</h4>
+      <div class="row">
+        <button id="btnCopyEq">Copy</button>
+      </div>
+      <h3>AutoEQ</h3>
       <div class="grid2">
-        <label>Freq min<input type="number" id="aqFmin" value="20"></label>
-        <label>Freq max<input type="number" id="aqFmax" value="8000"></label>
-        <label>Gain min<input type="number" id="aqGmin" value="-10"></label>
-        <label>Gain max<input type="number" id="aqGmax" value="6"></label>
-        <label>Q min<input type="number" id="aqQmin" value="0.5" step="0.1"></label>
-        <label>Q max<input type="number" id="aqQmax" value="1.5" step="0.1"></label>
+        <label>Freq min<input id="aeFmin" type="number" value="20"></label>
+        <label>Freq max<input id="aeFmax" type="number" value="8000"></label>
+        <label>Gain min<input id="aeGmin" type="number" value="-10"></label>
+        <label>Gain max<input id="aeGmax" type="number" value="6"></label>
+        <label>Q min<input id="aeQmin" type="number" value="0.5" step="0.1"></label>
+        <label>Q max<input id="aeQmax" type="number" value="1.5" step="0.1"></label>
       </div>
       <div class="row">
-        <button id="btnAutoEQ" class="primary">AutoEQ</button>
-        <label class="chk"><input type="checkbox" id="chkShowEQ" checked> Show EQ</label>
+        <button id="btnEq" class="accent">AutoEQ</button>
+        <label class="chk"><input type="checkbox" id="eqShowChk" checked> Show EQ</label>
       </div>
       <div class="row">
-        <button id="btnImportEQ">Import EQ</button>
-        <button id="btnExportEQ">Export Parametric EQ</button>
+        <button id="btnImportEq">Import EQ</button>
+        <button id="btnExportEq">Export Parametric EQ</button>
       </div>
-      <p class="note">Filters are editable; curve and pre-amp update live.</p>
+      <div class="muted">Filters editable; curve and pre-amp update live.</div>
     </div>
   </aside>
-
-  <section id="stage">
+  <section id="center">
     <div id="toolbar">
-      <span class="lbl">Y-AXIS SCALE:</span><input type="number" id="ySpan" value="30" min="5" max="80"><span class="lbl">dB</span>
-      <span class="lbl">NORMALIZE:</span><button id="btnNorm" class="toggle active">dB</button>
-      <input type="number" id="normDb" value="60"><span class="lbl">@</span>
-      <input type="number" id="normHz" value="500"><span class="lbl">Hz</span>
-      <span class="lbl">SMOOTH:</span><span class="lbl">1/</span><input type="number" id="smoothOct" value="5" min="1" max="48"><span class="lbl">OCT</span>
-      <span class="lbl">ZOOM:</span>
-      <button id="zBass">Bass</button><button id="zMids">Mids</button><button id="zTreble">Treble</button>
-      <button id="btnInspect">Inspect</button>
+      <label class="tb">Y-AXIS SCALE:<input id="ySpan" type="number" value="30" min="10" max="120" step="5"><span>dB</span></label>
+      <label class="tb">NORMALIZE:
+        <button id="normOn" class="tchip on">dB</button>
+        <input id="normDb" type="number" value="60">
+        <span>@</span>
+        <input id="normHz" type="number" value="500">
+        <span>Hz</span>
+      </label>
+      <label class="tb">SMOOTH:<span>1/</span><input id="smoothN" type="number" value="0" min="0" max="48"><span>oct</span></label>
+      <span class="tb">ZOOM:
+        <button id="zBass" class="tchip">Bass</button>
+        <button id="zMids" class="tchip">Mids</button>
+        <button id="zTreble" class="tchip">Treble</button>
+      </span>
+      <button id="btnInspect" class="tchip">Inspect</button>
     </div>
-
     <div id="graphWrap">
       <canvas id="graph"></canvas>
-      <div id="inspectTip" class="hidden"></div>
-      <div id="watermark">PRIH</div>
-      <div id="rigNote">Measured on: IEC 60318-4 (711) · Prih v31</div>
+      <div id="eqOverlay" hidden>
+        <div id="eqOverlayMsg">AutoEQ is running…</div>
+      </div>
     </div>
-    <div id="bandRow"></div>
-
-    <div id="targetRow">
-      <span class="lbl">REFERENCE TARGETS:</span><span id="refTargets"></span>
-      <span class="lbl">PREFERENCE TARGETS:</span><span id="prefTargets"></span>
+    <div id="bands">
+      <span>Sub bass</span><span>Bass</span>
+      <span>Lower Mids</span><span>Midrange</span>
+      <span>Upper Mids</span><span>Presence</span>
+      <span>Treble</span>
     </div>
-    <div id="prefRow">
-      <span class="lbl">PREFERENCE ADJUSTMENTS:</span>
-      <label>Bass (dB)<input type="number" id="adjBass" value="0" step="0.5"></label>
-      <label>Bass Q<input type="number" id="adjBassQ" value="0.707" step="0.01"></label>
-      <label>Bass F (Hz)<input type="number" id="adjBassF" value="105"></label>
-      <label>Treble (dB)<input type="number" id="adjTreble" value="0" step="0.5"></label>
-      <label>Tilt (dB/Oct)<input type="number" id="adjTilt" value="0" step="0.1"></label>
-      <label>Ear Gain (dB)<input type="number" id="adjEar" value="0" step="0.5"></label>
-      <button id="btnRemoveAdj">Remove Adjustments</button>
-      <span id="prefNote" class="note">(fixed target)</span>
+    <div id="targetsRow">
+      <span class="lbl">Reference targets:</span>
+      <span id="refChips" class="chips"></span>
+      <span class="lbl">Preference targets:</span>
+      <span id="prefChips" class="chips"></span>
     </div>
-
-    <div id="curveList"></div>
+    <div id="adjRow">
+      <span class="lbl">Preference adjustments:</span>
+      <label>Bass (dB)<input id="adjBass" type="number" step="0.5" value="0"></label>
+      <label>Bass Q<input id="adjBassQ" type="number" step="0.01" value="0.71"></label>
+      <label>Bass F (Hz)<input id="adjBassF" type="number" value="105"></label>
+      <label>Treble (dB)<input id="adjTreble" type="number" step="0.5" value="0"></label>
+      <label>Tilt (dB/Oct)<input id="adjTilt" type="number" step="0.05" value="0"></label>
+      <label>Ear Gain (dB)<input id="adjEar" type="number" step="0.5" value="0"></label>
+      <button id="adjReset">Remove Adjustments</button>
+      <span id="adjNote" class="muted"></span>
+    </div>
+    <div id="legendRows"></div>
   </section>
-</div>
-
-<div id="modal" class="hidden">
-  <div class="modalbox">
+</main>
+<div id="modal" hidden>
+  <div class="box">
     <h3>Add measurement (711 only)</h3>
-    <label>Name<input id="mName"></label>
-    <label>Source<input id="mSource"></label>
-    <label>URL<input id="mURL" placeholder="https://..."></label>
-    <label>URL L<input id="mURLL"></label>
-    <label>URL R<input id="mURLR"></label>
-    <label>File<input type="file" id="mFile"></label>
-    <label>Or paste text<textarea id="mText" rows="5" placeholder="freq dB   или   freq L R"></textarea></label>
-    <div class="row"><button id="mAdd" class="primary">Add</button><button id="mCancel">Cancel</button></div>
+    <label>Name<input id="mName" placeholder="Headphone name"></label>
+    <label>Source<input id="mSource" placeholder="pw / boizoff / gudkov"></label>
+    <label>URL<input id="mUrl" placeholder="https://gudkov.squig.link/..."></label>
+    <div class="row">
+      <label style="flex:1">URL L<input id="mUrlL" placeholder="...L.csv"></label>
+      <label style="flex:1">URL R<input id="mUrlR" placeholder="...R.csv"></label>
+    </div>
+    <label>File<input id="mFile" type="file"
+    accept=".csv,.txt,text/plain,text/csv"></label>
+    <label>Or paste text<textarea id="mPaste" rows="4"
+    placeholder="20 82.981 / 20.36 82.974 / ..."></textarea></label>
+    <div id="mPrev" class="muted prev"></div>
+    <div class="row">
+      <button id="mOk" class="accent">Add</button>
+      <button id="mCancel">Cancel</button>
+    </div>
+    <div id="mErr" class="muted err"></div>
   </div>
 </div>
-
-<script src="dsp.js"></script>
-<script src="data.js"></script>
-<script src="graph.js"></script>
-<script src="app.js"></script>
+<div id="toast"></div>
+<script src="core.js" onerror="M('core.js')"></script>
+<script src="data.js" onerror="M('data.js')"></script>
+<script src="draw.js" onerror="M('draw.js')"></script>
+<script src="ui.js" onerror="M('ui.js')"></script>
+<script src="init.js" onerror="M('init.js')"></script>
 </body>
 </html>

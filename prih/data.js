@@ -1,6 +1,6 @@
 "use strict";
 /* data: config, state, targets, curve processing, series */
-var BUILD="v46";
+var BUILD="v44";
 var CFG={
   name:"Prih",normRange:[500,2000],
   autoEqDefaults:{fmin:20,fmax:8000,gmin:-10,gmax:6,qmin:0.5,qmax:1.5},

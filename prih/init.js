@@ -1,5 +1,5 @@
 "use strict";
-/* init v50: draggable sheet (handle + tabs area) + arrow button */
+/* init v51: simple tap-to-toggle sheet, huge height when open */
 function injectMobileCss(){
   if(document.getElementById("mobileCss")){return;}
   var L=[];
@@ -16,62 +16,41 @@ function injectMobileCss(){
   L.push("#adjRow input{width:64px;background:var(--bg)}");
   L.push("#adjRow button{padding:12px 14px;font-size:13px}");
   L.push("#legendRows{gap:12px;padding:10px}");
-  L.push(".crow{display:flex;flex-wrap:wrap;gap:8px;");
-  L.push("align-items:center}");
+  L.push(".crow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}");
   L.push(".crow .cname{flex:1 1 100%;order:0;font-size:15px}");
   L.push(".crow .sw{order:1;flex:0 0 14px;margin-top:0}");
-  L.push(".crow .spark{order:2;display:block;flex:1 1 120px;");
-  L.push("width:auto;height:16px}");
-  L.push(".crow .coff{order:3;flex:0 0 76px;width:76px;");
-  L.push("font-size:16px;padding:8px}");
+  L.push(".crow .spark{order:2;display:block;flex:1 1 120px;width:auto;height:16px}");
+  L.push(".crow .coff{order:3;flex:0 0 76px;width:76px;font-size:16px;padding:8px}");
   L.push(".crow .ph{display:none}");
   L.push(".crow .cdev{display:inline-block;order:4}");
-  L.push(".crow .ceye{order:5}");
-  L.push(".crow .cpin{display:inline-block;order:6}");
-  L.push(".crow .cdl{order:7}");
-  L.push(".crow .cx{order:8}");
-  L.push(".crow button{min-width:44px;min-height:44px;");
-  L.push("flex:0 0 44px;font-size:16px;");
-  L.push("border:1px solid var(--line);border-radius:8px;");
-  L.push("background:var(--panel2)}");
+  L.push(".crow .ceye{order:5}.crow .cpin{display:inline-block;order:6}");
+  L.push(".crow .cdl{order:7}.crow .cx{order:8}");
+  L.push(".crow button{min-width:44px;min-height:44px;flex:0 0 44px;font-size:16px;border:1px solid var(--line);border-radius:8px;background:var(--panel2)}");
   L.push(".crow button:first-of-type{margin-left:auto}");
   L.push(".frow{gap:6px}");
   L.push(".frow input[type=checkbox]{width:22px;height:22px}");
   L.push("#eqPane .row button{padding:12px 16px;font-size:14px}");
   L.push(".grid2 input{padding:10px;font-size:16px}");
   
-  /* Sheet styles */
-  L.push("#left{height:88px;overflow:hidden;");
-  L.push("transition:height .25s ease;padding-top:0}");
+  /* Sheet: closed = small, open = huge */
+  L.push("#left{height:90px;overflow:hidden;transition:height .3s ease;padding-top:0}");
   L.push("#left::before{display:none}");
   
-  /* Drag zone covers handle + tabs */
-  L.push("#sheetDragZone{display:flex;flex-direction:column;");
-  L.push("touch-action:none;cursor:grab}");
+  /* The whole header area is the button */
+  L.push("#sheetHeader{display:flex;flex-direction:column;cursor:pointer;-webkit-tap-highlight-color:transparent}");
+  L.push("#sheetHandle{display:flex;justify-content:center;align-items:center;padding:8px 0 4px}");
+  L.push("#sheetHandle i{width:40px;height:4px;border-radius:2px;background:var(--line)}");
+  L.push("#sheetArrow{font-size:12px;color:var(--muted);margin-left:8px}");
   
-  L.push("#sheetHandle{display:flex;justify-content:center;");
-  L.push("align-items:center;padding:10px 0 6px;position:relative}");
-  L.push("#sheetHandle i{width:44px;height:4px;border-radius:2px;");
-  L.push("background:var(--line)}");
-  
-  /* Arrow button inside handle area */
-  L.push("#sheetArrow{position:absolute;right:16px;top:50%;");
-  L.push("transform:translateY(-50%);width:24px;height:24px;");
-  L.push("border:none;background:none;color:var(--muted);");
-  L.push("font-size:18px;padding:0;cursor:pointer}");
-  L.push("#left.open #sheetArrow{transform:translateY(-50%) rotate(180deg)}");
-
   L.push("#left .pane,#left #search{display:none}");
-  L.push("#left.open{height:62vh}");
-  L.push("#left.open #search{display:block}");
-  L.push("#left.open .pane{display:flex;flex:1 1 auto;");
-  L.push("min-height:0;overflow-y:auto}");
   
-  L.push("#browseBtn{display:flex;justify-content:space-between;");
-  L.push("align-items:center;width:calc(100% - 20px);");
-  L.push("margin:10px auto;padding:14px 16px;font-size:14px;");
-  L.push("border:1px solid var(--line);border-radius:10px;");
-  L.push("background:var(--panel)}");
+  /* OPEN STATE */
+  L.push("#left.open{height:85vh}"); /* Almost full screen */
+  L.push("#left.open #search{display:block}");
+  L.push("#left.open .pane{display:flex;flex:1 1 auto;min-height:0;overflow-y:auto}");
+  L.push("#left.open #sheetArrow{transform:rotate(180deg)}");
+  
+  L.push("#browseBtn{display:flex;justify-content:space-between;align-items:center;width:calc(100% - 20px);margin:10px auto;padding:14px 16px;font-size:14px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}");
   L.push("#browseBtn b{font-size:18px;font-weight:600}");
   
   var st=document.createElement("style");
@@ -84,32 +63,26 @@ function setupSheet(){
   var left=$("left");
   var main=document.querySelector("main");
   if(!left||!main){return;}
-  if(document.getElementById("sheetDragZone")){return;}
+  if(document.getElementById("sheetHeader")){return;}
 
-  /* Create drag zone wrapper for handle + tabs */
-  var dz=document.createElement("div");
-  dz.id="sheetDragZone";
+  /* Create a wrapper for Handle + Tabs to make them one big click target */
+  var header=document.createElement("div");
+  header.id="sheetHeader";
   
-  var h=document.createElement("div");
-  h.id="sheetHandle";
-  h.innerHTML="<i></i><button id='sheetArrow'>^</button>";
-  
-  /* Move tabs into drag zone visually? No, tabs stay in flow but we attach listeners to a zone covering them. 
-     Actually simpler: put handle in dz, and attach touch listeners to dz which we place at top of left.
-     But tabs are below handle. To make tabs draggable too, we need the listener on a container that includes tabs.
-     Let's wrap handle + tabs in dz. */
+  var handle=document.createElement("div");
+  handle.id="sheetHandle";
+  handle.innerHTML="<i></i><span id='sheetArrow'>v</span>";
   
   var tabsEl=left.querySelector(".tabs");
   
-  /* Restructure: left -> [dz -> [handle, tabs]], [search], [pane] */
-  /* We need to move existing tabs into dz */
+  /* Structure: Left -> [ Header -> [Handle, Tabs] ], [Search], [Pane] */
   if(tabsEl){
-    left.insertBefore(dz, tabsEl);
-    dz.appendChild(h);
-    dz.appendChild(tabsEl);
+    left.insertBefore(header, tabsEl);
+    header.appendChild(handle);
+    header.appendChild(tabsEl);
   } else {
-    left.insertBefore(dz, left.firstChild);
-    dz.appendChild(h);
+    left.insertBefore(header, left.firstChild);
+    header.appendChild(handle);
   }
 
   var bb=document.createElement("button");
@@ -121,77 +94,34 @@ function setupSheet(){
     var open=left.classList.contains("open");
     bb.style.display=open?"none":"flex";
   }
-  function setOpen(v){
-    left.classList.toggle("open",v);
+  function toggle(){
+    left.classList.toggle("open");
     sync();
   }
-  function maxH(){
-    return Math.round(Math.min(window.innerHeight*0.72,720));
-  }
-  
-  setOpen(false);
 
-  var y0=null,h0=0,drag=false,sup=0;
-  var arrowBtn=document.getElementById("sheetArrow");
-
-  /* Attach drag listeners to the whole zone (handle + tabs) */
-  dz.addEventListener("touchstart",function(e){
-    /* Don't drag if touching a button inside tabs (like tab switch) */
-    if(e.target.closest("button") && e.target !== arrowBtn){
-        /* Allow tab clicks, but still allow drag if they hold? 
-           For simplicity: if touch starts on a tab button, don't initiate drag immediately.
-           But user wants to drag from anywhere. Let's allow drag from tabs too. */
-    }
-    if(!e.touches||!e.touches[0]){return;}
-    y0=e.touches[0].clientY;
-    h0=left.offsetHeight;
-    drag=true;
-    left.style.transition="none";
-  },{passive:true});
-
-  dz.addEventListener("touchmove",function(e){
-    if(!drag||y0===null){return;}
-    var dy=y0-e.touches[0].clientY;
-    var nh=h0+dy;
-    if(nh<88){nh=88;}
-    var mx=maxH();
-    if(nh>mx){nh=mx;}
-    left.style.height=nh+"px";
-    /* Prevent scrolling page while dragging sheet */
-    if(Math.abs(dy)>5) e.preventDefault();
-  },{passive:false});
-
-  dz.addEventListener("touchend",function(){
-    if(!drag){return;}
-    drag=false;
-    sup=Date.now();
-    var nh=left.offsetHeight;
-    left.style.transition="";
-    left.style.height="";
-    setOpen(nh>(88+maxH())/2);
-  },{passive:true});
-
-  /* Click on arrow toggles */
-  if(arrowBtn){
-      arrowBtn.addEventListener("click",function(e){
-          e.stopPropagation();
-          if(Date.now()-sup<500){return;}
-          setOpen(!left.classList.contains("open"));
-      });
-  }
-  
-  /* Click on handle bar toggles */
-  h.addEventListener("click",function(e){
-      if(e.target === arrowBtn) return;
-      if(Date.now()-sup<500){return;}
-      setOpen(!left.classList.contains("open"));
+  /* ONE simple click handler on the whole header area */
+  header.addEventListener("click", function(e){
+    /* If we clicked a tab button specifically, let the tab switch happen, 
+       but ALSO toggle the sheet if it was closed? 
+       Actually, usually tapping a tab in a collapsed sheet opens it.
+       Tapping a tab in an open sheet switches tab.
+       Let's keep it simple: Tap header area = Toggle sheet.
+       Tab buttons inside will still fire their own onclick (switchTab) due to bubbling,
+       which is fine (it switches tab AND opens sheet). */
+    toggle();
   });
 
   bb.addEventListener("click",function(){
-    setOpen(true);
+    if(!left.classList.contains("open")){
+        left.classList.add("open");
+        sync();
+    }
     switchTab("models");
     left.scrollIntoView({block:"nearest"});
   });
+  
+  /* Initial state */
+  sync();
 }
 
 function init(){

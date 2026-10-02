@@ -10,7 +10,7 @@ window.__prihBootTimer=setTimeout(function(){
   var b=document.getElementById("errbar");
   if(b&&document.getElementById("boot")){
     b.style.display="block";
-    b.textContent="SCRIPT NOT STARTED 15s: bad copy or cache. Ctrl+F5.";
+    b.textContent="SCRIPT NOT STARTED 15s: file cut or cache. Ctrl+F5.";
   }
 },15000);
 window.addEventListener("error",function(e){
@@ -58,13 +58,11 @@ min-height:0}
 color:var(--text);border-radius:6px;padding:7px 10px;font-size:12px}
 .pane{flex:1;overflow-y:auto;padding:0 8px 8px;display:flex;
 flex-direction:column;gap:6px}
-.brand,.mrow{display:flex;align-items:center;
-justify-content:space-between;gap:8px;padding:6px 9px;
-border-radius:6px;cursor:pointer;font-size:12.5px}
+.brand,.mrow{display:flex;align-items:center;justify-content:space-between;
+gap:8px;padding:6px 9px;border-radius:6px;cursor:pointer;font-size:12.5px}
 .brand:hover,.mrow:hover{background:var(--panel2)}
 .brand.sel{background:#fff;color:#111}
-.mrow.sel{background:rgba(255,255,255,.12);
-outline:1px solid var(--muted)}
+.mrow.sel{background:rgba(255,255,255,.12);outline:1px solid var(--muted)}
 .mrow .nm{flex:1;min-width:0;overflow:hidden;
 text-overflow:ellipsis;white-space:nowrap}
 .mrow .src,.brand .cnt{color:var(--muted);font-size:10.5px;flex:none}
@@ -75,31 +73,30 @@ text-transform:uppercase;color:var(--muted)}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 label{display:flex;flex-direction:column;gap:3px;font-size:11px;
 color:var(--muted)}
-label.chk{flex-direction:row;align-items:center;gap:7px;
-color:var(--text);font-size:12px}
+label.chk{flex-direction:row;align-items:center;gap:7px;color:var(--text);
+font-size:12px}
 input[type=number],input[type=search],input[type=text],select{
 background:var(--bg);border:1px solid var(--line);color:var(--text);
 border-radius:5px;padding:5px 7px;font-size:12px;width:100%}
-textarea{background:var(--bg);border:1px solid var(--line);
-color:var(--text);border-radius:5px;padding:6px 8px;
-font:11px/1.4 monospace;width:100%;resize:vertical}
+textarea{background:var(--bg);border:1px solid var(--line);color:var(--text);
+border-radius:5px;padding:6px 8px;font:11px/1.4 monospace;width:100%;
+resize:vertical}
 .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .row button{padding:4px 9px}
 .preamp{font-weight:700;font-size:12px}
 #eqRows{display:flex;flex-direction:column;gap:4px}
-.frow{display:grid;align-items:center;gap:4px;
-grid-template-columns:20px 50px 1fr 1fr 1fr 22px}
-.frow.head span{font-size:9.5px;color:var(--muted);
-text-transform:uppercase;letter-spacing:.05em}
+.frow{display:grid;grid-template-columns:20px 50px 1fr 1fr 1fr 22px;gap:4px;
+align-items:center}
+.frow.head span{font-size:9.5px;color:var(--muted);text-transform:uppercase;
+letter-spacing:.05em}
 .frow input[type=number]{padding:3px 4px;font-size:11px}
 .frow select{background:var(--bg);border:1px solid var(--line);
 color:var(--text);border-radius:4px;font-size:11px;padding:3px 2px}
 .frow .fx{padding:0 4px;border:none;background:none;color:var(--muted)}
 .frow .fx:hover{color:#ff8a8a}
 .inwrap{position:relative;display:block}
-.inwrap i{position:absolute;right:6px;top:50%;
-transform:translateY(-50%);font-style:normal;font-size:9px;
-color:var(--muted);pointer-events:none}
+.inwrap i{position:absolute;right:6px;top:50%;transform:translateY(-50%);
+font-style:normal;font-size:9px;color:var(--muted);pointer-events:none}
 .inwrap input{padding-right:24px}
 #toolbar:empty{display:none}
 details.gdet{background:var(--panel);border-top:1px solid var(--line)}
@@ -111,8 +108,7 @@ details.gdet[open]>summary{border-bottom:1px solid var(--line)}
 details.gdet>#toolbar{border-bottom:none}
 #center{flex:1;display:flex;flex-direction:column;min-width:0}
 #toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;
-padding:7px 12px;background:var(--panel);
-border-bottom:1px solid var(--line)}
+padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
 .tb{flex-direction:row;align-items:center;gap:5px;font-size:10px;
 letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
 font-family:ui-monospace,Menlo,monospace}
@@ -129,9 +125,8 @@ text-shadow:0 1px 4px #000;padding:0 16px;text-align:center}
 #bands{display:flex;justify-content:space-between;padding:4px 60px 6px;
 color:var(--muted);font-size:10.5px;border-top:1px solid var(--line);
 background:var(--panel)}
-#targetsRow,#adjRow{display:flex;flex-wrap:wrap;gap:8px;
-align-items:center;padding:7px 12px;
-border-top:1px solid var(--line);background:var(--panel)}
+#targetsRow,#adjRow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+padding:7px 12px;border-top:1px solid var(--line);background:var(--panel)}
 .lbl{font-size:10px;letter-spacing:.08em;text-transform:uppercase;
 color:var(--muted);flex:none}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
@@ -149,16 +144,15 @@ grid-template-columns:14px minmax(90px,1.1fr) 76px 54px 44px 26px 26px 26px 22px
 .crow .src{color:var(--muted);font-size:10px}
 .crow canvas.spark{width:72px;height:16px}
 .crow input[type=number]{padding:2px 4px;font-size:11px}
-.crow button{padding:1px 4px;border:none;background:none;
-color:var(--muted);font-size:12px;cursor:pointer}
+.crow button{padding:1px 4px;border:none;background:none;color:var(--muted);
+font-size:12px;cursor:pointer}
 .crow button:hover{color:var(--text)}
-.crow button.on{color:var(--text);background:var(--panel2);
-border-radius:4px}
+.crow button.on{color:var(--text);background:var(--panel2);border-radius:4px}
 #modal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;
 align-items:center;justify-content:center;z-index:20}
 #modal .box{width:420px;max-width:92vw;background:var(--panel);
-border:1px solid var(--line);border-radius:10px;padding:18px;
-display:flex;flex-direction:column;gap:10px}
+border:1px solid var(--line);border-radius:10px;padding:18px;display:flex;
+flex-direction:column;gap:10px}
 #modal h3{margin:0;font-size:14px;color:var(--text)}
 .muted{color:var(--muted);font-size:11px}
 .err{color:#ff8a8a}
@@ -202,7 +196,7 @@ z-index:30;max-width:90vw;text-align:center}
  #adjRow input{width:56px}
  #adjRow button{padding:8px 12px;flex:none}
  #legendRows{padding:8px 10px;gap:6px}
- .crow{grid-template-columns:14px 1fr 46px 30px 30px 26px;gap:4px}
+ .crow{grid-template-columns:14px 1fr 46px 34px 34px 34px 30px;gap:4px}
  .crow .spark,.crow .cpin,.crow .ph,.crow .cdev{display:none}
  .crow button{font-size:14px;padding:4px 6px}
  .crow input[type=number]{padding:4px;font-size:16px}
@@ -222,8 +216,8 @@ z-index:30;max-width:90vw;text-align:center}
  .grid2 input{padding:8px;font-size:16px}
  input[type=number],input[type=search],input[type=text],
  select,textarea{font-size:16px!important}
- #modal .box{width:100%;max-width:100vw;min-height:100vh;
-  border-radius:0;padding:16px;
+ #modal .box{width:100%;max-width:100vw;min-height:100vh;border-radius:0;
+  padding:16px;
   padding-bottom:calc(16px + env(safe-area-inset-bottom));
   overflow-y:auto}
  #toast{bottom:calc(22px + env(safe-area-inset-bottom))}
@@ -234,7 +228,7 @@ z-index:30;max-width:90vw;text-align:center}
 <div id="errbar"></div>
 <div id="boot">Prih · loading…</div>
 <header id="top">
-  <div class="logo">Prih<span>EQ Playground · 711 · v42</span></div>
+  <div class="logo">Prih<span>EQ Playground · 711 · v43</span></div>
   <div class="topbtns">
     <button id="btnShot">Screenshot</button>
     <button id="btnAvg">Average All</button>
@@ -307,7 +301,7 @@ z-index:30;max-width:90vw;text-align:center}
         <input id="normHz" type="number" value="500">
         <span>Hz</span>
       </label>
-      <label class="tb">SMOOTH:<span>1/</span><input id="smoothN" type="number" value="5" min="0" max="48"><span>oct</span></label>
+      <label class="tb">SMOOTH:<span>1/</span><input id="smoothN" type="number" value="0" min="0" max="48"><span>oct</span></label>
       <span class="tb">ZOOM:
         <button id="zBass" class="tchip">Bass</button>
         <button id="zMids" class="tchip">Mids</button>
@@ -351,7 +345,7 @@ z-index:30;max-width:90vw;text-align:center}
   <div class="box">
     <h3>Add measurement (711 only)</h3>
     <label>Name<input id="mName" placeholder="Headphone name"></label>
-    <label>Source<input id="mSource" placeholder="pw / boizoff / gudkov"></label>
+    <label>Source<input id="mSource" placeholder="pw / boizoff / gudkov / own"></label>
     <label>URL<input id="mUrl" placeholder="https://gudkov.squig.link/..."></label>
     <div class="row">
       <label style="flex:1">URL L<input id="mUrlL" placeholder="...L.csv"></label>
@@ -372,8 +366,8 @@ z-index:30;max-width:90vw;text-align:center}
 <div id="toast"></div>
 <script>
 "use strict";
-/* AutoEQ core v42: coordinate descent + Nelder-Mead on FULL weighted SSE.
-   Design rule of this file: NO question-mark token anywhere. */
+/* AutoEQ core v43: coordinate descent + Nelder-Mead on FULL weighted SSE.
+   No question-mark tokens anywhere by design. */
 window.AutoEqFit=(function(){
 function clamp(v,a,b){
   if(v<a){return a;}
@@ -674,27 +668,23 @@ return{fitAsync:fitAsync,mask:maskW};
 </script>
 <script>
 "use strict";
-var BUILD="v42";
-function T(c,a,b){
-  if(c){return a;}
-  return b;
-}
+var BUILD="v43";
+function T(c,a,b){if(c){return a;}return b;}
 var RE_SPLIT=/[\s,;]+/;
-var RE_ABS=/^https{0,1}:\/\//i;
+var RE_ABS=/^https?:\/\//i;
 var RE_ESC=/[&<>"]/g;
 var RE_HTML=new RegExp("^\\s*(<|<!DOCTYPE)","i");
-var RE_HREF=new RegExp('href="([^"]+\\.(csv|txt))"',"gi");
+var RE_HREF=new RegExp('href="([^"]+\\.(?:csv|txt))"',"gi");
 var RE_L=new RegExp("[._\\- ]L([._\\- \\d]|\\.csv|\\.txt)","i");
 var RE_R=new RegExp("[._\\- ]R([._\\- \\d]|\\.csv|\\.txt)","i");
 var RE_PRE=new RegExp("Preamp:\\s*([-+0-9.]+)","i");
 var RE_FILTER=new RegExp(
-  "Filter\\s*\\d{0,3}\\s*:\\s*ON\\s*"+
-  "([A-Za-z]{0,4})\\s*"+
+  "Filter\\s*\\d*\\s*:\\s*ON\\s*"+
+  "([A-Za-z]+)?\\s*"+
   "Fc\\s*([0-9.]+)\\s*Hz\\s*"+
   "Gain\\s*([-+0-9.]+)\\s*dB\\s*"+
   "Q\\s*([0-9.]+)","gi");
 var RE_SAN=new RegExp("[^\\w\\d-]+","g");
-var RE_NL=new RegExp("\\r{0,1}\\n");
 var CFG={
   name:"Prih",normRange:[500,2000],
   autoEqDefaults:{fmin:20,fmax:8000,gmin:-10,gmax:6,qmin:0.5,qmax:1.5},
@@ -737,16 +727,12 @@ function clamp(v,a,b){
   return v;
 }
 function esc(s){
-  var out="",i,c;
-  for(i=0;i<s.length;i++){
-    c=s.charAt(i);
-    if(c==="&"){out+="&amp;";}
-    else if(c==="<"){out+="&lt;";}
-    else if(c===">"){out+="&gt;";}
-    else if(c==="\""){out+="&quot;";}
-    else{out+=c;}
-  }
-  return out;
+  return String(s).replace(RE_ESC,function(c){
+    if(c==="\""){return"&quot;";}
+    if(c==="&"){return"&amp;";}
+    if(c==="<"){return"&lt;";}
+    return"&gt;";
+  });
 }
 function css(v){
   return getComputedStyle(document.body)
@@ -780,8 +766,8 @@ function fetchLocal(u){
   });
 }
 function fetchRemote(u){
-  var p1="https://api.allorigins.win/raw"+String.fromCharCode(63)+"url=";
-  var p2="https://corsproxy.io/"+String.fromCharCode(63)+"url=";
+  var p1="https://api.allorigins.win/raw?url=";
+  var p2="https://corsproxy.io/?url=";
   var urls=[u,p1+encodeURIComponent(u),p2+encodeURIComponent(u)];
   var chain=Promise.reject(new Error("fetch failed"));
   urls.forEach(function(uu){
@@ -797,11 +783,9 @@ function fetchRemote(u){
   });
   return chain;
 }
-function fetchAny(u){
-  return isAbs(u)?fetchRemote(u):fetchLocal(u);
-}
+function fetchAny(u){return isAbs(u)?fetchRemote(u):fetchLocal(u);}
 function parseTable(text){
-  var rows=[],lines=text.split(RE_NL),i;
+  var rows=[],lines=text.split(/\r?\n/),i;
   for(i=0;i<lines.length;i++){
     var toks=lines[i].trim().split(RE_SPLIT)
       .filter(function(t){return t.length;});
@@ -921,7 +905,7 @@ var state={
   selected:new Map(),hidden:new Set(),curves:new Map(),
   target:null,brand:null,
   adj:{bass:0,bassQ:0.707,bassF:105,treble:0,tilt:0,ear:0},
-  normOn:true,normDb:60,normHz:500,smoothN:5,ySpan:30,
+  normOn:true,normDb:60,normHz:500,smoothN:0,ySpan:30,
   aeq:{fmin:20,fmax:8000,gmin:-10,gmax:6,qmin:0.5,qmax:1.5},
   eq:{name:null,filters:[],preamp:0,curve:null},
   eqShow:true,eqRunning:false,devMode:false,
@@ -1009,11 +993,8 @@ function loadTargets(){
         var t=CFG.targets[i];
         if(t.default&&targets.has(t.name)){d=t;}
       }
-      if(d){
-        state.target=d.name;
-      }else{
-        state.target=targets.keys().next().value||null;
-      }
+      if(d){state.target=d.name;}
+      else{state.target=targets.keys().next().value||null;}
     }
   });
 }
@@ -1056,13 +1037,13 @@ function adjCurve(){
 function targetRaw(){
   var t=targets.get(state.target);
   if(!t){return null;}
-  if(t.def.adjustable){return addF(t.raw,adjCurve());}
-  return t.raw;
+  return t.def.adjustable?addF(t.raw,adjCurve()):t.raw;
 }
 function normalizeOnly(y){
   if(!state.normOn){return y;}
   return shift(y,state.normDb-anchorVal(y,state.normHz));
 }
+/* smoothing only when user sets SMOOTH > 0; target always raw */
 function processCurve(raw,cfg,isTarget){
   var y=raw;
   var n=0;
@@ -1087,9 +1068,7 @@ function displayedY(raw,cfg,isTarget){
 function filterResp(fl,f){
   if(!fl.on||!fl.g){return 0;}
   if(fl.t==="PK"){return fl.g*shape(f,fl.f,fl.q);}
-  var bt="hs";
-  if(fl.t==="LS"){bt="ls";}
-  return biquadDb(bt,fl.f,fl.q,fl.g,f);
+  return biquadDb(fl.t==="LS"?"ls":"hs",fl.f,fl.q,fl.g,f);
 }
 function hasActiveEq(){
   if(!state.eq||!state.eqShow||!state.eq.curve){return false;}
@@ -1240,10 +1219,7 @@ function draw(){
     return f>=XF0&&f<=XF1;
   });
   ticks.forEach(function(f){
-    var x=X(f);
-    var maj=false;
-    if(narrow){maj=true;}
-    else if(XMAJ[f]){maj=true;}
+    var x=X(f),maj=narrow?true:!!XMAJ[f];
     ctx.strokeStyle=css("--grid");
     ctx.lineWidth=1;
     ctx.globalAlpha=T(maj,0.95,0.45);
@@ -1407,7 +1383,7 @@ function drawSpark(cv,y,color){
 function renderBrands(){
   var set=new Map();
   allHps().forEach(function(hp){
-    var s=hp.source||"src";
+    var s=hp.source||"?";
     set.set(s,(set.get(s)||0)+1);
   });
   var box=$("brandList");
@@ -1435,7 +1411,7 @@ function renderModels(){
   var q=$("search").value.trim().toLowerCase();
   var list=allHps().filter(function(hp){
     var okB=state.brand==null||
-      (hp.source||"src")===state.brand;
+      (hp.source||"?")===state.brand;
     var okQ=!q||hp.name.toLowerCase().indexOf(q)>=0;
     return okB&&okQ;
   });
@@ -1526,12 +1502,6 @@ function downloadCurveByKey(key){
   }
   download(key.replace(RE_SAN,"_")+".csv",lines.join("\n"));
 }
-function bt(cls,active,label,title){
-  var c=cls;
-  if(active){c=c+" on";}
-  return "<button class='"+c+"' title='"+title+"'>"+
-    label+"</button>";
-}
 function updateLegend(){
   var lg=$("legendRows");
   lg.innerHTML="";
@@ -1540,33 +1510,33 @@ function updateLegend(){
     var d=document.createElement("div");
     d.className="crow";
     d.dataset.key=key;
-    var p=[];
-    p.push("<span class='sw' style='background:"+
-      color+"'></span>");
-    var nm="<span class='cname'>"+esc(title);
+    var html="<span class='sw' style='background:"+
+      color+"'></span>"+
+      "<span class='cname'>"+esc(title);
     if(srcTxt){
-      nm=nm+" <span class='src'>"+esc(srcTxt)+"</span>";
+      html+=" <span class='src'>"+esc(srcTxt)+"</span>";
     }
-    nm=nm+"</span>";
-    p.push(nm);
-    p.push("<canvas class='spark' width='72' height='16'>"+
-      "</canvas>");
-    p.push("<input class='coff' type='number' step='0.5'"+
-      " title='Offset, dB' value='"+cfg.off+"'>");
+    html+="</span>"+
+      "<canvas class='spark' width='72' height='16'></canvas>"+
+      "<input class='coff' type='number' step='0.5'"+
+      " title='Offset, dB' value='"+cfg.off+"'>";
     if(kind==="target"){
-      p.push(bt("cdev",state.devMode,"~",
-        "Deviation from target"));
+      html+="<button class='cdev"+T(state.devMode," on","")+
+        "' title='Deviation from target'>~</button>";
     }else{
-      p.push("<span class='ph'></span>");
+      html+="<span class='ph'></span>";
     }
-    p.push(bt("ceye",state.hidden.has(key),"H","Hide or show"));
-    p.push(bt("cpin",cfg.pin,"P","Pin on top"));
-    p.push(bt("cdl",false,"D","Download CSV"));
-    p.push(bt("cx",false,"X","Remove"));
-    d.innerHTML=p.join("");
+    html+="<button class='ceye' title='Hide/show'>"+
+      T(state.hidden.has(key),"H","")+"</button>"+
+      "<button class='cpin"+T(cfg.pin," on","")+
+      "' title='Pin'>P</button>"+
+      "<button class='cdl' title='Download CSV'>D</button>"+
+      "<button class='cx' title='Remove'>X</button>";
+    d.innerHTML=html;
     lg.appendChild(d);
     var y=curveYByKey(key);
     if(y){drawSpark(d.querySelector(".spark"),y,color);}
+    return d;
   }
   if(state.target){
     row("__target",css("--target"),
@@ -1578,9 +1548,7 @@ function updateLegend(){
     for(i=0;i<all.length;i++){
       if(all[i].name===name){def=all[i];}
     }
-    var src="";
-    if(def){src=def.source||"";}
-    row(name,s.color,name,src,"meas");
+    row(name,s.color,name,def?def.source||"","meas");
   });
   if(hasActiveEq()){
     row("__eq",css("--eq"),"EQ result","","eq");
@@ -1592,8 +1560,7 @@ function eqBase(){
     renderEqCurveSelect();
   }
   var s=state.selected.get(state.eq.name);
-  if(s){return s.raw;}
-  return null;
+  return s?s.raw:null;
 }
 function renderEqCurveSelect(){
   var sel=$("eqCurve");
@@ -1799,11 +1766,7 @@ function loadUploaded(){
     }
   }catch(e){state.uploaded=[];}
 }
-function baseName(fn){
-  var dot=fn.lastIndexOf(".");
-  if(dot<=0){return fn||"Uploaded";}
-  return fn.substring(0,dot);
-}
+function baseName(fn){return fn.replace(/\.[^.]+$/,"")||"Uploaded";}
 function decim(pts){
   return pts.filter(function(_,i){
     var st=Math.max(1,Math.floor(pts.length/400));
@@ -1887,7 +1850,8 @@ function addMeasurement(){
       return;
     }
     if(res.avg.length<20){
-      err.textContent="Not a measurement: few points";
+      err.textContent="Not a measurement: few points ("+
+        res.avg.length+")";
       return;
     }
     var uname=pushUploaded(name,source,res.avg,
@@ -1914,47 +1878,26 @@ function absUrl(base,rel){
   try{return new URL(rel,base).href;}
   catch(e){return rel;}
 }
-function findCsvLinks(html,base){
-  var links=[],i,idx,searchFrom=0;
-  while(links.length<8){
-    idx=html.indexOf(".csv",searchFrom);
-    if(idx<0){break;}
-    var start=idx;
-    while(start>0){
-      var ch=html.charAt(start-1);
-      if(ch==="\""||ch==="'"||ch==="<"||ch===" "){break;}
-      start--;
-    }
-    var url=html.substring(start,idx+4);
-    if(url.indexOf("http")!==0){
-      try{url=new URL(url,base).href;}catch(e){}
-    }
-    var dup=false;
-    for(i=0;i<links.length;i++){
-      if(links[i]===url){dup=true;break;}
-    }
-    if(!dup){links.push(url);}
-    searchFrom=idx+4;
-  }
-  return links;
-}
 function fetchPtsFromUrl(u){
   return fetchAny(u).then(function(t){
-    var isHtml=t.indexOf("<!DOCTYPE")>=0||t.indexOf("<html")>=0;
-    if(!isHtml){return{avg:parseTable(t)};}
-    var links=findCsvLinks(t,u);
+    if(!RE_HTML.test(t)){return{avg:parseTable(t)};}
+    var links=[],mm;
+    RE_HREF.lastIndex=0;
+    while((mm=RE_HREF.exec(t))!==null&&links.length<6){
+      links.push(absUrl(u,mm[1]));
+    }
     if(!links.length){
-      throw new Error("no CSV links on page");
+      throw new Error("no CSV/TXT links on page");
     }
     var L=links[0],R=null,i;
     for(i=0;i<links.length;i++){
-      if(links[i].indexOf("L.csv")>=0||links[i].indexOf("_L")>=0){
-        L=links[i];break;
-      }
+      if(RE_L.test(links[i])){L=links[i];break;}
     }
     for(i=0;i<links.length;i++){
-      var isR=links[i].indexOf("R.csv")>=0||links[i].indexOf("_R")>=0;
-      if(isR&&links[i]!==L){R=links[i];break;}
+      if(RE_R.test(links[i])&&links[i]!==L){
+        R=links[i];
+        break;
+      }
     }
     if(R){
       return Promise.all([fetchAny(L),fetchAny(R)])
@@ -2213,7 +2156,7 @@ function init(){
     draw();
   });
   on("smoothN","change",function(e){
-    state.smoothN=clamp(num(e.target,5),0,48);
+    state.smoothN=clamp(num(e.target,0),0,48);
     updateLegend();
     draw();
   });
@@ -2505,7 +2448,7 @@ function init(){
   }
 }
 init();
-/*EOF v42*/
+/*EOF v43*/
 </script>
 </body>
 </html>

@@ -1,9 +1,11 @@
 "use strict";
-/* draw: canvas rendering + lists + legend rows */
+/* draw v60: canvas rendering, lists, chips, legend rows */
 var XTICKS=[20,30,40,50,60,80,100,150,200,250,300,400,
 500,600,800,1000,1500,2000,3000,4000,5000,6000,8000,
 10000,15000,20000];
 var XMAJ={20:1,60:1,250:1,500:1,600:1,2000:1,6000:1,20000:1};
+var XNARROW={20:1,50:1,100:1,250:1,500:1,1000:1,
+2500:1,5000:1,10000:1,20000:1};
 var RE_SAN=new RegExp("[^\\w\\d-]+","g");
 function xlab(f){
   if(f===20){return"20Hz";}
@@ -62,16 +64,18 @@ function draw(){
   ticks.forEach(function(f){
     var x=X(f);
     var maj=false;
-    if(narrow){maj=true;}
-    else if(XMAJ[f]){maj=true;}
+    if(XMAJ[f]){maj=true;}
     ctx.strokeStyle=css("--grid");
     ctx.lineWidth=1;
-    ctx.globalAlpha=T(maj,0.95,0.45);
+    ctx.globalAlpha=T(maj,0.95,0.35);
     ctx.beginPath();
     ctx.moveTo(x,m.t);
     ctx.lineTo(x,H-m.b);
     ctx.stroke();
     ctx.globalAlpha=1;
+    var showLab=true;
+    if(narrow&&!XNARROW[f]){showLab=false;}
+    if(!showLab){return;}
     ctx.fillStyle=T(maj,css("--text"),css("--muted"));
     var fs1=T(narrow,"700 8px",T(maj,"700 11px","10px"));
     ctx.font=fs1+" ui-monospace,Menlo,monospace";

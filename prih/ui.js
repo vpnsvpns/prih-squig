@@ -1,5 +1,7 @@
 "use strict";
-/* ui v58: eq table, imports, uploads, average, restore, sync, toast */
+/* ui v59: eq table, imports, uploads, average, restore, sync, toast,
+   wrapDetails (mobile sheet support). Full self-contained ui layer. */
+window.__uiVersion="v59";
 var RE_HTML=new RegExp("^\\s*(<|<!DOCTYPE)","i");
 var RE_HREF=new RegExp('href="([^"]+\\.(csv|txt))"',"gi");
 var RE_L=new RegExp("[._\\- ]L([._\\- \\d]|\\.csv|\\.txt)","i");
@@ -644,6 +646,21 @@ function syncInputs(){
   syncAdj();
   syncZoom();
   $("btnInspect").classList.toggle("on",state.inspect);
+}
+/* wrap toolbar into collapsible details on mobile; host element
+   is MOVED (not removed), so ids stay alive */
+function wrapDetails(hostEl,summaryText){
+  if(!hostEl){return;}
+  var par=hostEl.parentNode;
+  if(!par){return;}
+  if(par.tagName==="DETAILS"){return;}
+  var d=document.createElement("details");
+  d.className="gdet";
+  var s=document.createElement("summary");
+  s.textContent=summaryText;
+  d.appendChild(s);
+  par.insertBefore(d,hostEl);
+  d.appendChild(hostEl);
 }
 var toastTimer=null;
 function toast(msg){

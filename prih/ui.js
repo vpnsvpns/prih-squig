@@ -1,5 +1,5 @@
 "use strict";
-/* ui v45: robust EQ import + imported preamp + fv-only preamp compute */
+/* ui v58: eq table, imports, uploads, average, restore, sync, toast */
 var RE_HTML=new RegExp("^\\s*(<|<!DOCTYPE)","i");
 var RE_HREF=new RegExp('href="([^"]+\\.(csv|txt))"',"gi");
 var RE_L=new RegExp("[._\\- ]L([._\\- \\d]|\\.csv|\\.txt)","i");
@@ -49,7 +49,6 @@ function recomputeEq(){
   if(!base){
     state.eq.curve=null;
     state.eq.preamp=0;
-    state.eq.preImport=null;
     $("eqPreamp").textContent="Pre-amp: 0.0 dB";
     return;
   }
@@ -66,11 +65,13 @@ function recomputeEq(){
     if(fv>pk){pk=fv;}
   }
   state.eq.curve=curve;
-  if(state.eq.preImport!=null){
-    state.eq.preamp=state.eq.preImport;
-  }else{
-    state.eq.preamp=-Math.max(0,pk);
-  }
+  var pre;
+  if(state.eq.preImport!=null){pre=state.eq.preImport;}
+  else{pre=-Math.max(0,pk);}
+  if(!isFinite(pre)){pre=0;}
+  if(pre<-30){pre=-30;}
+  if(pre>0){pre=0;}
+  state.eq.preamp=pre;
   $("eqPreamp").textContent=
     "Pre-amp: "+state.eq.preamp.toFixed(1)+" dB";
 }
@@ -189,7 +190,6 @@ function runAutoEq(){
     });
   },60);
 }
-/* read first number at or after position idx */
 function readNumAfter(s,idx){
   var i=idx,started=false,str="";
   while(i<s.length){
@@ -206,7 +206,6 @@ function readNumAfter(s,idx){
   var v=parseFloat(str);
   return isFinite(v)?v:null;
 }
-/* robust APO/AutoEQ text import: kHz, no-dB, OFF skip, any case */
 function parseEqText(t){
   var fs=[],pre=null,skipped=0;
   var lines=t.split("\n"),i;
@@ -357,11 +356,8 @@ function importEqFile(f){
       return;
     }
     state.eq.filters=r.fs;
-    if(r.pre!=null){
-      state.eq.preImport=r.pre;
-    }else{
-      state.eq.preImport=null;
-    }
+    if(r.pre!=null){state.eq.preImport=r.pre;}
+    else{state.eq.preImport=null;}
     renderEqRows();
     recomputeEq();
     updateLegend();
@@ -438,7 +434,7 @@ function findCsvLinks(html,base){
 }
 function fetchPtsFromUrl(u){
   return fetchAny(u).then(function(t){
-    var isHtml=t.indexOf("<!DOCTYPE")>=0||t.indexOf("<html")>=0;
+    var isHtml=RE_HTML.test(t);
     if(!isHtml){return{avg:parseTable(t)};}
     var links=findCsvLinks(t,u);
     if(!links.length){
@@ -595,7 +591,7 @@ function restore(){
   if(s.adj){state.adj=Object.assign(state.adj,s.adj);}
   if(typeof s.nrm==="boolean"){state.normOn=s.nrm;}
   if(isFinite(s.ndb)){state.normDb=s.ndb;}
-  if(isFinite(s.nhz){state.normHz=s.nhz;}
+  if(isFinite(s.nhz)){state.normHz=s.nhz;}
   if(isFinite(s.sm)){state.smoothN=s.sm;}
   if(isFinite(s.ys)){state.ySpan=s.ys;}
   if(s.aeq){state.aeq=Object.assign(state.aeq,s.aeq);}
@@ -652,6 +648,7 @@ function syncInputs(){
 var toastTimer=null;
 function toast(msg){
   var t=$("toast");
+  if(!t){return;}
   t.textContent=msg;
   t.classList.add("show");
   clearTimeout(toastTimer);
@@ -659,7 +656,6 @@ function toast(msg){
     t.classList.remove("show");
   },2500);
 }
-/* dblclick on preamp label -> back to auto preamp */
 on("eqPreamp","dblclick",function(){
   clearPreImport();
   recomputeEq();

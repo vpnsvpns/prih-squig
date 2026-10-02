@@ -1,5 +1,5 @@
 "use strict";
-/* init v47: wiring + boot + mobile sheet collapse (like squig) */
+/* init v48: mobile sheet like squig + full legend rows on mobile */
 function injectMobileCss(){
   if(document.getElementById("mobileCss")){return;}
   var L=[];
@@ -15,17 +15,26 @@ function injectMobileCss(){
   L.push("padding:8px 10px;gap:8px;font-size:12px}");
   L.push("#adjRow input{width:64px;background:var(--bg)}");
   L.push("#adjRow button{padding:12px 14px;font-size:13px}");
-  L.push("#legendRows{gap:10px;padding:10px}");
-  L.push(".crow{display:flex;flex-wrap:wrap;gap:8px}");
-  L.push(".crow .sw{margin-top:6px}");
-  L.push(".crow .cname{flex:1 1 60%;font-size:14px}");
-  L.push(".crow .spark,.crow .ph{display:none}");
-  L.push(".crow .coff{width:76px;flex:0 0 76px;");
+  L.push("#legendRows{gap:12px;padding:10px}");
+  L.push(".crow{display:flex;flex-wrap:wrap;gap:8px;");
+  L.push("align-items:center}");
+  L.push(".crow .cname{flex:1 1 100%;order:0;font-size:15px}");
+  L.push(".crow .sw{order:1;flex:0 0 14px;margin-top:0}");
+  L.push(".crow .spark{order:2;display:block;flex:1 1 120px;");
+  L.push("width:auto;height:16px}");
+  L.push(".crow .coff{order:3;flex:0 0 76px;width:76px;");
   L.push("font-size:16px;padding:8px}");
+  L.push(".crow .ph{display:none}");
+  L.push(".crow .cdev{display:inline-block;order:4}");
+  L.push(".crow .ceye{order:5}");
+  L.push(".crow .cpin{display:inline-block;order:6}");
+  L.push(".crow .cdl{order:7}");
+  L.push(".crow .cx{order:8}");
   L.push(".crow button{min-width:44px;min-height:44px;");
-  L.push("font-size:16px;padding:10px 12px;");
+  L.push("flex:0 0 44px;font-size:16px;");
   L.push("border:1px solid var(--line);border-radius:8px;");
   L.push("background:var(--panel2)}");
+  L.push(".crow button:first-of-type{margin-left:auto}");
   L.push(".frow{gap:6px}");
   L.push(".frow input[type=checkbox]{width:22px;height:22px}");
   L.push("#eqPane .row button{padding:12px 16px;font-size:14px}");
@@ -37,10 +46,16 @@ function injectMobileCss(){
   L.push("align-items:center;padding:10px 0 6px;touch-action:none}");
   L.push("#sheetHandle i{width:44px;height:4px;border-radius:2px;");
   L.push("background:var(--line)}");
-  L.push("#left.collapsed{max-height:32px}");
-  L.push("#left.collapsed .tabs,#left.collapsed .pane,");
-  L.push("#left.collapsed #search{display:none}");
+  L.push("#left.collapsed{max-height:88px}");
+  L.push("#left.collapsed .pane,#left.collapsed #search{");
+  L.push("display:none}");
   L.push(".pane{overflow-y:auto;min-height:0}");
+  L.push("#browseBtn{display:flex;justify-content:space-between;");
+  L.push("align-items:center;width:calc(100% - 20px);");
+  L.push("margin:10px auto;padding:14px 16px;font-size:14px;");
+  L.push("border:1px solid var(--line);border-radius:10px;");
+  L.push("background:var(--panel)}");
+  L.push("#browseBtn b{font-size:18px;font-weight:600}");
   var st=document.createElement("style");
   st.id="mobileCss";
   st.textContent=L.join("");
@@ -48,12 +63,26 @@ function injectMobileCss(){
 }
 function setupSheet(){
   var left=$("left");
-  if(!left){return;}
+  var main=document.querySelector("main");
+  if(!left||!main){return;}
   if(document.getElementById("sheetHandle")){return;}
   var h=document.createElement("div");
   h.id="sheetHandle";
   h.innerHTML="<i></i>";
   left.insertBefore(h,left.firstChild);
+  var bb=document.createElement("button");
+  bb.id="browseBtn";
+  bb.innerHTML="Browse all graphs<b>+</b>";
+  main.insertBefore(bb,left);
+  function sync(){
+    var col=left.classList.contains("collapsed");
+    bb.style.display=col?"flex":"none";
+  }
+  function setCol(v){
+    left.classList.toggle("collapsed",v);
+    sync();
+  }
+  setCol(true);
   var y0=null;
   var sup=0;
   h.addEventListener("touchstart",function(e){
@@ -67,19 +96,18 @@ function setupSheet(){
     var dy=e.changedTouches[0].clientY-y0;
     y0=null;
     sup=Date.now();
-    if(dy>30){
-      left.classList.add("collapsed");
-      return;
-    }
-    if(dy<-30){
-      left.classList.remove("collapsed");
-      return;
-    }
-    left.classList.toggle("collapsed");
+    if(dy>30){setCol(true);return;}
+    if(dy<-30){setCol(false);return;}
+    setCol(!left.classList.contains("collapsed"));
   },{passive:true});
   h.addEventListener("click",function(){
     if(Date.now()-sup<500){return;}
-    left.classList.toggle("collapsed");
+    setCol(!left.classList.contains("collapsed"));
+  });
+  bb.addEventListener("click",function(){
+    setCol(false);
+    switchTab("models");
+    left.scrollIntoView({block:"nearest"});
   });
 }
 function init(){

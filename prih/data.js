@@ -1,6 +1,6 @@
 "use strict";
-/* data: config, state, targets, curve processing, series */
-var BUILD="v44";
+/* data v60: config, state, targets, curve processing, series */
+var BUILD="v60";
 var CFG={
   name:"Prih",normRange:[500,2000],
   autoEqDefaults:{fmin:20,fmax:8000,gmin:-10,gmax:6,qmin:0.5,qmax:1.5},
@@ -27,23 +27,13 @@ var CFG={
 };
 var PALETTE=["#38c5f4","#ff8a65","#aed581","#ba68c8","#ffd54f",
 "#4db6ac","#f06292","#7986cb","#a1887f","#e57373"];
-var FMIN=20,FMAX=20000,SPO=96;
-var GRID=(function(){
-  var n=Math.round(Math.log2(FMAX/FMIN)*SPO);
-  var g=new Float64Array(n+1),i;
-  for(i=0;i<=n;i++){
-    g[i]=FMIN*Math.pow(2,i/SPO);
-  }
-  return g;
-})();
-var ZOOMS={bass:[20,500],mids:[500,5000],treble:[5000,20000]};
 var state={
   selected:new Map(),hidden:new Set(),curves:new Map(),
   target:null,brand:null,
-  adj:{bass:0,bassQ:0.707,bassF:105,treble:0,tilt:0,ear:0},
+  adj:{bass:0,bassQ:0.71,bassF:105,treble:0,tilt:0,ear:0},
   normOn:true,normDb:60,normHz:500,smoothN:0,ySpan:30,
   aeq:{fmin:20,fmax:8000,gmin:-10,gmax:6,qmin:0.5,qmax:1.5},
-  eq:{name:null,filters:[],preamp:0,curve:null},
+  eq:{name:null,filters:[],preamp:0,preImport:null,curve:null},
   eqShow:true,eqRunning:false,devMode:false,
   uploaded:[],remote:[],impTargets:[],
   zoom:null,inspect:false,palShift:0,mouse:null,

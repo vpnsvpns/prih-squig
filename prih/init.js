@@ -1,6 +1,5 @@
 "use strict";
-/* init v65: audit + stubs + sheet + squig fields + wiring
-   + legend patch: no offset input, EQ row named "<meas> EQ" */
+/* init v66: self-sufficient overrides + audit + stubs + sheet + squig */
 function stubIfMissing(name,fn){
   if(typeof window[name]==="function"){return null;}
   window[name]=fn;
@@ -51,10 +50,10 @@ function auditDeps(){
     "normalizeOnly","hasActiveEq","eqBase","renderEqCurveSelect",
     "renderEqRows","eqLines","runAutoEq","averageAll","screenshot",
     "restore","syncAdj","syncInputs","wrapDetails","importFRFile",
-    "importTargetFile","importEqFile","addMeasurement","doPreview",
+    "importTargetFile","addMeasurement","doPreview",
     "download","eqMaskAt","parseTable","resample","fetchAny","clamp",
     "shape","esc","css","num","r1","r2","fmtF","uniqueName","allHps",
-    "loadHp","recomputeEq","parseEqText","toast"];
+    "loadHp","eqResultName"];
   var miss=[],i;
   for(i=0;i<need.length;i++){
     if(typeof window[need[i]]!=="function"){miss.push(need[i]);}
@@ -65,8 +64,138 @@ function auditDeps(){
   if(typeof window.T!=="function"){miss.push("T");}
   return miss;
 }
-/* ---- legend patch (works over old draw.js/data.js) ---- */
-function eqNameV65(){
+/* ---- self-sufficient EQ core (overrides any ui.js version) ---- */
+function clearPreImport(){
+  state.eq.preImport=null;
+}
+window.clearPreImport=clearPreImport;
+function fixedRecomputeEq(){
+  var base=eqBase();
+  if(!base){
+    state.eq.curve=null;
+    state.eq.preamp=0;
+    $("eqPreamp").textContent="Pre-amp: 0.0 dB";
+    return;
+  }
+  var curve=new Float64Array(GRID.length),pk=0,i,j;
+  for(i=0;i<GRID.length;i++){
+    var mk=eqMaskAt(GRID[i]);
+    var v=base[i],fv=0;
+    for(j=0;j<state.eq.filters.length;j++){
+      var r=filterResp(state.eq.filters[j],GRID[i])*mk;
+      v+=r;
+      fv+=r;
+    }
+    curve[i]=v;
+    if(fv>pk){pk=fv;}
+  }
+  state.eq.curve=curve;
+  var pre;
+  if(state.eq.preImport!=null){pre=state.eq.preImport;}
+  else{pre=-Math.max(0,pk);}
+  if(!isFinite(pre)){pre=0;}
+  if(pre<-30){pre=-30;}
+  if(pre>0){pre=0;}
+  state.eq.preamp=pre;
+  $("eqPreamp").textContent=
+    "Pre-amp: "+state.eq.preamp.toFixed(1)+" dB";
+}
+window.recomputeEq=fixedRecomputeEq;
+function readNumAfter(s,idx){
+  var i=idx,started=false,str="";
+  while(i<s.length){
+    var c=s.charAt(i);
+    if((c>="0"&&c<="9")||c==="."){
+      str+=c;started=true;
+    }else if((c==="-"||c==="+")&&!started){
+      str+=c;
+    }else if(started){
+      break;
+    }
+    i++;
+  }
+  var v=parseFloat(str);
+  return isFinite(v)?v:null;
+}
+function fixedParseEqText(t){
+  var fs=[],pre=null,skipped=0;
+  var lines=t.split("\n"),i;
+  for(i=0;i<lines.length;i++){
+    var line=lines[i];
+    var U=line.toUpperCase();
+    var pi=U.indexOf("PREAMP:");
+    if(pi>=0){
+      var pv=readNumAfter(line,pi+7);
+      if(pv!=null){pre=pv;}
+      continue;
+    }
+    if(U.indexOf("FILTER")<0){continue;}
+    if(U.indexOf(" OFF")>=0||U.indexOf(":OFF")>=0){
+      skipped++;
+      continue;
+    }
+    if(U.indexOf(" ON")<0){continue;}
+    var pon=U.indexOf(" ON ");
+    var tstr="";
+    if(pon>=0){
+      var j=pon+4;
+      while(j<U.length&&U.charAt(j)!==" "){
+        tstr+=U.charAt(j);
+        j++;
+      }
+    }
+    var tt="PK";
+    if(tstr.indexOf("LS")===0){tt="LS";}
+    else if(tstr.indexOf("HS")===0){tt="HS";}
+    var pfc=U.indexOf("FC");
+    var fc=null;
+    if(pfc>=0){
+      fc=readNumAfter(line,pfc+2);
+      var pkhz=U.indexOf("KHZ",pfc);
+      var phz=U.indexOf("HZ",pfc);
+      if(pkhz>=0&&(phz<0||pkhz<=phz)){
+        if(fc!=null){fc=fc*1000;}
+      }
+    }
+    var pg=U.indexOf("GAIN");
+    var gain=null;
+    if(pg>=0){gain=readNumAfter(line,pg+4);}
+    var pq=U.indexOf(" Q");
+    var q=null;
+    if(pq>=0){q=readNumAfter(line,pq+2);}
+    if(fc!=null&&fc>0&&gain!=null){
+      fs.push({on:true,t:tt,f:fc,g:gain,
+        q:q!=null?Math.max(0.05,q):0.7});
+    }
+  }
+  return{fs:fs,pre:pre,skipped:skipped};
+}
+window.parseEqText=fixedParseEqText;
+function fixedImportEqFile(f){
+  f.text().then(function(t){
+    var r=fixedParseEqText(t);
+    if(!r.fs.length){
+      toast("No Filter N: ON ... lines found");
+      return;
+    }
+    state.eq.filters=r.fs;
+    if(r.pre!=null){state.eq.preImport=r.pre;}
+    else{state.eq.preImport=null;}
+    renderEqRows();
+    fixedRecomputeEq();
+    updateLegend();
+    draw();
+    var extra="";
+    if(r.skipped>0){extra=", skipped OFF: "+r.skipped;}
+    toast("Filters imported: "+r.fs.length+extra+
+      ", preamp "+state.eq.preamp.toFixed(1)+" dB applied");
+  }).catch(function(e){
+    toast("File error: "+e.message);
+  });
+}
+window.importEqFile=fixedImportEqFile;
+/* ---- legend patch: no offset input, EQ row named "<meas> EQ" ---- */
+function eqNameV66(){
   if(state.eq.name){return state.eq.name+" EQ";}
   return "EQ result";
 }
@@ -75,7 +204,7 @@ function installLegendPatch(){
   function fix(){
     var r=document.querySelector(
       ".crow[data-key='__eq'] .cname");
-    if(r){r.textContent=eqNameV65();}
+    if(r){r.textContent=eqNameV66();}
     var offs=document.querySelectorAll(".crow .coff");
     var i;
     for(i=0;i<offs.length;i++){
@@ -94,13 +223,13 @@ function installLegendPatch(){
   window.series=function(){
     var S=_ser();
     for(var k=0;k<S.length;k++){
-      if(S[k].name==="EQ result"){S[k].name=eqNameV65();}
+      if(S[k].name==="EQ result"){S[k].name=eqNameV66();}
     }
     return S;
   };
   fix();
 }
-/* ---- end legend patch ---- */
+/* ---- mobile css + sheet ---- */
 function injectMobileCss(){
   if(document.getElementById("mobileCss")){return;}
   var L=[];
@@ -200,6 +329,7 @@ function setupSheet(){
   });
   setOpen(false);
 }
+/* ---- squig DB search ---- */
 var SQ_ORIG={
   gudkov:"https://gudkov.squig.link/",
   pw:"https://pw.squig.link/",
@@ -401,7 +531,7 @@ function init(){
     }
     return;
   }
-  console.info("Prih init v65");
+  console.info("Prih init v66");
   installLegendPatch();
   injectSquigFields();
   var _grabBase=window.grabPts;
@@ -490,7 +620,7 @@ function init(){
         state.eqShow=false;$("eqShowChk").checked=false;
       }else{
         state.selected.delete(key);
-        renderEqCurveSelect();recomputeEq();renderModels();
+        renderEqCurveSelect();fixedRecomputeEq();renderModels();
       }
       updateLegend();draw();
     }});
@@ -520,11 +650,11 @@ function init(){
         gmax:clamp(num($("aeGmax"),6),0,30),
         qmin:clamp(num($("aeQmin"),0.5),0.05,10),
         qmax:clamp(num($("aeQmax"),1.5),0.05,10)});
-      sanState();recomputeEq();draw();});});
+      sanState();fixedRecomputeEq();draw();});});
   on("btnEq","click",function(){clearPreImport();runAutoEq();});
   on("eqCurve","change",function(e){
     state.eq.name=e.target.value;
-    recomputeEq();updateLegend();draw();});
+    fixedRecomputeEq();updateLegend();draw();});
   $("eqRows").addEventListener("input",function(e){
     var row=e.target.closest(".frow");
     if(!row||row.classList.contains("head")){return;}
@@ -537,28 +667,28 @@ function init(){
     else if(c.contains("fg")){fl.g=clamp(num(e.target,fl.g),-30,30);}
     else if(c.contains("fq")){fl.q=clamp(num(e.target,fl.q),0.05,20);}
     else{return;}
-    clearPreImport();recomputeEq();draw();});
+    clearPreImport();fixedRecomputeEq();draw();});
   $("eqRows").addEventListener("click",function(e){
     if(e.target.classList.contains("fx")){
       var row=e.target.closest(".frow");
       state.eq.filters.splice(+row.dataset.i,1);
-      clearPreImport();renderEqRows();recomputeEq();
+      clearPreImport();renderEqRows();fixedRecomputeEq();
       updateLegend();draw();}});
   on("btnAddF","click",function(){
     state.eq.filters.push({on:true,t:"PK",f:1000,g:0,q:0.7});
-    clearPreImport();renderEqRows();recomputeEq();
+    clearPreImport();renderEqRows();fixedRecomputeEq();
     updateLegend();draw();});
   on("btnDelF","click",function(){
     state.eq.filters.pop();
-    clearPreImport();renderEqRows();recomputeEq();
+    clearPreImport();renderEqRows();fixedRecomputeEq();
     updateLegend();draw();});
   on("btnSort","click",function(){
     state.eq.filters.sort(function(a,b){return a.f-b.f;});
-    renderEqRows();recomputeEq();draw();});
+    renderEqRows();fixedRecomputeEq();draw();});
   on("btnDisable","click",function(){
     var allOn=state.eq.filters.every(function(f){return f.on;});
     state.eq.filters.forEach(function(f){f.on=!allOn;});
-    clearPreImport();renderEqRows();recomputeEq();
+    clearPreImport();renderEqRows();fixedRecomputeEq();
     updateLegend();draw();});
   function exportApo(){
     if(!state.eq.filters.length){toast("No filters");return;}
@@ -584,7 +714,7 @@ function init(){
     if(e.target.files[0]){importTargetFile(e.target.files[0]);}
     e.target.value="";});
   on("fileEq","change",function(e){
-    if(e.target.files[0]){importEqFile(e.target.files[0]);}
+    if(e.target.files[0]){fixedImportEqFile(e.target.files[0]);}
     e.target.value="";});
   on("mCancel","click",function(){$("modal").hidden=true;});
   on("mOk","click",addMeasurement);
@@ -636,7 +766,7 @@ function init(){
     var b=$("errbar");
     if(b){
       b.style.display="block";
-      b.textContent="INIT ERROR v65: "+e.message;
+      b.textContent="INIT ERROR v66: "+e.message;
     }
     var boot2=$("boot");
     if(boot2){boot2.textContent="Init error: "+e.message;}

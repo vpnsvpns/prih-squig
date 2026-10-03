@@ -1,5 +1,5 @@
 "use strict";
-/* draw v61: canvas rendering, lists, chips, legend rows (no pin button) */
+/* draw v63: legend rows without offset input; EQ row named "<meas> EQ" */
 var XTICKS=[20,30,40,50,60,80,100,150,200,250,300,400,
 500,600,800,1000,1500,2000,3000,4000,5000,6000,8000,
 10000,15000,20000];
@@ -7,6 +7,7 @@ var XMAJ={20:1,60:1,250:1,500:1,600:1,2000:1,6000:1,20000:1};
 var XNARROW={20:1,50:1,100:1,250:1,500:1,1000:1,
 2500:1,5000:1,10000:1,20000:1};
 var RE_SAN=new RegExp("[^\\w\\d-]+","g");
+var CROW_COLS="14px minmax(90px,1.1fr) 76px 44px 26px 26px 22px";
 function xlab(f){
   if(f===20){return"20Hz";}
   if(f===20000){return"20kHz";}
@@ -174,7 +175,7 @@ function draw(){
     }
   });
   if(hasActiveEq()&&!state.hidden.has("__eq")){
-    leg.push({c:css("--eq"),t:"EQ result"});
+    leg.push({c:css("--eq"),t:eqResultName()});
   }
   var lstep=T(narrow,16,22);
   ctx.font=T(narrow,"700 12px","700 16px")+" system-ui";
@@ -356,6 +357,7 @@ function updateLegend(){
     var d=document.createElement("div");
     d.className="crow";
     d.dataset.key=key;
+    d.style.gridTemplateColumns=CROW_COLS;
     var p=[];
     p.push("<span class='sw' style='background:"+
       color+"'></span>");
@@ -367,8 +369,6 @@ function updateLegend(){
     p.push(nm);
     p.push("<canvas class='spark' width='72' height='16'>"+
       "</canvas>");
-    p.push("<input class='coff' type='number' step='0.5'"+
-      " title='Offset, dB' value='"+cfg.off+"'>");
     if(kind==="target"){
       p.push(bt("cdev",state.devMode,"~",
         "Deviation from target"));
@@ -398,7 +398,7 @@ function updateLegend(){
     row(name,s.color,name,src,"meas");
   });
   if(hasActiveEq()){
-    row("__eq",css("--eq"),"EQ result","","eq");
+    row("__eq",css("--eq"),eqResultName(),"","eq");
   }
 }
 /*EOF-draw*/

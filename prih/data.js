@@ -5,9 +5,6 @@ var CFG={
   name:"Prih",normRange:[500,2000],
   autoEqDefaults:{fmin:20,fmax:8000,gmin:-10,gmax:6,qmin:0.5,qmax:1.5},
   targets:[
-    {group:"Reference",name:"ISO 11904-1 DF",
-     file:"targets/∆ ISO 11904-1 DF Target.txt",
-     alt:"targets/ISO 11904-1 DF Target.txt",adjustable:true},
     {group:"Reference",name:"ISO DF Harman Bass",
      file:"targets/ISO DF Harman Bass 711.txt",adjustable:true},
     {group:"Reference",name:"PEQdB Diamond β",

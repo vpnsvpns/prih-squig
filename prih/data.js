@@ -1,6 +1,7 @@
 "use strict";
-/* data v64: eqResultName() -> "<measurement> EQ" */
-var BUILD="v64";
+/* data v62: config, state, targets, curve processing, series.
+   ISO 11904-1 DF target removed completely. */
+var BUILD="v62";
 var CFG={
   name:"Prih",normRange:[500,2000],
   autoEqDefaults:{fmin:20,fmax:8000,gmin:-10,gmax:6,qmin:0.5,qmax:1.5},
@@ -42,10 +43,6 @@ function curveCfg(key){
     state.curves.set(key,{off:0,pin:false});
   }
   return state.curves.get(key);
-}
-function eqResultName(){
-  if(state.eq.name){return state.eq.name+" EQ";}
-  return "EQ result";
 }
 function flatToPairs(p){
   var out=[],i;
@@ -226,7 +223,7 @@ function series(){
       dash:[6,4],w:2,pin:ct.pin,y:ty});
   }
   if(hasActiveEq()&&!state.hidden.has("__eq")){
-    S.push({name:eqResultName(),color:css("--eq"),w:2,
+    S.push({name:"EQ result",color:css("--eq"),w:2,
       pin:curveCfg("__eq").pin,
       y:displayedY(state.eq.curve,curveCfg("__eq"),0)});
   }

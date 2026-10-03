@@ -1,5 +1,5 @@
 "use strict";
-/* draw v63: legend rows without offset input; EQ row named "<meas> EQ" */
+/* draw v67: canvas, lists, chips, legend rows (no offset, no pin) */
 var XTICKS=[20,30,40,50,60,80,100,150,200,250,300,400,
 500,600,800,1000,1500,2000,3000,4000,5000,6000,8000,
 10000,15000,20000];
@@ -7,7 +7,6 @@ var XMAJ={20:1,60:1,250:1,500:1,600:1,2000:1,6000:1,20000:1};
 var XNARROW={20:1,50:1,100:1,250:1,500:1,1000:1,
 2500:1,5000:1,10000:1,20000:1};
 var RE_SAN=new RegExp("[^\\w\\d-]+","g");
-var CROW_COLS="14px minmax(90px,1.1fr) 76px 44px 26px 26px 22px";
 function xlab(f){
   if(f===20){return"20Hz";}
   if(f===20000){return"20kHz";}
@@ -357,7 +356,6 @@ function updateLegend(){
     var d=document.createElement("div");
     d.className="crow";
     d.dataset.key=key;
-    d.style.gridTemplateColumns=CROW_COLS;
     var p=[];
     p.push("<span class='sw' style='background:"+
       color+"'></span>");

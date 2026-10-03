@@ -1,5 +1,5 @@
 "use strict";
-/* init v67: audit + stubs + mobile sheet + squig fields + wiring */
+/* init v68: self-sufficient EQ core + audit + stubs + sheet + squig */
 function stubIfMissing(name,fn){
   if(typeof window[name]==="function"){return null;}
   window[name]=fn;
@@ -42,6 +42,133 @@ function installStubs(){
   if(s4){out.push(s4);}
   return out;
 }
+/* ---- self-sufficient EQ functions (override any ui.js) ---- */
+function clearPreImport(){
+  state.eq.preImport=null;
+}
+function recomputeEq(){
+  var base=eqBase();
+  if(!base){
+    state.eq.curve=null;
+    state.eq.preamp=0;
+    $("eqPreamp").textContent="Pre-amp: 0.0 dB";
+    return;
+  }
+  var curve=new Float64Array(GRID.length),pk=0,i,j;
+  for(i=0;i<GRID.length;i++){
+    var mk=eqMaskAt(GRID[i]);
+    var v=base[i],fv=0;
+    for(j=0;j<state.eq.filters.length;j++){
+      var r=filterResp(state.eq.filters[j],GRID[i])*mk;
+      v+=r;
+      fv+=r;
+    }
+    curve[i]=v;
+    if(fv>pk){pk=fv;}
+  }
+  state.eq.curve=curve;
+  var pre;
+  if(state.eq.preImport!=null){pre=state.eq.preImport;}
+  else{pre=-Math.max(0,pk);}
+  if(!isFinite(pre)){pre=0;}
+  if(pre<-30){pre=-30;}
+  if(pre>0){pre=0;}
+  state.eq.preamp=pre;
+  $("eqPreamp").textContent=
+    "Pre-amp: "+state.eq.preamp.toFixed(1)+" dB";
+}
+function readNumAfter(s,idx){
+  var i=idx,started=false,str="";
+  while(i<s.length){
+    var c=s.charAt(i);
+    if((c>="0"&&c<="9")||c==="."){
+      str+=c;started=true;
+    }else if((c==="-"||c==="+")&&!started){
+      str+=c;
+    }else if(started){
+      break;
+    }
+    i++;
+  }
+  var v=parseFloat(str);
+  return isFinite(v)?v:null;
+}
+function parseEqText(t){
+  var fs=[],pre=null,skipped=0;
+  var lines=t.split("\n"),i;
+  for(i=0;i<lines.length;i++){
+    var line=lines[i];
+    var U=line.toUpperCase();
+    var pi=U.indexOf("PREAMP:");
+    if(pi>=0){
+      var pv=readNumAfter(line,pi+7);
+      if(pv!=null){pre=pv;}
+      continue;
+    }
+    if(U.indexOf("FILTER")<0){continue;}
+    if(U.indexOf(" OFF")>=0||U.indexOf(":OFF")>=0){
+      skipped++;
+      continue;
+    }
+    if(U.indexOf(" ON")<0){continue;}
+    var pon=U.indexOf(" ON ");
+    var tstr="";
+    if(pon>=0){
+      var j=pon+4;
+      while(j<U.length&&U.charAt(j)!==" "){
+        tstr+=U.charAt(j);
+        j++;
+      }
+    }
+    var tt="PK";
+    if(tstr.indexOf("LS")===0){tt="LS";}
+    else if(tstr.indexOf("HS")===0){tt="HS";}
+    var pfc=U.indexOf("FC");
+    var fc=null;
+    if(pfc>=0){
+      fc=readNumAfter(line,pfc+2);
+      var pkhz=U.indexOf("KHZ",pfc);
+      var phz=U.indexOf("HZ",pfc);
+      if(pkhz>=0&&(phz<0||pkhz<=phz)){
+        if(fc!=null){fc=fc*1000;}
+      }
+    }
+    var pg=U.indexOf("GAIN");
+    var gain=null;
+    if(pg>=0){gain=readNumAfter(line,pg+4);}
+    var pq=U.indexOf(" Q");
+    var q=null;
+    if(pq>=0){q=readNumAfter(line,pq+2);}
+    if(fc!=null&&fc>0&&gain!=null){
+      fs.push({on:true,t:tt,f:fc,g:gain,
+        q:q!=null?Math.max(0.05,q):0.7});
+    }
+  }
+  return{fs:fs,pre:pre,skipped:skipped};
+}
+function importEqFile(f){
+  f.text().then(function(t){
+    var r=parseEqText(t);
+    if(!r.fs.length){
+      toast("No Filter N: ON ... lines found");
+      return;
+    }
+    state.eq.filters=r.fs;
+    if(r.pre!=null){state.eq.preImport=r.pre;}
+    else{state.eq.preImport=null;}
+    renderEqRows();
+    recomputeEq();
+    updateLegend();
+    draw();
+    var extra="";
+    if(r.skipped>0){extra=", skipped OFF: "+r.skipped;}
+    toast("Filters imported: "+r.fs.length+extra+
+      ", preamp "+state.eq.preamp.toFixed(1)+" dB applied");
+  }).catch(function(e){
+    toast("File error: "+e.message);
+  });
+}
+/* ---- end self-sufficient EQ ---- */
 function auditDeps(){
   var need=["draw","updateLegend","renderModels","renderBrands",
     "buildTargetChips","switchTab","curveYByKey","downloadCurveByKey",
@@ -50,11 +177,10 @@ function auditDeps(){
     "normalizeOnly","hasActiveEq","eqBase","renderEqCurveSelect",
     "renderEqRows","eqLines","runAutoEq","averageAll","screenshot",
     "restore","syncAdj","syncInputs","wrapDetails","importFRFile",
-    "importTargetFile","importEqFile","addMeasurement","doPreview",
+    "importTargetFile","addMeasurement","doPreview",
     "download","eqMaskAt","parseTable","resample","fetchAny","clamp",
     "shape","esc","css","num","r1","r2","fmtF","uniqueName","allHps",
-    "loadHp","recomputeEq","parseEqText","clearPreImport",
-    "eqResultName","toast"];
+    "loadHp","eqResultName"];
   var miss=[],i;
   for(i=0;i<need.length;i++){
     if(typeof window[need[i]]!=="function"){miss.push(need[i]);}
@@ -365,7 +491,7 @@ function init(){
     }
     return;
   }
-  console.info("Prih init v67");
+  console.info("Prih init v68");
   injectSquigFields();
   var _grabBase=window.grabPts;
   window.grabPts=function(){
@@ -593,7 +719,7 @@ function init(){
     var b=$("errbar");
     if(b){
       b.style.display="block";
-      b.textContent="INIT ERROR v67: "+e.message;
+      b.textContent="INIT ERROR v68: "+e.message;
     }
     var boot2=$("boot");
     if(boot2){boot2.textContent="Init error: "+e.message;}

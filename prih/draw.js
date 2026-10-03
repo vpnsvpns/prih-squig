@@ -376,7 +376,6 @@ function updateLegend(){
       p.push("<span class='ph'></span>");
     }
     p.push(bt("ceye",state.hidden.has(key),"H","Hide or show"));
-    p.push(bt("cpin",cfg.pin,"P","Pin on top"));
     p.push(bt("cdl",false,"D","Download CSV"));
     p.push(bt("cx",false,"X","Remove"));
     d.innerHTML=p.join("");

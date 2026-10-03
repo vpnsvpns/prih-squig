@@ -1,5 +1,5 @@
 "use strict";
-/* draw v60: canvas rendering, lists, chips, legend rows */
+/* draw v61: canvas rendering, lists, chips, legend rows (no pin button) */
 var XTICKS=[20,30,40,50,60,80,100,150,200,250,300,400,
 500,600,800,1000,1500,2000,3000,4000,5000,6000,8000,
 10000,15000,20000];

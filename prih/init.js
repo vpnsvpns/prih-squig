@@ -1,4 +1,5 @@
 "use strict";
+function clearPreImport(){if(state&&state.eq){state.eq.preImport=null;}}
 /* init v68: self-sufficient EQ core + audit + stubs + sheet + squig */
 function stubIfMissing(name,fn){
   if(typeof window[name]==="function"){return null;}

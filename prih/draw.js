@@ -1,5 +1,5 @@
 "use strict";
-/* draw v64: no offset input in rows; EQ row named "<meas> EQ" */
+/* draw v63: legend rows without offset input; EQ row named "<meas> EQ" */
 var XTICKS=[20,30,40,50,60,80,100,150,200,250,300,400,
 500,600,800,1000,1500,2000,3000,4000,5000,6000,8000,
 10000,15000,20000];

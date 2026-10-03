@@ -1,5 +1,5 @@
 "use strict";
-/* core v60: math, DSP, fetch, parse, AutoEQ optimizer. No DOM state. */
+/* core v67: math, DSP, fetch, parse, AutoEQ optimizer */
 function T(c,a,b){
   if(c){return a;}
   return b;

@@ -1,6 +1,6 @@
 "use strict";
-/* data v63: + eqResultName() -> "<measurement> EQ" */
-var BUILD="v63";
+/* data v64: eqResultName() -> "<measurement> EQ" */
+var BUILD="v64";
 var CFG={
   name:"Prih",normRange:[500,2000],
   autoEqDefaults:{fmin:20,fmax:8000,gmin:-10,gmax:6,qmin:0.5,qmax:1.5},

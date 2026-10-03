@@ -1,6 +1,7 @@
 "use strict";
-/* data v60: config, state, targets, curve processing, series */
-var BUILD="v60";
+/* data v62: config, state, targets, curve processing, series.
+   ISO 11904-1 DF target removed completely. */
+var BUILD="v62";
 var CFG={
   name:"Prih",normRange:[500,2000],
   autoEqDefaults:{fmin:20,fmax:8000,gmin:-10,gmax:6,qmin:0.5,qmax:1.5},

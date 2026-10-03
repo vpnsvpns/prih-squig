@@ -1,5 +1,5 @@
 "use strict";
-/* init v60: audit + stubs + mobile sheet + squig modal fields + wiring */
+/* init v67: audit + stubs + mobile sheet + squig fields + wiring */
 function stubIfMissing(name,fn){
   if(typeof window[name]==="function"){return null;}
   window[name]=fn;
@@ -53,7 +53,8 @@ function auditDeps(){
     "importTargetFile","importEqFile","addMeasurement","doPreview",
     "download","eqMaskAt","parseTable","resample","fetchAny","clamp",
     "shape","esc","css","num","r1","r2","fmtF","uniqueName","allHps",
-    "loadHp","recomputeEq","parseEqText","toast"];
+    "loadHp","recomputeEq","parseEqText","clearPreImport",
+    "eqResultName","toast"];
   var miss=[],i;
   for(i=0;i<need.length;i++){
     if(typeof window[need[i]]!=="function"){miss.push(need[i]);}
@@ -85,14 +86,11 @@ function injectMobileCss(){
   L.push(".crow .sw{order:1;flex:0 0 14px;margin-top:0}");
   L.push(".crow .spark{order:2;display:block;flex:1 1 120px;");
   L.push("width:auto;height:16px}");
-  L.push(".crow .coff{order:3;flex:0 0 76px;width:76px;");
-  L.push("font-size:16px;padding:8px}");
   L.push(".crow .ph{display:none}");
   L.push(".crow .cdev{display:inline-block;order:4}");
   L.push(".crow .ceye{order:5}");
-  L.push(".crow .cpin{display:inline-block;order:6}");
-  L.push(".crow .cdl{order:7}");
-  L.push(".crow .cx{order:8}");
+  L.push(".crow .cdl{order:6}");
+  L.push(".crow .cx{order:7}");
   L.push(".crow button{min-width:44px;min-height:44px;");
   L.push("flex:0 0 44px;font-size:16px;");
   L.push("border:1px solid var(--line);border-radius:8px;");
@@ -367,7 +365,7 @@ function init(){
     }
     return;
   }
-  console.info("Prih init v60");
+  console.info("Prih init v67");
   injectSquigFields();
   var _grabBase=window.grabPts;
   window.grabPts=function(){
@@ -429,12 +427,6 @@ function init(){
   cv.addEventListener("touchend",function(){
     state.mouse=null;if(state.inspect){draw();}});
   var lg=$("legendRows");
-  lg.addEventListener("input",function(e){
-    var row=e.target.closest(".crow");
-    if(!row){return;}
-    var key=row.dataset.key,cfg=curveCfg(key);
-    if(e.target.classList.contains("coff")){
-      cfg.off=num(e.target,0);draw();}});
   lg.addEventListener("click",function(e){
     var row=e.target.closest(".crow");
     if(!row){return;}
@@ -446,8 +438,6 @@ function init(){
       if(state.hidden.has(key)){state.hidden.delete(key);}
       else{state.hidden.add(key);}
       updateLegend();draw();
-    }else if(c.contains("cpin")){
-      cfg.pin=!cfg.pin;updateLegend();draw();
     }else if(c.contains("cdl")){
       downloadCurveByKey(key);
     }else if(c.contains("cx")){
@@ -603,7 +593,7 @@ function init(){
     var b=$("errbar");
     if(b){
       b.style.display="block";
-      b.textContent="INIT ERROR v60: "+e.message;
+      b.textContent="INIT ERROR v67: "+e.message;
     }
     var boot2=$("boot");
     if(boot2){boot2.textContent="Init error: "+e.message;}

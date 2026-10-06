@@ -1,5 +1,5 @@
 "use strict";
-/* core v67: math, DSP, fetch, parse, AutoEQ optimizer */
+/* core v2.0: math, DSP, fetch, parse, NEW AutoEQ optimizer */
 function T(c,a,b){
   if(c){return a;}
   return b;
@@ -204,301 +204,325 @@ function fetchRemote(u){
 function fetchAny(u){
   return isAbs(u)?fetchRemote(u):fetchLocal(u);
 }
-/* AutoEQ: coordinate descent + Nelder-Mead on FULL weighted SSE */
+
+/* =========================================================
+   NEW AUTOEQ ENGINE v2.0 (Prih Edition)
+   - Max 8 filters (aims for 3-5)
+   - Q: [0.5, 1.5]
+   - Gain: [-10, +6]
+   - Fc: <= 8000 Hz
+   - Weighted error: 6k-10k zone weight 0.3
+   ========================================================= */
 window.AutoEqFit=(function(){
-function cl(v,a,b){
-  if(v<a){return a;}
-  if(v>b){return b;}
-  return v;
-}
-function sh(f,f0,q){
-  var x=f/f0-f0/f;
-  return 1/(1+q*q*x*x);
-}
-function pow2(x){return Math.pow(2,x);}
-function maskW(f,fmax){
-  var f1=fmax*0.85;
-  if(f<=f1){return 1;}
-  if(f>=fmax){return 0;}
-  return 0.5*(1+Math.cos(Math.PI*(f-f1)/(fmax-f1)));
-}
-function fullSSE(e0,f,fs,W){
-  var s=0,i,k,d;
-  for(i=0;i<f.length;i++){
-    d=e0[i];
-    for(k=0;k<fs.length;k++){
-      if(fs[k].g){
-        d+=fs[k].g*sh(f[i],fs[k].f,fs[k].q);
-      }
-    }
-    s+=W[i]*d*d;
+  function cl(v,a,b){ return v<a?a:(v>b?b:v); }
+  function sh(f,f0,q){ var x=f/f0-f0/f; return 1/(1+q*q*x*x); }
+  function pow2(x){ return Math.pow(2,x); }
+  
+  // Mask: 1.0 up to 6kHz, taper to 0.3 at 8kHz, 0.0 above 10kHz
+  function maskW(f, fmax){
+    if(f <= 6000) return 1.0;
+    if(f >= 10000) return 0.0;
+    if(f >= 8000) return 0.3; // Reduced weight zone
+    // Taper between 6k and 8k
+    var t = (f - 6000) / 2000;
+    return 1.0 - 0.7 * t; 
   }
-  return s;
-}
-function residFull(e0,f,fs){
-  var e=new Array(f.length),i,k,d;
-  for(i=0;i<f.length;i++){
-    d=e0[i];
-    for(k=0;k<fs.length;k++){
-      if(fs[k].g){
-        d+=fs[k].g*sh(f[i],fs[k].f,fs[k].q);
+
+  function calcError(e0, f, fs, W){
+    var s=0, i, k, d;
+    for(i=0; i<f.length; i++){
+      d = e0[i];
+      for(k=0; k<fs.length; k++){
+        if(fs[k].g !== 0){
+          d += fs[k].g * sh(f[i], fs[k].f, fs[k].q);
+        }
       }
+      s += W[i] * d * d;
     }
-    e[i]=d;
+    // Penalty for using too many filters (encourage minimalism)
+    // Base penalty 0 for <= 3 filters, then small cost per extra filter
+    var countPenalty = fs.length > 3 ? (fs.length - 3) * 5.0 : 0;
+    return s + countPenalty;
   }
-  return e;
-}
-function residWithout(e0,f,fs,k){
-  var e=new Array(f.length),i,j,d;
-  for(i=0;i<f.length;i++){
-    d=e0[i];
-    for(j=0;j<fs.length;j++){
-      if(j===k){continue;}
-      if(fs[j].g){
-        d+=fs[j].g*sh(f[i],fs[j].f,fs[j].q);
+
+  function residWithout(e0, f, fs, k){
+    var e=new Array(f.length), i, j, d;
+    for(i=0; i<f.length; i++){
+      d = e0[i];
+      for(j=0; j<fs.length; j++){
+        if(j===k) continue;
+        if(fs[j].g !== 0){
+          d += fs[j].g * sh(f[i], fs[j].f, fs[j].q);
+        }
       }
+      e[i] = d;
     }
-    e[i]=d;
+    return e;
   }
-  return e;
-}
-function makeF(ew,f,W,o){
-  return function(x){
-    var fc=cl(pow2(x[0]),o.fmin,o.fmax);
-    var q=cl(pow2(x[1]),o.qmin,o.qmax);
-    var g=cl(x[2],o.gmin,o.gmax);
-    var s=0,i,d;
-    for(i=0;i<f.length;i++){
-      d=ew[i]+g*sh(f[i],fc,q);
-      s+=W[i]*d*d;
-    }
-    return s;
-  };
-}
-function nm3(F,x0,iters){
-  var S=[],i,j,q2;
-  S[0]={x:x0.slice()};
-  S[1]={x:x0.slice()};
-  S[1].x[0]+=0.25;
-  S[2]={x:x0.slice()};
-  S[2].x[1]+=0.25;
-  S[3]={x:x0.slice()};
-  S[3].x[2]+=0.5;
-  for(i=0;i<4;i++){S[i].f=F(S[i].x);}
-  for(i=0;i<iters;i++){
-    S.sort(function(a,b){return a.f-b.f;});
-    var conv=true;
-    for(j=1;j<4;j++){
-      if(Math.abs(S[j].x[0]-S[0].x[0])>1e-4){conv=false;}
-      if(Math.abs(S[j].x[1]-S[0].x[1])>1e-4){conv=false;}
-      if(Math.abs(S[j].x[2]-S[0].x[2])>1e-3){conv=false;}
-    }
-    if(conv){break;}
-    var c=[0,0,0],r=[0,0,0];
-    for(j=0;j<3;j++){
-      c[j]=(S[0].x[j]+S[1].x[j]+S[2].x[j])/3;
-      r[j]=2*c[j]-S[3].x[j];
-    }
-    var fr=F(r);
-    if(fr<S[0].f){
-      var ex=[0,0,0];
-      for(j=0;j<3;j++){ex[j]=c[j]+2*(c[j]-S[3].x[j]);}
-      var fe=F(ex);
-      if(fe<fr){
-        S[3]={x:ex,f:fe};
-      }else{
-        S[3]={x:r,f:fr};
+
+  function makeF(ew, f, W, o){
+    return function(x){
+      var fc = cl(pow2(x[0]), o.fmin, Math.min(o.fmax, 8000)); // Hard cap 8kHz
+      var q  = cl(pow2(x[1]), 0.5, 1.5); // Hard Q limits
+      var g  = cl(x[2], -10, 6); // Hard Gain limits
+      var s=0, i, d;
+      for(i=0; i<f.length; i++){
+        d = ew[i] + g * sh(f[i], fc, q);
+        s += W[i] * d * d;
       }
-    }else if(fr<S[2].f){
-      S[3]={x:r,f:fr};
-    }else{
-      var kc=[0,0,0];
-      for(j=0;j<3;j++){kc[j]=(c[j]+S[3].x[j])/2;}
-      var fk=F(kc);
-      if(fk<S[3].f){
-        S[3]={x:kc,f:fk};
-      }else{
-        for(j=1;j<4;j++){
-          var nx=[0,0,0];
-          for(q2=0;q2<3;q2++){
-            nx[q2]=S[0].x[q2]+0.5*(S[j].x[q2]-S[0].x[q2]);
+      return s;
+    };
+  }
+
+  // Nelder-Mead for 3 params (log_f, log_q, g)
+  function nm3(F, x0, iters){
+    var S=[], i, j, q2;
+    S[0]={x:x0.slice()};
+    S[1]={x:x0.slice()}; S[1].x[0]+=0.2; // smaller steps for stability
+    S[2]={x:x0.slice()}; S[2].x[1]+=0.2;
+    S[3]={x:x0.slice()}; S[3].x[2]+=0.5;
+    for(i=0;i<4;i++){S[i].f=F(S[i].x);}
+    
+    for(i=0;i<iters;i++){
+      S.sort(function(a,b){return a.f-b.f;});
+      var conv=true;
+      for(j=1;j<4;j++){
+        if(Math.abs(S[j].x[0]-S[0].x[0])>1e-4) conv=false;
+        if(Math.abs(S[j].x[1]-S[0].x[1])>1e-4) conv=false;
+        if(Math.abs(S[j].x[2]-S[0].x[2])>1e-3) conv=false;
+      }
+      if(conv) break;
+      
+      var c=[0,0,0], r=[0,0,0];
+      for(j=0;j<3;j++){
+        c[j]=(S[0].x[j]+S[1].x[j]+S[2].x[j])/3;
+        r[j]=2*c[j]-S[3].x[j];
+      }
+      var fr=F(r);
+      if(fr < S[0].f){
+        var ex=[0,0,0];
+        for(j=0;j<3;j++) ex[j]=c[j]+2*(c[j]-S[3].x[j]);
+        var fe=F(ex);
+        S[3] = fe < fr ? {x:ex, f:fe} : {x:r, f:fr};
+      } else if(fr < S[2].f){
+        S[3]={x:r, f:fr};
+      } else {
+        var kc=[0,0,0];
+        for(j=0;j<3;j++) kc[j]=(c[j]+S[3].x[j])/2;
+        var fk=F(kc);
+        if(fk < S[3].f) S[3]={x:kc, f:fk};
+        else {
+          for(j=1;j<4;j++){
+            var nx=[0,0,0];
+            for(q2=0;q2<3;q2++) nx[q2]=S[0].x[q2]+0.5*(S[j].x[q2]-S[0].x[q2]);
+            S[j]={x:nx, f:F(nx)};
           }
-          S[j]={x:nx,f:F(nx)};
         }
       }
     }
+    S.sort(function(a,b){return a.f-b.f;});
+    return S[0].x;
   }
-  S.sort(function(a,b){return a.f-b.f;});
-  return S[0].x;
-}
-function clampCand(x,o){
-  return{
-    f:cl(pow2(x[0]),o.fmin,o.fmax),
-    q:cl(pow2(x[1]),o.qmin,o.qmax),
-    g:cl(x[2],o.gmin,o.gmax)
-  };
-}
-function seedFit(e,f,o,W,bi){
-  var F=makeF(e,f,W,o);
-  var x0=[
-    Math.log2(cl(f[bi],o.fmin,o.fmax)),
-    Math.log2(cl(1,o.qmin,o.qmax)),
-    -e[bi]
-  ];
-  return clampCand(nm3(F,x0,120),o);
-}
-function refine(e0,f,fs,k,o,W){
-  var ew=residWithout(e0,f,fs,k);
-  var F=makeF(ew,f,W,o);
-  var cur=fs[k];
-  var x0=[
-    Math.log2(cl(cur.f,o.fmin,o.fmax)),
-    Math.log2(cl(cur.q,o.qmin,o.qmax)),
-    cur.g
-  ];
-  var cand=clampCand(nm3(F,x0,90),o);
-  var trial=fs.slice();
-  trial[k]=cand;
-  if(fullSSE(e0,f,trial,W)<fullSSE(e0,f,fs,W)-1e-9){
-    fs[k]=cand;
-    return true;
+
+  function clampCand(x, o){
+    return {
+      f: cl(pow2(x[0]), o.fmin, Math.min(o.fmax, 8000)),
+      q: cl(pow2(x[1]), 0.5, 1.5),
+      g: cl(x[2], -10, 6)
+    };
   }
-  return false;
-}
-function tick(){
-  return new Promise(function(r){setTimeout(r,0);});
-}
-async function rounds(e0,f,fs,o,W,tEnd,maxG){
-  var guard=0,changed=true,k;
-  while(changed&&guard<maxG&&performance.now()<tEnd){
-    changed=false;
-    for(k=0;k<fs.length;k++){
-      if(refine(e0,f,fs,k,o,W)){changed=true;}
+
+  // Smart Seeding: Find peaks in error curve in specific bands
+  function smartSeed(e, f, o, W, maxFilters){
+    var seeds = [];
+    var bands = [
+      {min: 20, max: 200, type: 'bass'},
+      {min: 200, max: 2000, type: 'mid'},
+      {min: 2000, max: 6000, type: 'treble'}
+    ];
+    
+    // Calculate weighted error magnitude per band
+    bands.forEach(function(band){
+      var bandIndices = [];
+      var maxErr = 0;
+      var maxIdx = -1;
+      
+      for(var i=0; i<f.length; i++){
+        if(f[i] >= band.min && f[i] <= band.max){
+          var errMag = W[i] * Math.abs(e[i]);
+          if(errMag > maxErr){
+            maxErr = errMag;
+            maxIdx = i;
+          }
+          bandIndices.push(i);
+        }
+      }
+      
+      // If significant error exists in this band, create a seed
+      if(maxIdx !== -1 && maxErr > 0.5){ // Threshold 0.5dB weighted
+        var targetGain = -e[maxIdx]; // Try to cancel error
+        // Limit initial gain guess to reasonable range
+        targetGain = cl(targetGain, -4, 4); 
+        
+        seeds.push({
+          f: f[maxIdx],
+          q: band.type === 'bass' ? 0.7 : (band.type === 'mid' ? 1.0 : 1.2),
+          g: targetGain
+        });
+      }
+    });
+    
+    // If we found fewer seeds than maxFilters, fill with log-spaced zeros
+    while(seeds.length < maxFilters){
+       // Add a generic filler, will be optimized or pruned
+       var t = seeds.length / maxFilters;
+       seeds.push({
+         f: o.fmin * Math.pow(o.fmax/o.fmin, t),
+         q: 1.0,
+         g: 0
+       });
     }
-    guard++;
-    await tick();
+    
+    return seeds.slice(0, maxFilters);
   }
-  return fs;
-}
-function greedySeed(e0,f,o,W,count,tEnd){
-  var fs=[],e=e0.slice(),i;
-  while(fs.length<count&&performance.now()<tEnd){
-    var bi=-1,bv=0;
-    for(i=0;i<e.length;i++){
-      var av=W[i]*Math.abs(e[i]);
-      if(av>bv){bv=av;bi=i;}
+
+  function refine(e0, f, fs, k, o, W){
+    var ew = residWithout(e0, f, fs, k);
+    var F = makeF(ew, f, W, o);
+    var cur = fs[k];
+    // Start optimization from current values (transformed)
+    var x0 = [
+      Math.log2(cl(cur.f, o.fmin, 8000)),
+      Math.log2(cl(cur.q, 0.5, 1.5)),
+      cur.g
+    ];
+    var cand = clampCand(nm3(F, x0, 60), o); // 60 iters per filter
+    
+    // Check if this filter actually helps
+    var trial = fs.slice();
+    trial[k] = cand;
+    // Use simple SSE for acceptance check to avoid penalty bias during refinement
+    var curErr = calcError(e0, f, fs, W); 
+    var newErr = calcError(e0, f, trial, W);
+    
+    if(newErr < curErr - 0.1){ // Must improve by at least 0.1 score
+      fs[k] = cand;
+      return true;
     }
-    if(bi<0||bv<0.15){break;}
-    var cand=seedFit(e,f,o,W,bi);
-    if(Math.abs(cand.g)<0.05){break;}
-    var before=0,after=0;
-    for(i=0;i<e.length;i++){
-      before+=W[i]*e[i]*e[i];
-      var d=e[i]+cand.g*sh(f[i],cand.f,cand.q);
-      after+=W[i]*d*d;
-    }
-    if(after>=before-1e-9){break;}
-    fs.push(cand);
-    for(i=0;i<e.length;i++){
-      e[i]+=cand.g*sh(f[i],cand.f,cand.q);
-    }
+    return false;
   }
-  return fs;
-}
-function logSeed(o,count){
-  var fs=[],i;
-  for(i=0;i<count;i++){
-    var t=0;
-    if(count>1){t=i/(count-1);}
-    fs.push({
-      f:o.fmin*Math.pow(o.fmax/o.fmin,t),
-      q:cl(1,o.qmin,o.qmax),
-      g:0});
-  }
-  return fs;
-}
-function pruneAdd(e0,f,fs,o,W,tEnd){
-  var k,i;
-  for(k=fs.length-1;k>=0;k--){
-    var rest=fs.filter(function(_,j){return j!==k;});
-    if(fullSSE(e0,f,rest,W)<=fullSSE(e0,f,fs,W)+1e-7){
-      fs=rest;
+
+  function tick(){ return new Promise(function(r){setTimeout(r,0); }); }
+
+  async function rounds(e0, f, fs, o, W, tEnd, maxG){
+    var guard=0, changed=true, k;
+    while(changed && guard<maxG && performance.now()<tEnd){
+      changed=false;
+      for(k=0; k<fs.length; k++){
+        if(refine(e0, f, fs, k, o, W)) changed=true;
+      }
+      guard++;
+      await tick();
     }
+    return fs;
   }
-  while(fs.length<o.count&&performance.now()<tEnd){
-    var e=residFull(e0,f,fs);
-    var bi=-1,bv=0;
-    for(i=0;i<e.length;i++){
-      var av=W[i]*Math.abs(e[i]);
-      if(av>bv){bv=av;bi=i;}
-    }
-    if(bi<0||bv<0.15){break;}
-    var cand=seedFit(e,f,o,W,bi);
-    if(Math.abs(cand.g)<0.05){break;}
-    var before=fullSSE(e0,f,fs,W);
-    var after=fullSSE(e0,f,fs.concat([cand]),W);
-    if(after>=before-1e-9){break;}
-    fs.push(cand);
-  }
-  return fs;
-}
-function mergeClose(fs,minD){
-  fs.sort(function(a,b){return a.f-b.f;});
-  var out=[],i;
-  for(i=0;i<fs.length;i++){
-    var close=false;
-    if(out.length){
-      var last=out[out.length-1];
-      if(Math.abs(Math.log2(fs[i].f/last.f))<minD){
-        close=true;
+
+  function prune(fs, e0, f, W){
+    // Remove filters that contribute little or have near-zero gain
+    var kept = [];
+    for(var i=0; i<fs.length; i++){
+      if(Math.abs(fs[i].g) > 0.1){ // Keep if gain > 0.1dB
+        // Check if removing it hurts score significantly
+        var without = fs.filter(function(_, j){ return j!==i; });
+        var errWith = calcError(e0, f, fs, W);
+        var errWithout = calcError(e0, f, without, W);
+        
+        // If removing it doesn't increase error much (or decreases due to penalty), drop it
+        if(errWithout <= errWith + 2.0){ 
+           // Actually, if errWithout is lower, we definitely drop.
+           // If slightly higher, we might keep for fidelity, but let's be aggressive for minimalism
+           if(errWithout < errWith + 0.5) continue; 
+        }
+        kept.push(fs[i]);
       }
     }
-    if(close){
-      var last2=out[out.length-1];
-      if(Math.abs(fs[i].g)>Math.abs(last2.g)){
-        out[out.length-1]=fs[i];
+    return kept;
+  }
+
+  async function fitAsync(eFull, fFull, o, onProg){
+    var idx=[], i;
+    // Only optimize up to 10kHz, ignore above completely for calculation
+    for(i=0; i<fFull.length; i++){
+      if(fFull[i]>=o.fmin && fFull[i]<=10000){ idx.push(i); }
+    }
+    if(idx.length<10) return [];
+    
+    var f = idx.map(function(k){return fFull[k];});
+    var e0 = idx.map(function(k){return eFull[k];});
+    var W = f.map(function(ff){ return maskW(ff, o.fmax); });
+    
+    var t0 = performance.now();
+    var tEnd = t0 + (o.budget || 12000);
+    
+    // Determine max filters (user setting, capped at 8)
+    var maxF = Math.min(o.count || 5, 8);
+    
+    // Strategy 1: Smart Seed based on error peaks
+    var fs1 = smartSeed(e0, f, o, W, maxF);
+    // Strategy 2: Log-spaced seed (fallback)
+    var fs2 = [];
+    for(i=0; i<maxF; i++){
+      var t = maxF>1 ? i/(maxF-1) : 0;
+      fs2.push({ f: o.fmin*Math.pow(o.fmax/o.fmin, t), q: 1.0, g: 0 });
+    }
+    
+    var starts = [fs1, fs2];
+    var best = null;
+    
+    for(var si=0; si<starts.length; si++){
+      var fs = starts[si];
+      // Initial optimization round
+      fs = await rounds(e0, f, fs, o, W, tEnd, 4);
+      // Prune useless filters
+      fs = prune(fs, e0, f, W);
+      // Final polish
+      fs = await rounds(e0, f, fs, o, W, tEnd, 4);
+      
+      var sc = calcError(e0, f, fs, W);
+      if(!best || sc < best.sc - 0.1){
+        best = {fs: fs, sc: sc};
       }
-    }else{
-      out.push(fs[i]);
+      
+      if(onProg) onProg(si+1, Math.round((performance.now()-t0)/100)/10);
+      await tick();
+      if(performance.now() > tEnd) break;
     }
-  }
-  return out;
-}
-async function fitAsync(eFull,fFull,o,onProg){
-  var idx=[],i;
-  for(i=0;i<fFull.length;i++){
-    if(fFull[i]>=o.fmin&&fFull[i]<=o.fmax){idx.push(i);}
-  }
-  if(idx.length<10){return [];}
-  var f=idx.map(function(k){return fFull[k];});
-  var e0=idx.map(function(k){return eFull[k];});
-  var W=f.map(function(ff){return maskW(ff,o.fmax);});
-  var t0=performance.now();
-  var tEnd=t0+(o.budget||12000);
-  var starts=[
-    greedySeed(e0,f,o,W,o.count,tEnd),
-    logSeed(o,o.count)
-  ];
-  var best=null,si;
-  for(si=0;si<starts.length;si++){
-    var fs=starts[si];
-    fs=await rounds(e0,f,fs,o,W,tEnd,6);
-    fs=pruneAdd(e0,f,fs,o,W,tEnd);
-    fs=await rounds(e0,f,fs,o,W,tEnd,4);
-    var sc=fullSSE(e0,f,fs,W);
-    if(!best||sc<best.sc-1e-9){best={fs:fs,sc:sc};}
-    if(onProg){
-      onProg(si+1,Math.round((performance.now()-t0)/100)/10);
+    
+    if(!best) return [];
+    
+    // Final cleanup: sort by freq, merge very close filters
+    var out = best.fs.filter(function(x){ return Math.abs(x.g) >= 0.1; });
+    out.sort(function(a,b){ return a.f - b.f; });
+    
+    // Merge filters closer than 0.2 octaves
+    var merged = [];
+    for(i=0; i<out.length; i++){
+      if(merged.length > 0){
+        var last = merged[merged.length-1];
+        if(Math.abs(Math.log2(out[i].f / last.f)) < 0.2){
+          // Keep the one with higher gain impact
+          if(Math.abs(out[i].g) > Math.abs(last.g)){
+            merged[merged.length-1] = out[i];
+          }
+          continue;
+        }
+      }
+      merged.push(out[i]);
     }
-    await tick();
-    if(performance.now()>tEnd){break;}
+    
+    return merged;
   }
-  if(!best){return [];}
-  var out=mergeClose(best.fs,0.05);
-  return out.filter(function(x){
-    return Math.abs(x.g)>=0.1;
-  });
-}
-return{fitAsync:fitAsync,mask:maskW};
+
+  return {fitAsync: fitAsync, mask: maskW};
 })();
 /*EOF-core*/

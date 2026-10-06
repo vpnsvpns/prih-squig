@@ -2,8 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport"
-content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Prih — EQ Playground</title>
 <script>
 window.__missing=[];
@@ -89,7 +88,7 @@ color:var(--text);border-radius:5px;padding:6px 8px;
 font:11px/1.4 monospace;width:100%;resize:vertical}
 .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .row button{padding:4px 9px}
-.preamp{font-weight:700;font-size:12px;cursor:pointer}
+.preamp{font-weight:700;font-size:12px}
 #eqRows{display:flex;flex-direction:column;gap:4px}
 .frow{display:grid;align-items:center;gap:4px;
 grid-template-columns:20px 50px 1fr 1fr 1fr 22px}
@@ -147,7 +146,7 @@ pointer-events:none}
 #legendRows{display:flex;flex-direction:column;gap:4px;padding:8px 12px;
 background:var(--panel);border-top:1px solid var(--line)}
 .crow{display:grid;align-items:center;gap:6px;font-size:12px;
-grid-template-columns:14px minmax(90px,1.1fr) 76px 44px 26px 26px 22px}
+grid-template-columns:14px minmax(90px,1.1fr) 76px 54px 44px 26px 26px 26px 22px}
 .crow .sw{width:12px;height:12px;border-radius:3px}
 .crow .cname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .crow .src{color:var(--muted);font-size:10px}
@@ -236,7 +235,7 @@ z-index:30;max-width:90vw;text-align:center}
 <div id="errbar"></div>
 <div id="boot">Prih · loading…</div>
 <header id="top">
-  <div class="logo">Prih<span>EQ Playground · 711 · v67</span></div>
+  <div class="logo">Prih<span>EQ Playground · 711 · v60</span></div>
   <div class="topbtns">
     <button id="btnShot">Screenshot</button>
     <button id="btnAvg">Average All</button>
@@ -267,8 +266,7 @@ z-index:30;max-width:90vw;text-align:center}
       <div class="muted">Uploaded data will not be persistent</div>
       <h3>Parametric Equalizer</h3>
       <select id="eqCurve"></select>
-      <div id="eqPreamp" class="preamp"
-      title="Double-click: back to auto pre-amp">Pre-amp: 0.0 dB</div>
+      <div id="eqPreamp" class="preamp">Pre-amp: 0.0 dB</div>
       <div id="eqRows"></div>
       <div class="row">
         <button id="btnAddF">+</button>

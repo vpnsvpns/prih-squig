@@ -1,6 +1,5 @@
 "use strict";
-function clearPreImport(){if(state&&state.eq){state.eq.preImport=null;}}
-/* init v68: self-sufficient EQ core + audit + stubs + sheet + squig */
+/* init v69: self-sufficient EQ core + audit + stubs + sheet + squig + legend patch */
 function stubIfMissing(name,fn){
   if(typeof window[name]==="function"){return null;}
   window[name]=fn;
@@ -191,6 +190,41 @@ function auditDeps(){
   if(typeof window.PALETTE==="undefined"){miss.push("PALETTE");}
   if(typeof window.T!=="function"){miss.push("T");}
   return miss;
+}
+/* ---- legend patch: no offset input, EQ row named "<meas> EQ" ---- */
+function eqNameV69(){
+  if(state.eq.name){return state.eq.name+" EQ";}
+  return "EQ result";
+}
+function installLegendPatch(){
+  var COLS="14px minmax(90px,1.1fr) 76px 44px 26px 26px 22px";
+  function fix(){
+    var r=document.querySelector(
+      ".crow[data-key='__eq'] .cname");
+    if(r){r.textContent=eqNameV69();}
+    var offs=document.querySelectorAll(".crow .coff");
+    var i;
+    for(i=0;i<offs.length;i++){
+      if(offs[i].parentNode){
+        offs[i].parentNode.removeChild(offs[i]);
+      }
+    }
+    var rows=document.querySelectorAll(".crow");
+    for(i=0;i<rows.length;i++){
+      rows[i].style.gridTemplateColumns=COLS;
+    }
+  }
+  var _ul=window.updateLegend;
+  window.updateLegend=function(){_ul();fix();};
+  var _ser=window.series;
+  window.series=function(){
+    var S=_ser();
+    for(var k=0;k<S.length;k++){
+      if(S[k].name==="EQ result"){S[k].name=eqNameV69();}
+    }
+    return S;
+  };
+  fix();
 }
 function injectMobileCss(){
   if(document.getElementById("mobileCss")){return;}
@@ -492,7 +526,8 @@ function init(){
     }
     return;
   }
-  console.info("Prih init v68");
+  console.info("Prih init v69");
+  installLegendPatch();
   injectSquigFields();
   var _grabBase=window.grabPts;
   window.grabPts=function(){
@@ -720,7 +755,7 @@ function init(){
     var b=$("errbar");
     if(b){
       b.style.display="block";
-      b.textContent="INIT ERROR v68: "+e.message;
+      b.textContent="INIT ERROR v69: "+e.message;
     }
     var boot2=$("boot");
     if(boot2){boot2.textContent="Init error: "+e.message;}

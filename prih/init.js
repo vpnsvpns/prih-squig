@@ -1,6 +1,7 @@
 "use strict";
-/* init v73: fixed-sign trained AutoEQ + guaranteed filters +
-   default target Harman IE 2019 v2 + self-sufficient EQ funcs */
+/* init v74: no multiline object literals (corruption-proof),
+   trained AutoEQ engine inside, self-sufficient EQ funcs */
+console.info("Prih init v74 loading");
 function stubIfMissing(name,fn){
   if(typeof window[name]==="function"){return null;}
   window[name]=fn;
@@ -43,7 +44,7 @@ function installStubs(){
   if(s4){out.push(s4);}
   return out;
 }
-/* ==== TRAINED AutoEQ ENGINE v3.1 (sign-fixed + fallback) ====
+/* ==== TRAINED AutoEQ ENGINE (user's 6 presets) ====
    residual = e + g*s ; g* = -sum(w*e*s)/sum(w*s*s)
    bands: 1) LSC105 or PK28-50  2) mud 160-250 cut
    3) body 550-1500  4) presence 2500-4300  5) treble 5000-7750
@@ -135,16 +136,16 @@ window.AutoEqFit=(function(){
       applyF(e,pk1.s,pk1.g);
     }
     await tick();
-    var defs=[
-      {cs:[160,175,183,190,200,215,232,250],
-       qs:[0.6,0.7,0.8,0.9,0.95],gmin:-3,gmax:0},
-      {cs:[550,650,685,750,900,1100,1300,1400,1500],
-       qs:[0.9,1,1.2,1.5],gmin:-2.5,gmax:2.5},
-      {cs:[2500,2850,3000,3250,3500,3800,4000,4300],
-       qs:[0.5,0.6,0.76,0.9,0.95,1.2,1.5],gmin:-2,gmax:3.5},
-      {cs:[5000,5134,5360,5600,6000,6500,7000,7500,7750],
-       qs:[1.2,1.5],gmin:-2,gmax:3.5}
-    ];
+    var defs=[];
+    var d1={cs:[160,175,183,190,200,215,232,250],
+      qs:[0.6,0.7,0.8,0.9,0.95],gmin:-3,gmax:0};
+    var d2={cs:[550,650,685,750,900,1100,1300,1400,1500],
+      qs:[0.9,1,1.2,1.5],gmin:-2.5,gmax:2.5};
+    var d3={cs:[2500,2850,3000,3250,3500,3800,4000,4300],
+      qs:[0.5,0.6,0.76,0.9,0.95,1.2,1.5],gmin:-2,gmax:3.5};
+    var d4={cs:[5000,5134,5360,5600,6000,6500,7000,7500,7750],
+      qs:[1.2,1.5],gmin:-2,gmax:3.5};
+    defs.push(d1);defs.push(d2);defs.push(d3);defs.push(d4);
     var d;
     for(d=0;d<defs.length;d++){
       if(out.length>=6){break;}
@@ -156,7 +157,6 @@ window.AutoEqFit=(function(){
       applyF(e,b.s,b.g);
       await tick();
     }
-    /* fallback: never return empty for clearly off-target curves */
     if(out.length===0){
       var mB=0,nB=0,mT=0,nT=0,i2;
       for(i2=0;i2<f.length;i2++){
@@ -188,7 +188,7 @@ window.AutoEqFit=(function(){
   }
   return{fitAsync:fitAsync,mask:maskW};
 })();
-function runAutoEqV73(){
+function runAutoEqV74(){
   if(state.eqRunning){
     toast("AutoEQ already running");
     return;
@@ -207,6 +207,15 @@ function runAutoEqV73(){
   var e=new Float64Array(GRID.length),i;
   for(i=0;i<GRID.length;i++){e[i]=hpN[i]-tN[i];}
   var a=state.aeq;
+  var opts={};
+  opts.fmin=a.fmin;
+  opts.fmax=a.fmax;
+  opts.gmin=a.gmin;
+  opts.gmax=a.gmax;
+  opts.qmin=a.qmin;
+  opts.qmax=a.qmax;
+  opts.count=5;
+  opts.budget=6000;
   state.eqRunning=true;
   $("btnEq").disabled=true;
   var ov=$("eqOverlay"),msg=$("eqOverlayMsg");
@@ -221,16 +230,12 @@ function runAutoEqV73(){
     if(ov){ov.hidden=true;}
   }
   setTimeout(function(){
-    window.AutoEqFit.fitAsync(e,GRID,{
-      fmin:a.fmin,fmax:a.fmax,
-      gmin:a.gmin,gmax:a.gmax,
-      qmin:a.qmin,qmax:a.qmax,
-      count:5,budget:6000
-    },function(stage,secs){
-      if(msg){
-        msg.textContent="AutoEQ is running... ("+secs+" s)";
-      }
-    }).then(function(fits){
+    window.AutoEqFit.fitAsync(e,GRID,opts,
+      function(stage,secs){
+        if(msg){
+          msg.textContent="AutoEQ is running... ("+secs+" s)";
+        }
+      }).then(function(fits){
       state.eq.filters=fits.map(function(x){
         return{on:true,t:x.t||"PK",
           f:fmtF(x.f),g:r1(x.g),q:r2(x.q)};
@@ -243,7 +248,7 @@ function runAutoEqV73(){
       updateLegend();
       draw();
       finish();
-      toast("AutoEQ v73: filters "+
+      toast("AutoEQ v74: filters "+
         state.eq.filters.length+
         ", pre-amp "+state.eq.preamp.toFixed(1)+" dB");
     }).catch(function(err){
@@ -252,7 +257,7 @@ function runAutoEqV73(){
     });
   },60);
 }
-window.runAutoEq=runAutoEqV73;
+window.runAutoEq=runAutoEqV74;
 function clearPreImport(){
   state.eq.preImport=null;
 }
@@ -443,7 +448,7 @@ function auditDeps(){
   if(typeof window.CFG==="undefined"){miss.push("CFG");}
   return miss;
 }
-function eqNameV73(){
+function eqNameV74(){
   if(state.eq.name){return state.eq.name+" EQ";}
   return "EQ result";
 }
@@ -452,7 +457,7 @@ function installLegendPatch(){
   function fix(){
     var r=document.querySelector(
       ".crow[data-key='__eq'] .cname");
-    if(r){r.textContent=eqNameV73();}
+    if(r){r.textContent=eqNameV74();}
     var offs=document.querySelectorAll(".crow .coff");
     var i;
     for(i=0;i<offs.length;i++){
@@ -568,11 +573,10 @@ function setupSheet(){
   });
   setOpen(false);
 }
-var SQ_ORIG={
-  gudkov:"https://gudkov.squig.link/",
-  pw:"https://pw.squig.link/",
-  boizoff:"https://boizoff.squig.link/"
-};
+var SQ_ORIG={};
+SQ_ORIG.gudkov="https://gudkov.squig.link/";
+SQ_ORIG.pw="https://pw.squig.link/";
+SQ_ORIG.boizoff="https://boizoff.squig.link/";
 function sqEnds(s,suf){
   if(s.length<suf.length){return false;}
   return s.substring(s.length-suf.length)===suf;
@@ -769,7 +773,7 @@ function init(){
     }
     return;
   }
-  console.info("Prih init v73");
+  console.info("Prih init v74");
   setDefaultTarget();
   installAlignPatch();
   installLegendPatch();
@@ -821,7 +825,7 @@ function init(){
   cv.addEventListener("mousemove",function(e){
     if(!state.inspect){return;}
     var r=cv.getBoundingClientRect();
-    state.mouse={x:e.clientX-r.left,y=e.clientY-r.top};draw();});
+    state.mouse={x:e.clientX-r.left,y:e.clientY-r.top};draw();});
   cv.addEventListener("mouseleave",function(){
     state.mouse=null;if(state.inspect){draw();}});
   cv.addEventListener("touchmove",function(e){
@@ -862,28 +866,31 @@ function init(){
     "adjTreble","adjTilt","adjEar"];
   adjIds.forEach(function(id){
     on(id,"change",function(){
-      state.adj={
-        bass:clamp(num($("adjBass"),0),-12,12),
-        bassQ:clamp(num($("adjBassQ"),0.71),0.3,2),
-        bassF:clamp(num($("adjBassF"),105),30,300),
-        treble:clamp(num($("adjTreble"),0),-12,12),
-        tilt:clamp(num($("adjTilt"),0),-3,3),
-        ear:clamp(num($("adjEar"),0),-12,12)};
+      state.adj.bass=clamp(num($("adjBass"),0),-12,12);
+      state.adj.bassQ=clamp(num($("adjBassQ"),0.71),0.3,2);
+      state.adj.bassF=clamp(num($("adjBassF"),105),30,300);
+      state.adj.treble=clamp(num($("adjTreble"),0),-12,12);
+      state.adj.tilt=clamp(num($("adjTilt"),0),-3,3);
+      state.adj.ear=clamp(num($("adjEar"),0),-12,12);
       draw();});});
   on("adjReset","click",function(){
-    state.adj={bass:0,bassQ:0.71,bassF:105,treble:0,tilt:0,ear:0};
+    state.adj.bass=0;
+    state.adj.bassQ=0.71;
+    state.adj.bassF=105;
+    state.adj.treble=0;
+    state.adj.tilt=0;
+    state.adj.ear=0;
     syncAdj();draw();});
   var aeIds=["aeFmin","aeFmax","aeGmin",
     "aeGmax","aeQmin","aeQmax"];
   aeIds.forEach(function(id){
     on(id,"change",function(){
-      state.aeq=Object.assign(state.aeq,{
-        fmin:clamp(num($("aeFmin"),20),10,10000),
-        fmax:clamp(num($("aeFmax"),8000),100,20000),
-        gmin:clamp(num($("aeGmin"),-10),-30,0),
-        gmax:clamp(num($("aeGmax"),6),0,30),
-        qmin:clamp(num($("aeQmin"),0.5),0.05,10),
-        qmax:clamp(num($("aeQmax"),1.5),0.05,10)});
+      state.aeq.fmin=clamp(num($("aeFmin"),20),10,10000);
+      state.aeq.fmax=clamp(num($("aeFmax"),8000),100,20000);
+      state.aeq.gmin=clamp(num($("aeGmin"),-10),-30,0);
+      state.aeq.gmax=clamp(num($("aeGmax"),6),0,30);
+      state.aeq.qmin=clamp(num($("aeQmin"),0.5),0.05,10);
+      state.aeq.qmax=clamp(num($("aeQmax"),1.5),0.05,10);
       sanState();recomputeEq();draw();});});
   on("btnEq","click",function(){clearPreImport();runAutoEq();});
   on("eqCurve","change",function(e){
@@ -996,11 +1003,13 @@ function init(){
     new ResizeObserver(function(){draw();})
       .observe($("graphWrap"));
   }
+  window.__INIT_OK="v74";
+  console.info("Prih init v74 ready");
   }catch(e){
     var b=$("errbar");
     if(b){
       b.style.display="block";
-      b.textContent="INIT ERROR v73: "+e.message;
+      b.textContent="INIT ERROR v74: "+e.message;
     }
     var boot2=$("boot");
     if(boot2){boot2.textContent="Init error: "+e.message;}

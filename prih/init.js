@@ -1,5 +1,6 @@
 "use strict";
-/* init v70: self-sufficient EQ + align fix (EQ curve hugs target) + 0.1dB preamp margin */
+/* init v71: TRAINED AutoEQ engine lives here (overrides core.js),
+   + self-sufficient EQ funcs + audit + stubs + sheet + squig + legend */
 function stubIfMissing(name,fn){
   if(typeof window[name]==="function"){return null;}
   window[name]=fn;
@@ -42,7 +43,197 @@ function installStubs(){
   if(s4){out.push(s4);}
   return out;
 }
-/* ---- self-sufficient EQ core with ALIGN fix ---- */
+/* ============ TRAINED AutoEQ ENGINE v3 (from user's 6 presets) ====
+   Bands: 1) sub-bass PK28-50 or LSC105  2) mud 160-250 (cut only)
+   3) body 550-1500  4) presence 2500-4300  5) treble 5000-7750
+   Limits: |gain| per band, Q in [0.5,1.5], no centers above 8kHz,
+   2-6 filters, skip band if |gain|<0.45dB, weight 6-8kHz x0.3, >8kHz x0
+   ================================================================== */
+window.AutoEqFit=(function(){
+  function maskW(f,fmax){
+    var f1=fmax*0.85;
+    if(f<=f1){return 1;}
+    if(f>=fmax){return 0;}
+    return 0.5*(1+Math.cos(Math.PI*(f-f1)/(fmax-f1)));
+  }
+  function wOf(f){
+    if(f<=6000){return 1;}
+    if(f>=8000){return 0;}
+    return 1-0.7*(f-6000)/2000;
+  }
+  function lsGain(e,s,w,gmin,gmax){
+    var num=0,den=0,i;
+    for(i=0;i<e.length;i++){
+      num+=w[i]*e[i]*s[i];
+      den+=w[i]*s[i]*s[i];
+    }
+    if(den<1e-9){return 0;}
+    var g=-num/den;
+    if(g<gmin){g=gmin;}
+    if(g>gmax){g=gmax;}
+    return g;
+  }
+  function reduction(e,s,g,w){
+    var b=0,a=0,i,d;
+    for(i=0;i<e.length;i++){
+      b+=w[i]*e[i]*e[i];
+      d=e[i]-g*s[i];
+      a+=w[i]*d*d;
+    }
+    return b-a;
+  }
+  function applyF(e,s,g){
+    var i;
+    for(i=0;i<e.length;i++){e[i]-=g*s[i];}
+  }
+  function bestBand(e,f,w,cs,qs,gmin,gmax){
+    var best=null,ci,qi,i;
+    for(ci=0;ci<cs.length;ci++){
+      for(qi=0;qi<qs.length;qi++){
+        var s=new Array(f.length);
+        for(i=0;i<f.length;i++){s[i]=shape(f[i],cs[ci],qs[qi]);}
+        var g=lsGain(e,s,w,gmin,gmax);
+        if(g<0.45&&g>-0.45){continue;}
+        var red=reduction(e,s,g,w);
+        if(red<=0){continue;}
+        if(!best||red>best.red){
+          best={f:cs[ci],q:qs[qi],g:g,red:red,s:s};
+        }
+      }
+    }
+    return best;
+  }
+  function tick(){
+    return new Promise(function(r){setTimeout(r,0);});
+  }
+  async function fitAsync(eFull,fFull,o,onProg){
+    var t0=performance.now();
+    var idx=[],i;
+    for(i=0;i<fFull.length;i++){
+      if(fFull[i]>=20&&fFull[i]<=10000){idx.push(i);}
+    }
+    if(idx.length<10){return [];}
+    var f=idx.map(function(k){return fFull[k];});
+    var e=idx.map(function(k){return eFull[k];});
+    var w=f.map(wOf);
+    var out=[];
+    /* band 1: LSC105 vs PK sub-bass */
+    var sLs=new Array(f.length);
+    for(i=0;i<f.length;i++){
+      sLs[i]=biquadDb("ls",105,0.71,1,f[i]);
+    }
+    var gLs=lsGain(e,sLs,w,-3,0);
+    var redLs=(gLs<-0.45)?reduction(e,sLs,gLs,w):0;
+    var pk1=bestBand(e,f,w,
+      [28,32,36,40,46,50],[0.5,0.6,0.7,0.8],-1.5,2);
+    var redPk=pk1?pk1.red:0;
+    if(redLs>redPk&&redLs>0){
+      out.push({t:"LS",f:105,q:0.71,
+        g:Math.round(gLs*10)/10});
+      applyF(e,sLs,gLs);
+    }else if(pk1&&redPk>0){
+      out.push({t:"PK",f:pk1.f,q:pk1.q,
+        g:Math.round(pk1.g*10)/10});
+      applyF(e,pk1.s,pk1.g);
+    }
+    await tick();
+    /* bands 2..5 */
+    var defs=[
+      {cs:[160,175,183,190,200,215,232,250],
+       qs:[0.6,0.7,0.8,0.9,0.95],gmin:-3,gmax:0},
+      {cs:[550,650,685,750,900,1100,1300,1400,1500],
+       qs:[0.9,1,1.2,1.5],gmin:-2.5,gmax:2.5},
+      {cs:[2500,2850,3000,3250,3500,3800,4000,4300],
+       qs:[0.5,0.6,0.76,0.9,0.95,1.2,1.5],gmin:-2,gmax:3.5},
+      {cs:[5000,5134,5360,5600,6000,6500,7000,7500,7750],
+       qs:[1.2,1.5],gmin:-2,gmax:3.5}
+    ];
+    var d;
+    for(d=0;d<defs.length;d++){
+      if(out.length>=6){break;}
+      var b=bestBand(e,f,w,defs[d].cs,defs[d].qs,
+        defs[d].gmin,defs[d].gmax);
+      if(!b){continue;}
+      out.push({t:"PK",f:b.f,q:Math.round(b.q*100)/100,
+        g:Math.round(b.g*10)/10});
+      applyF(e,b.s,b.g);
+      await tick();
+    }
+    out.sort(function(a,b){return a.f-b.f;});
+    if(onProg){
+      onProg(1,Math.round((performance.now()-t0)/100)/10);
+    }
+    return out;
+  }
+  return{fitAsync:fitAsync,mask:maskW};
+})();
+/* ============ runAutoEq override: no zero filler rows ==== */
+function runAutoEqV71(){
+  if(state.eqRunning){
+    toast("AutoEQ already running");
+    return;
+  }
+  var base=eqBase();
+  if(!base){
+    toast("Select headphones first");
+    return;
+  }
+  var tr=targetRaw();
+  if(!tr){
+    toast("Target unavailable");
+    return;
+  }
+  var hpN=normalizeOnly(base),tN=normalizeOnly(tr);
+  var e=new Float64Array(GRID.length),i;
+  for(i=0;i<GRID.length;i++){e[i]=hpN[i]-tN[i];}
+  var a=state.aeq;
+  state.eqRunning=true;
+  $("btnEq").disabled=true;
+  var ov=$("eqOverlay"),msg=$("eqOverlayMsg");
+  if(ov){ov.hidden=false;}
+  if(msg){
+    msg.textContent="AutoEQ is running, it could "+
+      "take 5-20 seconds or more.";
+  }
+  function finish(){
+    state.eqRunning=false;
+    $("btnEq").disabled=false;
+    if(ov){ov.hidden=true;}
+  }
+  setTimeout(function(){
+    window.AutoEqFit.fitAsync(e,GRID,{
+      fmin:a.fmin,fmax:a.fmax,
+      gmin:a.gmin,gmax:a.gmax,
+      qmin:a.qmin,qmax:a.qmax,
+      count:5,budget:6000
+    },function(stage,secs){
+      if(msg){
+        msg.textContent="AutoEQ is running... ("+secs+" s)";
+      }
+    }).then(function(fits){
+      state.eq.filters=fits.map(function(x){
+        return{on:true,t:x.t||"PK",
+          f:fmtF(x.f),g:r1(x.g),q:r2(x.q)};
+      });
+      clearPreImport();
+      renderEqRows();
+      recomputeEq();
+      state.eqShow=true;
+      $("eqShowChk").checked=true;
+      updateLegend();
+      draw();
+      finish();
+      toast("AutoEQ "+BUILD+": filters "+
+        state.eq.filters.length+
+        ", pre-amp "+state.eq.preamp.toFixed(1)+" dB");
+    }).catch(function(err){
+      finish();
+      toast("AutoEQ error: "+err.message);
+    });
+  },60);
+}
+window.runAutoEq=runAutoEqV71;
+/* ============ self-sufficient EQ funcs ============ */
 function clearPreImport(){
   state.eq.preImport=null;
 }
@@ -68,8 +259,6 @@ function recomputeEq(){
     if(fv>pk){pk=fv;}
   }
   state.eq.curve=curve;
-  /* align: keep same normalization anchor as the base measurement,
-     so EQ curve sits exactly on measurement+filters (like squig) */
   if(state.normOn){
     state.eq.align=anchorVal(curve,state.normHz)-
       anchorVal(base,state.normHz);
@@ -204,19 +393,18 @@ function importEqFile(f){
     toast("File error: "+e.message);
   });
 }
-/* ---- end EQ core ---- */
 function auditDeps(){
   var need=["draw","updateLegend","renderModels","renderBrands",
     "buildTargetChips","switchTab","curveYByKey","downloadCurveByKey",
     "targetRaw","series","processCurve","displayedY","filterResp",
     "loadTargets","loadRemoteDb","toggleHp","afterSelChange","curveCfg",
     "normalizeOnly","hasActiveEq","eqBase","renderEqCurveSelect",
-    "renderEqRows","eqLines","runAutoEq","averageAll","screenshot",
+    "renderEqRows","eqLines","averageAll","screenshot",
     "restore","syncAdj","syncInputs","wrapDetails","importFRFile",
     "importTargetFile","addMeasurement","doPreview",
     "download","eqMaskAt","parseTable","resample","fetchAny","clamp",
     "shape","esc","css","num","r1","r2","fmtF","uniqueName","allHps",
-    "loadHp","eqResultName","anchorVal","shift"];
+    "loadHp","eqResultName","anchorVal","shift","biquadDb"];
   var miss=[],i;
   for(i=0;i<need.length;i++){
     if(typeof window[need[i]]!=="function"){miss.push(need[i]);}
@@ -227,7 +415,7 @@ function auditDeps(){
   if(typeof window.T!=="function"){miss.push("T");}
   return miss;
 }
-function eqNameV70(){
+function eqNameV71(){
   if(state.eq.name){return state.eq.name+" EQ";}
   return "EQ result";
 }
@@ -236,7 +424,7 @@ function installLegendPatch(){
   function fix(){
     var r=document.querySelector(
       ".crow[data-key='__eq'] .cname");
-    if(r){r.textContent=eqNameV70();}
+    if(r){r.textContent=eqNameV71();}
     var offs=document.querySelectorAll(".crow .coff");
     var i;
     for(i=0;i<offs.length;i++){
@@ -553,7 +741,7 @@ function init(){
     }
     return;
   }
-  console.info("Prih init v70");
+  console.info("Prih init v71");
   installAlignPatch();
   installLegendPatch();
   injectSquigFields();
@@ -783,7 +971,7 @@ function init(){
     var b=$("errbar");
     if(b){
       b.style.display="block";
-      b.textContent="INIT ERROR v70: "+e.message;
+      b.textContent="INIT ERROR v71: "+e.message;
     }
     var boot2=$("boot");
     if(boot2){boot2.textContent="Init error: "+e.message;}

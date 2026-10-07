@@ -1,6 +1,5 @@
 "use strict";
-/* init v71: TRAINED AutoEQ engine lives here (overrides core.js),
-   + self-sufficient EQ funcs + audit + stubs + sheet + squig + legend */
+/* init v72: TRAINED AutoEQ (sign fix: residual = e + g*s) + self-sufficient EQ */
 function stubIfMissing(name,fn){
   if(typeof window[name]==="function"){return null;}
   window[name]=fn;
@@ -43,12 +42,11 @@ function installStubs(){
   if(s4){out.push(s4);}
   return out;
 }
-/* ============ TRAINED AutoEQ ENGINE v3 (from user's 6 presets) ====
-   Bands: 1) sub-bass PK28-50 or LSC105  2) mud 160-250 (cut only)
+/* ==== TRAINED AutoEQ ENGINE (user's 6 presets) ====
+   residual = e + g*s  (filter ADDS g*s to measurement)
+   bands: 1) LSC105 or PK28-50  2) mud 160-250 cut
    3) body 550-1500  4) presence 2500-4300  5) treble 5000-7750
-   Limits: |gain| per band, Q in [0.5,1.5], no centers above 8kHz,
-   2-6 filters, skip band if |gain|<0.45dB, weight 6-8kHz x0.3, >8kHz x0
-   ================================================================== */
+   limits: Q [0.5,1.5], gains per band, no centers >8kHz, 2-6 filters */
 window.AutoEqFit=(function(){
   function maskW(f,fmax){
     var f1=fmax*0.85;
@@ -77,14 +75,14 @@ window.AutoEqFit=(function(){
     var b=0,a=0,i,d;
     for(i=0;i<e.length;i++){
       b+=w[i]*e[i]*e[i];
-      d=e[i]-g*s[i];
+      d=e[i]+g*s[i];
       a+=w[i]*d*d;
     }
     return b-a;
   }
   function applyF(e,s,g){
     var i;
-    for(i=0;i<e.length;i++){e[i]-=g*s[i];}
+    for(i=0;i<e.length;i++){e[i]+=g*s[i];}
   }
   function bestBand(e,f,w,cs,qs,gmin,gmax){
     var best=null,ci,qi,i;
@@ -117,7 +115,6 @@ window.AutoEqFit=(function(){
     var e=idx.map(function(k){return eFull[k];});
     var w=f.map(wOf);
     var out=[];
-    /* band 1: LSC105 vs PK sub-bass */
     var sLs=new Array(f.length);
     for(i=0;i<f.length;i++){
       sLs[i]=biquadDb("ls",105,0.71,1,f[i]);
@@ -137,7 +134,6 @@ window.AutoEqFit=(function(){
       applyF(e,pk1.s,pk1.g);
     }
     await tick();
-    /* bands 2..5 */
     var defs=[
       {cs:[160,175,183,190,200,215,232,250],
        qs:[0.6,0.7,0.8,0.9,0.95],gmin:-3,gmax:0},
@@ -167,8 +163,7 @@ window.AutoEqFit=(function(){
   }
   return{fitAsync:fitAsync,mask:maskW};
 })();
-/* ============ runAutoEq override: no zero filler rows ==== */
-function runAutoEqV71(){
+function runAutoEqV72(){
   if(state.eqRunning){
     toast("AutoEQ already running");
     return;
@@ -232,8 +227,7 @@ function runAutoEqV71(){
     });
   },60);
 }
-window.runAutoEq=runAutoEqV71;
-/* ============ self-sufficient EQ funcs ============ */
+window.runAutoEq=runAutoEqV72;
 function clearPreImport(){
   state.eq.preImport=null;
 }
@@ -415,7 +409,7 @@ function auditDeps(){
   if(typeof window.T!=="function"){miss.push("T");}
   return miss;
 }
-function eqNameV71(){
+function eqNameV72(){
   if(state.eq.name){return state.eq.name+" EQ";}
   return "EQ result";
 }
@@ -424,7 +418,7 @@ function installLegendPatch(){
   function fix(){
     var r=document.querySelector(
       ".crow[data-key='__eq'] .cname");
-    if(r){r.textContent=eqNameV71();}
+    if(r){r.textContent=eqNameV72();}
     var offs=document.querySelectorAll(".crow .coff");
     var i;
     for(i=0;i<offs.length;i++){
@@ -741,7 +735,7 @@ function init(){
     }
     return;
   }
-  console.info("Prih init v71");
+  console.info("Prih init v72");
   installAlignPatch();
   installLegendPatch();
   injectSquigFields();
@@ -971,7 +965,7 @@ function init(){
     var b=$("errbar");
     if(b){
       b.style.display="block";
-      b.textContent="INIT ERROR v71: "+e.message;
+      b.textContent="INIT ERROR v72: "+e.message;
     }
     var boot2=$("boot");
     if(boot2){boot2.textContent="Init error: "+e.message;}

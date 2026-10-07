@@ -1,5 +1,6 @@
 "use strict";
-/* init v72: TRAINED AutoEQ (sign fix: residual = e + g*s) + self-sufficient EQ */
+/* init v73: fixed-sign trained AutoEQ + guaranteed filters +
+   default target Harman IE 2019 v2 + self-sufficient EQ funcs */
 function stubIfMissing(name,fn){
   if(typeof window[name]==="function"){return null;}
   window[name]=fn;
@@ -42,11 +43,11 @@ function installStubs(){
   if(s4){out.push(s4);}
   return out;
 }
-/* ==== TRAINED AutoEQ ENGINE (user's 6 presets) ====
-   residual = e + g*s  (filter ADDS g*s to measurement)
+/* ==== TRAINED AutoEQ ENGINE v3.1 (sign-fixed + fallback) ====
+   residual = e + g*s ; g* = -sum(w*e*s)/sum(w*s*s)
    bands: 1) LSC105 or PK28-50  2) mud 160-250 cut
    3) body 550-1500  4) presence 2500-4300  5) treble 5000-7750
-   limits: Q [0.5,1.5], gains per band, no centers >8kHz, 2-6 filters */
+   Q in [0.5,1.5], gains per band, no centers >8kHz, 2-6 filters */
 window.AutoEqFit=(function(){
   function maskW(f,fmax){
     var f1=fmax*0.85;
@@ -155,6 +156,30 @@ window.AutoEqFit=(function(){
       applyF(e,b.s,b.g);
       await tick();
     }
+    /* fallback: never return empty for clearly off-target curves */
+    if(out.length===0){
+      var mB=0,nB=0,mT=0,nT=0,i2;
+      for(i2=0;i2<f.length;i2++){
+        if(f[i2]<=150){mB+=e[i2];nB++;}
+        if(f[i2]>=2000&&f[i2]<=6000){mT+=e[i2];nT++;}
+      }
+      var eB=nB?mB/nB:0;
+      var eT=nT?mT/nT:0;
+      if(eB>0.8){
+        out.push({t:"LS",f:105,q:0.71,
+          g:Math.round(clamp(-eB,-3,0)*10)/10});
+      }else if(eB<-0.8){
+        out.push({t:"PK",f:40,q:0.6,
+          g:Math.round(clamp(-eB,0,2)*10)/10});
+      }
+      if(eT<-0.8){
+        out.push({t:"PK",f:3200,q:0.8,
+          g:Math.round(clamp(-eT,0,3.5)*10)/10});
+      }else if(eT>0.8){
+        out.push({t:"PK",f:3200,q:0.8,
+          g:Math.round(clamp(-eT,-2,0)*10)/10});
+      }
+    }
     out.sort(function(a,b){return a.f-b.f;});
     if(onProg){
       onProg(1,Math.round((performance.now()-t0)/100)/10);
@@ -163,7 +188,7 @@ window.AutoEqFit=(function(){
   }
   return{fitAsync:fitAsync,mask:maskW};
 })();
-function runAutoEqV72(){
+function runAutoEqV73(){
   if(state.eqRunning){
     toast("AutoEQ already running");
     return;
@@ -218,7 +243,7 @@ function runAutoEqV72(){
       updateLegend();
       draw();
       finish();
-      toast("AutoEQ "+BUILD+": filters "+
+      toast("AutoEQ v73: filters "+
         state.eq.filters.length+
         ", pre-amp "+state.eq.preamp.toFixed(1)+" dB");
     }).catch(function(err){
@@ -227,7 +252,7 @@ function runAutoEqV72(){
     });
   },60);
 }
-window.runAutoEq=runAutoEqV72;
+window.runAutoEq=runAutoEqV73;
 function clearPreImport(){
   state.eq.preImport=null;
 }
@@ -295,6 +320,14 @@ function installAlignPatch(){
     if(k==="__eq"&&y){y=shift(y,alignShift());}
     return y;
   };
+}
+function setDefaultTarget(){
+  var i,t;
+  for(i=0;i<CFG.targets.length;i++){
+    t=CFG.targets[i];
+    if(t.name==="Prih Target"){t.default=false;}
+    if(t.name==="Harman IE 2019 v2"){t.default=true;}
+  }
 }
 function readNumAfter(s,idx){
   var i=idx,started=false,str="";
@@ -407,9 +440,10 @@ function auditDeps(){
   if(typeof window.GRID==="undefined"){miss.push("GRID");}
   if(typeof window.PALETTE==="undefined"){miss.push("PALETTE");}
   if(typeof window.T!=="function"){miss.push("T");}
+  if(typeof window.CFG==="undefined"){miss.push("CFG");}
   return miss;
 }
-function eqNameV72(){
+function eqNameV73(){
   if(state.eq.name){return state.eq.name+" EQ";}
   return "EQ result";
 }
@@ -418,7 +452,7 @@ function installLegendPatch(){
   function fix(){
     var r=document.querySelector(
       ".crow[data-key='__eq'] .cname");
-    if(r){r.textContent=eqNameV72();}
+    if(r){r.textContent=eqNameV73();}
     var offs=document.querySelectorAll(".crow .coff");
     var i;
     for(i=0;i<offs.length;i++){
@@ -735,7 +769,8 @@ function init(){
     }
     return;
   }
-  console.info("Prih init v72");
+  console.info("Prih init v73");
+  setDefaultTarget();
   installAlignPatch();
   installLegendPatch();
   injectSquigFields();
@@ -786,7 +821,7 @@ function init(){
   cv.addEventListener("mousemove",function(e){
     if(!state.inspect){return;}
     var r=cv.getBoundingClientRect();
-    state.mouse={x:e.clientX-r.left,y:e.clientY-r.top};draw();});
+    state.mouse={x:e.clientX-r.left,y=e.clientY-r.top};draw();});
   cv.addEventListener("mouseleave",function(){
     state.mouse=null;if(state.inspect){draw();}});
   cv.addEventListener("touchmove",function(e){
@@ -965,7 +1000,7 @@ function init(){
     var b=$("errbar");
     if(b){
       b.style.display="block";
-      b.textContent="INIT ERROR v72: "+e.message;
+      b.textContent="INIT ERROR v73: "+e.message;
     }
     var boot2=$("boot");
     if(boot2){boot2.textContent="Init error: "+e.message;}

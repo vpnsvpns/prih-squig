@@ -1,5 +1,5 @@
 "use strict";
-/* init v69: self-sufficient EQ core + audit + stubs + sheet + squig + legend patch */
+/* init v70: self-sufficient EQ + align fix (EQ curve hugs target) + 0.1dB preamp margin */
 function stubIfMissing(name,fn){
   if(typeof window[name]==="function"){return null;}
   window[name]=fn;
@@ -42,7 +42,7 @@ function installStubs(){
   if(s4){out.push(s4);}
   return out;
 }
-/* ---- self-sufficient EQ functions (override any ui.js) ---- */
+/* ---- self-sufficient EQ core with ALIGN fix ---- */
 function clearPreImport(){
   state.eq.preImport=null;
 }
@@ -51,6 +51,7 @@ function recomputeEq(){
   if(!base){
     state.eq.curve=null;
     state.eq.preamp=0;
+    state.eq.align=0;
     $("eqPreamp").textContent="Pre-amp: 0.0 dB";
     return;
   }
@@ -67,15 +68,50 @@ function recomputeEq(){
     if(fv>pk){pk=fv;}
   }
   state.eq.curve=curve;
+  /* align: keep same normalization anchor as the base measurement,
+     so EQ curve sits exactly on measurement+filters (like squig) */
+  if(state.normOn){
+    state.eq.align=anchorVal(curve,state.normHz)-
+      anchorVal(base,state.normHz);
+  }else{
+    state.eq.align=0;
+  }
   var pre;
   if(state.eq.preImport!=null){pre=state.eq.preImport;}
-  else{pre=-Math.max(0,pk);}
+  else{
+    pre=pk>0?-(pk+0.1):0;
+  }
   if(!isFinite(pre)){pre=0;}
   if(pre<-30){pre=-30;}
   if(pre>0){pre=0;}
   state.eq.preamp=pre;
   $("eqPreamp").textContent=
     "Pre-amp: "+state.eq.preamp.toFixed(1)+" dB";
+}
+function alignShift(){
+  var a=state.eq.align;
+  if(typeof a==="number"&&isFinite(a)){return a;}
+  return 0;
+}
+function installAlignPatch(){
+  var _ser=window.series;
+  window.series=function(){
+    var S=_ser();
+    var d=alignShift();
+    if(d!==0){
+      var nm=eqResultName();
+      for(var i=0;i<S.length;i++){
+        if(S[i].name===nm){S[i].y=shift(S[i].y,d);}
+      }
+    }
+    return S;
+  };
+  var _cy=window.curveYByKey;
+  window.curveYByKey=function(k){
+    var y=_cy(k);
+    if(k==="__eq"&&y){y=shift(y,alignShift());}
+    return y;
+  };
 }
 function readNumAfter(s,idx){
   var i=idx,started=false,str="";
@@ -168,7 +204,7 @@ function importEqFile(f){
     toast("File error: "+e.message);
   });
 }
-/* ---- end self-sufficient EQ ---- */
+/* ---- end EQ core ---- */
 function auditDeps(){
   var need=["draw","updateLegend","renderModels","renderBrands",
     "buildTargetChips","switchTab","curveYByKey","downloadCurveByKey",
@@ -180,7 +216,7 @@ function auditDeps(){
     "importTargetFile","addMeasurement","doPreview",
     "download","eqMaskAt","parseTable","resample","fetchAny","clamp",
     "shape","esc","css","num","r1","r2","fmtF","uniqueName","allHps",
-    "loadHp","eqResultName"];
+    "loadHp","eqResultName","anchorVal","shift"];
   var miss=[],i;
   for(i=0;i<need.length;i++){
     if(typeof window[need[i]]!=="function"){miss.push(need[i]);}
@@ -191,8 +227,7 @@ function auditDeps(){
   if(typeof window.T!=="function"){miss.push("T");}
   return miss;
 }
-/* ---- legend patch: no offset input, EQ row named "<meas> EQ" ---- */
-function eqNameV69(){
+function eqNameV70(){
   if(state.eq.name){return state.eq.name+" EQ";}
   return "EQ result";
 }
@@ -201,7 +236,7 @@ function installLegendPatch(){
   function fix(){
     var r=document.querySelector(
       ".crow[data-key='__eq'] .cname");
-    if(r){r.textContent=eqNameV69();}
+    if(r){r.textContent=eqNameV70();}
     var offs=document.querySelectorAll(".crow .coff");
     var i;
     for(i=0;i<offs.length;i++){
@@ -216,14 +251,6 @@ function installLegendPatch(){
   }
   var _ul=window.updateLegend;
   window.updateLegend=function(){_ul();fix();};
-  var _ser=window.series;
-  window.series=function(){
-    var S=_ser();
-    for(var k=0;k<S.length;k++){
-      if(S[k].name==="EQ result"){S[k].name=eqNameV69();}
-    }
-    return S;
-  };
   fix();
 }
 function injectMobileCss(){
@@ -526,7 +553,8 @@ function init(){
     }
     return;
   }
-  console.info("Prih init v69");
+  console.info("Prih init v70");
+  installAlignPatch();
   installLegendPatch();
   injectSquigFields();
   var _grabBase=window.grabPts;
@@ -755,7 +783,7 @@ function init(){
     var b=$("errbar");
     if(b){
       b.style.display="block";
-      b.textContent="INIT ERROR v69: "+e.message;
+      b.textContent="INIT ERROR v70: "+e.message;
     }
     var boot2=$("boot");
     if(boot2){boot2.textContent="Init error: "+e.message;}

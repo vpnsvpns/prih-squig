@@ -1,5 +1,5 @@
 {
-    "init_phones": ["Jays Audio"],
+    "init_phones": ["Prih"],
     "default_channels": ["L","R"],
     "default_normalization": "Hz",
     "default_norm_db": 70,
@@ -12,10 +12,10 @@
     "alt_tutorial": true,  
     "site_url": "index.html",
     "share_url": true,
-    "watermark_text": "JaysAudio.github.io",   
+    "watermark_text": "vpnsvpns.github.io",   
     "watermark_text2": null,	
     "watermark_image_url": "img/vividici.png", 
-    "page_title": "Jays Audio",   
+    "page_title": "Prih",   
     "page_description": "View and compare frequency response graphs for IEMs",
     "accessories": false,  
     "externalLinksBar": true,    
@@ -42,19 +42,11 @@
         "headerLinks": [
             {
                 "name": "GitHub",
-                 "url": "https://github.com/JaysAudio/JaysAudio.github.io"
+                 "url": "https://github.com/vpnsvpns"
             },
             {
-                "name": "Head-Fi",
-                "url": "https://www.head-fi.org/members/mmag1983.556792/"
-            },	
-            {
-                "name": "HiFiGuides",
-                "url": "https://forum.hifiguides.com/u/vividici_111/summary"
-            },
-			{
-				"name": "YouTube",
-                "url": "https://www.youtube.com/@jayyaudio"
+                "name": "Reddit",
+                "url": "https://www.reddit.com/r/oratory1990/"
 			}	
         ],
         "footerLinks": [
@@ -62,24 +54,16 @@
                 "label": "More Databases",
                 "links": [
 		            {
-                        "name": "Bad Guy",
-				        "url": "https://hbbdatabase.github.io/"
+                        "name": "Gudkov",
+				        "url": "https://gudkov.squig.link/"
                     },
                     {
-                        "name": "nymz",
-                        "url": "https://nymz.squig.link/"
+                        "name": "Boizoff",
+                        "url": "https://boizoff.squig.link/"
                     },
 					{
 					    "name": "PaulWasabi",
                         "url": "https://pw.squig.link/"
-					},
-						{
-					    "name": "Precogvision",
-                        "url": "https://precog.squig.link/"
-					},
-					{
-                        "name": "RikudouGoku",
-                        "url": "https://rg.squig.link/"
 					},
 										{
                         "name": "Super Review",

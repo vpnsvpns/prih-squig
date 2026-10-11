@@ -1,14 +1,14 @@
 [
   {
-    "name": "KZ",
+    "name": "Philips",
     "phones": [
       {
-        "name": "EDC Pro",
+        "name": "SHP9500",
         "file": [
-          "KZ EDC Pro AVG"
+          "Philips SHP9500"
         ],
         "suffix": [
-          "AVG"
+          ""
         ]
       }
     ]

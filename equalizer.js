@@ -14,7 +14,7 @@ Equalizer = (function() {
         // Avoid filters close to nyquist frequency by default, because the behavior is implementation dependent
         // https://github.com/jaakkopasanen/AutoEq/issues/240
         // https://github.com/jaakkopasanen/AutoEq/issues/411
-        AutoEQRange: [20, 8400],
+        AutoEQRange: [20, 8000],
         // Minimum and maximum Q for AutoEQ feature
         OptimizeQRange: [0.5, 1.5],
         // Minimum and maximum Gain for AutoEQ feature

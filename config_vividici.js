@@ -1,7 +1,7 @@
 
 
 // Configuration options
-var init_phones = ["Jays Audio"],                             // Optional. Which graphs to display on initial load. Note: Share URLs will override this set
+var init_phones = ["Prih"],                             // Optional. Which graphs to display on initial load. Note: Share URLs will override this set
       DIR = "data/",                                // Directory where graph files are stored
       DBDIR = "data/audio_db/",
       TARGETDIR = "data/targets/",
@@ -17,10 +17,10 @@ var init_phones = ["Jays Audio"],                             // Optional. Which
       alt_tutorial = true,                         // Display a configurable frequency response guide below the graph
       site_url = 'index.html',                              // URL of your graph "homepage"
       share_url = true,                             // If true, enables shareable URLs
-      watermark_text = "JaysAudio.github.io",                 // Optional. Watermark appears behind graphs
+      watermark_text = "vpnsvpns.github.io",                 // Optional. Watermark appears behind graphs
       watermark_text2 = null,
       watermark_image_url = "img/vividici.png",   // Optional. If image file is in same directory as config, can be just the filename
-      page_title = "JaysAudio",                     // Optional. Appended to the page title if share URLs are enabled
+      page_title = "Prih",                     // Optional. Appended to the page title if share URLs are enabled
       page_description = "View and compare frequency response graphs for IEMs",
       accessories = false,                          // If true, displays specified HTML at the bottom of the page. Configure further below
       externalLinksBar = true,                      // If true, displays row of pill-shaped links at the bottom of the page. Configure further below
@@ -68,7 +68,7 @@ function watermark(svg) {
 }
 
 // If alt_header is enabled, these are the items added to the header
-let headerLogoText = "Jays Audio",
+let headerLogoText = "Prih",
 headerLinks = [
 // {
 //     name: "GitHub",
@@ -94,26 +94,18 @@ let linkSets = [
     //     label: "More Databases",
     //     links: [
 	//         {
-    //             name: "Bad Guy",
-    //             url: "https://hbbdatabase.github.io/"
+    //             name: "Gudkov",
+    //             url: "https://gudkov.squig.link/"
     //         },
     //         {
-    //             name: "nymz",
-    //             url: "https://nymz.squig.link/"
+    //             name: "boizoff",
+    //             url: "https://boizoff.squig.link/"
     //         },
 	//		   {
 	//             name: "PaulWasabi",
     //             url: "https://pw.squig.link/"
 	//		   },
-    //         {
-	//             name: "RikudouGoku",
-    //             url: "https://rg.squig.link/"
-	//		   },
-	//         {
-	//             name: "Precogvision",
-    //             url: "https://precog.squig.link/"
-	//         },
-	//         {
+    //         {        
 	//             name: "Super Review",
     //             url: "https://rg.squig.link/"
 	//         }

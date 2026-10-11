@@ -3,12 +3,12 @@
     "name": "KZ",
     "phones": [
       {
-        "name": "EDC PRO",
+        "name": "EDC Pro",
         "file": [
           "KZ EDC Pro AVG"
         ],
         "suffix": [
-          "Foam"
+          "AVG"
         ]
       }
     ]

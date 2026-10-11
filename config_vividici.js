@@ -72,19 +72,11 @@ let headerLogoText = "Prih",
 headerLinks = [
 // {
 //     name: "GitHub",
-//     url: "https://github.com/JaysAudio/JaysAudii.github.io"
+//     url: "https://github.com/vpnsvpns"
 // },
 // {
-//     name: "Head-Fi",
-//     url: "https://www.head-fi.org/members/jayaudio88.563753/"
-// },
-// {
-//     name: "HifiGuides",
-//     url: "https://forum.hifiguides.com/u/vividici_111/summary"
-// },
-// {
-//     name: "Youtube",
-//     url: "https://www.youtube.com/@jayyaudio"
+//     name: "Reddit",
+//     url: "https://www.reddit.com/r/oratory1990/"
 // }
 ];
 

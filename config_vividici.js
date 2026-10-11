@@ -146,9 +146,9 @@ let tutorialDefinitions = [
 // Specify which targets to display
 let targets = [
     // { type:"Preference",   
-	//     files:["Jays Audio","Bad Guy","Goober [Neutral]","Goober [Pinna]","MMagTech","nymz","PaulWasabi","Precogvision","Rtings","Sonarworks","Super Review 21","Super Review 22"] },
+	//     files:["HiFiEndgame MKIII","IEF Preference 2025","PEQdB Diamond β"] },
     // { type:"Reference", 
-	//     files:["Diffuse Field","Harman 2019v2"] }
+	//     files:["Diffuse Field","Harman 2019v2","Harman OE 2018","Prih Target","ISO DF Harman Bass 711"] }
 ];
 
 

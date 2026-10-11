@@ -1,5 +1,19 @@
 [
   {
+    "name": "KZ",
+    "phones": [
+      {
+        "name": "EDC Pro",
+        "file": [
+          "KZ EDC Pro"
+        ],
+        "suffix": [
+          ""
+        ]
+      }
+    ]
+  },
+  {
     "name": "Philips",
     "phones": [
       {

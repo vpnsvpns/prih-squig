@@ -26,5 +26,19 @@
         ]
       }
     ]
+  },
+  {
+    "name": "Samsung",
+    "phones": [
+      {
+        "name": "EO-IA500",
+        "file": [
+          "Samsung EO-IA500"
+        ],
+        "suffix": [
+          ""
+        ]
+      }
+    ]
   }
 ]

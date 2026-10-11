@@ -1,5 +1,5 @@
 // Set these variables to your own GTM ID and site name
-let analyticsSite = "Jays Audio", // Site name for attributing analytics events to your site
+let analyticsSite = "Prih", // Site name for attributing analytics events to your site
     analyticsGtmId = "G-PBQESZC8V4", // New GTM ID provided by Google
     logAnalytics = true; // If true, events are logged in console
 

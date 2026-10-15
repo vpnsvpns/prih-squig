@@ -71,7 +71,7 @@ function watermark(svg) {
 let headerLogoText = "Prih",
 headerLinks = [
 // {
-//     name: "GitHub",
+//     name: "Razin Stepan Sergeevich",
 //     url: "https://github.com/vpnsvpns"
 // },
 // {

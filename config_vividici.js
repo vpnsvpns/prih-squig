@@ -98,7 +98,7 @@ let linkSets = [
     //             url: "https://pw.squig.link/"
 	//		   },
     //         {        
-	//             name: "Super Review",
+	//             name: "Razin Stepan Sergeevich",
     //             url: "https://rg.squig.link/"
 	//         }
     //     ]
